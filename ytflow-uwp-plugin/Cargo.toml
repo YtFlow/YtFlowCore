@@ -1,0 +1,18 @@
+[package]
+name = "ytflow-uwp-plugin"
+version = "0.1.0"
+authors = ["bdbai <bdbaiapp@163.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["staticlib"]
+
+[build-dependencies]
+windows = "0.21"
+
+[dependencies]
+windows = "0.21"
+ytflow = { path = "../ytflow" }
+flume = { version = "0.10", default-features = false, features = [] }

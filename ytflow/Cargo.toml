@@ -1,0 +1,40 @@
+[package]
+name = "ytflow"
+version = "0.1.0"
+authors = ["bdbai <bdbaiapp@163.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+openssl-src = "300"
+
+[target.'cfg(windows)'.build-dependencies]
+windows = "0.21"
+
+[dependencies]
+async-trait = "0.1"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "net", "io-util", "time"] }
+parking_lot = "0.11"
+futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+thiserror = "1"
+httparse = "1"
+base64 = "0.13"
+getrandom = { version = "0.2", default-features = false, features = ["std"] }
+crypto2 = { version = "0.1", default-features = false, features = ["std"] }
+trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
+flume = { version = "0.10", default-features = false, features = ["async"] }
+smallvec = { version = "1", features = ["union"] }
+lru = "0.7"
+pin-project-lite = "0.2"
+arc-swap = "1"
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = "0.21"
+widestring = "0.5"
+
+[dependencies.smoltcp]
+git = "https://github.com/smoltcp-rs/smoltcp.git"
+default-features = false
+features = ["std", "log", "alloc", "medium-ip", "medium-ethernet", "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp", "async"]

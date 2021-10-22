@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "ytflow",
+    "ytflow-uwp-plugin",
+]
+
+[patch.crates-io]
+mio = { git = "https://github.com/YtFlow/mio-noafd" }
