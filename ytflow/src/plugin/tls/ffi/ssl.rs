@@ -2,7 +2,7 @@ use std::os::raw::*;
 
 crate::opaque_ffi_struct!(SSL);
 
-use super::bio::{Bio, BIO};
+use super::bio::{Bio, BioData, BIO};
 use super::ctx::SSL_CTX;
 use crate::flow::Buffer;
 
@@ -80,16 +80,8 @@ impl Ssl {
         self.ret_to_error(unsafe { SSL_shutdown(self.inner) })
     }
 
-    pub fn tx_buf(&mut self) -> &mut Option<Buffer> {
-        &mut self.bio.get_data_mut().tx_buf
-    }
-
-    pub fn rx_buf(&mut self) -> &mut Option<(Buffer, usize)> {
-        &mut self.bio.get_data_mut().rx_buf
-    }
-
-    pub fn set_rx_eof(&mut self) {
-        self.bio.get_data_mut().rx_eof = true;
+    pub fn inner_data_mut(&mut self) -> &mut BioData {
+        self.bio.get_data_mut()
     }
 }
 

@@ -61,8 +61,9 @@ extern "C" fn bcreate(bio: *mut BIO) -> c_int {
             bio,
             Box::into_raw(Box::new(BioData {
                 rx_eof: false,
-                tx_buf: None,
                 rx_buf: None,
+                rx_size_hint: None,
+                tx_buf: None,
             })) as *mut _,
         );
         BIO_set_init(bio, 1);
@@ -104,20 +105,21 @@ extern "C" fn bread(bio: *mut BIO, buf: *mut c_char, len: c_int) -> c_int {
 
 extern "C" fn bwrite(bio: *mut BIO, buf: *const c_char, len: c_int) -> c_int {
     let bio_data: &mut BioData = unsafe { get_data_mut(bio) };
-    let tx_buf = match bio_data.tx_buf.as_mut() {
+    let (tx_buf, offset) = match bio_data.tx_buf.as_mut() {
         Some(buf) => buf,
         None => {
             BIO_set_retry_write(bio);
-            return 1;
+            return -1;
         }
     };
-    let to_write = (tx_buf.capacity() - tx_buf.len()).min(len as usize);
+    let to_write = (tx_buf.len() - *offset).min(len as usize);
     if to_write == 0 {
         BIO_set_retry_write(bio);
         return -1;
     }
     let src = unsafe { std::slice::from_raw_parts(buf as *const _, len as usize) };
-    tx_buf.extend_from_slice(src);
+    tx_buf[*offset..(*offset + to_write)].copy_from_slice(&src[..to_write]);
+    *offset += to_write;
     to_write as _
 }
 
@@ -140,6 +142,10 @@ fn BIO_set_retry_read(bio: *mut BIO) {
 
 fn BIO_set_retry_write(bio: *mut BIO) {
     unsafe { BIO_set_flags(bio, BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY) }
+}
+
+unsafe fn get_data<'a>(bio: *const BIO) -> &'a BioData {
+    unsafe { &*(BIO_get_data(bio as *mut _) as *const _) }
 }
 
 unsafe fn get_data_mut<'a>(bio: *mut BIO) -> &'a mut BioData {
@@ -223,13 +229,18 @@ impl Bio {
         Self { meth, inner }
     }
 
+    pub(super) fn get_data(&self) -> &BioData {
+        unsafe { get_data(self.inner.inner) }
+    }
+
     pub(super) fn get_data_mut(&mut self) -> &mut BioData {
         unsafe { get_data_mut(self.inner.inner) }
     }
 }
 
-pub(super) struct BioData {
-    pub(super) rx_eof: bool,
-    pub(super) tx_buf: Option<Buffer>,
-    pub(super) rx_buf: Option<(Buffer, usize)>,
+pub struct BioData {
+    pub rx_eof: bool,
+    pub rx_buf: Option<(Buffer, usize)>,
+    pub rx_size_hint: Option<crate::flow::SizeHint>,
+    pub tx_buf: Option<(Buffer, usize)>,
 }
