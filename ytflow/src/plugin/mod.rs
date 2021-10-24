@@ -11,6 +11,7 @@ pub mod resolve_dest;
 pub mod shadowsocks;
 pub mod socket;
 pub mod tls;
+pub mod trojan;
 // TODO:
 // pub mod itworks;
 pub mod reject;
