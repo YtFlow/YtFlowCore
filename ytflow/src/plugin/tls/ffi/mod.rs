@@ -6,8 +6,10 @@ pub(super) mod ssl;
 
 use std::os::raw::c_int;
 
+const SSL_ERROR_SSL: c_int = 1;
 const SSL_ERROR_WANT_READ: c_int = 2;
 const SSL_ERROR_WANT_WRITE: c_int = 3;
+const SSL_ERROR_SYSCALL: c_int = 5;
 
 #[macro_export]
 macro_rules! opaque_ffi_struct {

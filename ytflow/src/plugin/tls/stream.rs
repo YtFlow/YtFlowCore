@@ -26,6 +26,16 @@ pub struct SslStreamFactory {
     next: Weak<dyn StreamOutboundFactory>,
 }
 
+impl SslStreamFactory {
+    pub fn new(next: Weak<dyn StreamOutboundFactory>) -> Self {
+        // TODO: sni, alpn, ...
+        Self {
+            ctx: ctx::SslCtx::new(),
+            next,
+        }
+    }
+}
+
 impl Stream for SslStream {
     fn poll_request_size(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
         Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }))
@@ -95,7 +105,11 @@ impl Stream for SslStream {
         let (tx_buf, offset) = tx_buf.insert((buffer, 0));
         let written = match ssl.write(tx_buf.as_slice()) {
             SslResult::Ok(r) => r as usize,
-            SslResult::Fatal => return Err(FlowError::UnexpectedData),
+            SslResult::Other => return Err(FlowError::UnexpectedData),
+            SslResult::Fatal(s) => {
+                // TODO: log error
+                return Err(FlowError::UnexpectedData);
+            }
             SslResult::WantRead | SslResult::WantWrite => return Ok(()),
         };
         *offset += written;
@@ -140,18 +154,22 @@ impl StreamOutboundFactory for SslStreamFactory {
     ) -> FlowResult<Pin<Box<dyn Stream>>> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
         let bio = bio::Bio::new();
-        let mut ssl = ssl::Ssl::new(&self.ctx, bio);
-        ssl.inner_data_mut().tx_buf = Some((Vec::with_capacity(4096), 0));
+        let mut ssl = ssl::Ssl::new_client(&self.ctx, bio);
+        ssl.inner_data_mut().rx_buf = Some((Vec::with_capacity(4096), 0));
+        ssl.inner_data_mut().tx_buf = Some((vec![0; 4096], 0));
 
         // Extract initial data from handshake to sent to lower
         let handshake_ret = ssl.do_handshake();
-        if let SslResult::Fatal = handshake_ret {
+        if let SslResult::Fatal(_) | SslResult::Other = handshake_ret {
+            // TODO: log error
             return Err(FlowError::UnexpectedData);
         }
-        let lower_initial_data = match &ssl.inner_data_mut().tx_buf {
-            Some((b, l)) => &b[..*l],
+        let (lower_initial_data, lower_initial_data_len) = match ssl.inner_data_mut().tx_buf.take()
+        {
+            Some(buf) => buf,
             None => return Err(FlowError::UnexpectedData),
         };
+        let lower_initial_data = &lower_initial_data[..lower_initial_data_len];
         let mut lower = outbound_factory
             .create_outbound(context, lower_initial_data)
             .await?;
@@ -192,13 +210,17 @@ fn poll_ssl_action(
             || tx_buf.map(|(b, o)| b.len() == *o).unwrap_or(false)
         } {
             // Send buffer to lower.
-            lower
-                .as_mut()
-                .commit_tx_buffer(ssl.inner_data_mut().tx_buf.take().unwrap().0)?;
+            let (mut buf, offset) = ssl.inner_data_mut().tx_buf.take().unwrap();
+            buf.truncate(offset);
+            lower.as_mut().commit_tx_buffer(buf)?;
         }
         match ret {
             SslResult::Ok(n) => break Poll::Ready(Ok(n)),
-            SslResult::Fatal => break Poll::Ready(Err(FlowError::UnexpectedData)),
+            SslResult::Other => break Poll::Ready(Err(FlowError::UnexpectedData)),
+            SslResult::Fatal(_) => {
+                // TODO: log error
+                break Poll::Ready(Err(FlowError::UnexpectedData));
+            }
             SslResult::WantRead => {
                 let size_hint = match ssl.inner_data_mut().rx_size_hint.as_mut() {
                     Some(h) => h,

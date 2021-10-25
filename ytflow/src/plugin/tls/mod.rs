@@ -1,4 +1,4 @@
 mod ffi;
 mod stream;
 
-pub use stream::SslStream;
+pub use stream::SslStreamFactory;

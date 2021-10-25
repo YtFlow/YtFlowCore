@@ -17,6 +17,7 @@ const BIO_FLAGS_READ: c_int = 0x01;
 const BIO_FLAGS_WRITE: c_int = 0x02;
 const BIO_FLAGS_SHOULD_RETRY: c_int = 0x08;
 const BIO_CTRL_EOF: c_int = 2;
+const BIO_CTRL_FLUSH: c_int = 11;
 
 use crate::flow::Buffer;
 
@@ -128,11 +129,13 @@ extern "C" fn bputs(bio: *mut BIO, buf: *const c_char) -> c_int {
 }
 
 extern "C" fn bctrl(bio: *mut BIO, cmd: c_int, _larg: c_long, _parg: *mut c_void) -> c_long {
-    if cmd == BIO_CTRL_EOF {
-        let bio_data = unsafe { get_data_mut(bio) };
-        bio_data.rx_eof.into()
-    } else {
-        0
+    match cmd {
+        BIO_CTRL_EOF => {
+            let bio_data = unsafe { get_data_mut(bio) };
+            bio_data.rx_eof.into()
+        }
+        BIO_CTRL_FLUSH => 1,
+        _ => 0,
     }
 }
 

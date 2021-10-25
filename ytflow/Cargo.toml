@@ -13,22 +13,30 @@ openssl-src = "300"
 windows = "0.21"
 
 [dependencies]
+
+# Primitive
 async-trait = "0.1"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "net", "io-util", "time"] }
 parking_lot = "0.11"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 thiserror = "1"
-httparse = "1"
-base64 = "0.13"
-getrandom = { version = "0.2", default-features = false, features = ["std"] }
-crypto2 = { version = "0.1", default-features = false, features = ["std"] }
-trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
 flume = { version = "0.10", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union"] }
 lru = "0.7"
 pin-project-lite = "0.2"
 arc-swap = "1"
+
+# FFI
 libc = "0.2"
+
+# Runtime
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "net", "io-util", "time"] }
+
+# Protocol
+httparse = "1"
+base64 = "0.13"
+getrandom = { version = "0.2", default-features = false, features = ["std"] }
+crypto2 = { version = "0.1", default-features = false, features = ["std"] }
+trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.21"
