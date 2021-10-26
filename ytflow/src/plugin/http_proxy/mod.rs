@@ -68,7 +68,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
         initial_data: &'_ [u8],
     ) -> FlowResult<Pin<Box<dyn Stream>>> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
-        let mut next = {
+        let mut lower = {
             let mut req =
                 Vec::with_capacity(REQ_BEFORE_ADDR.len() + 261 + self.req_after_addr.len());
             req.extend_from_slice(REQ_BEFORE_ADDR);
@@ -84,43 +84,34 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             outbound_factory.create_outbound(context, &req[..]).await?
         };
         {
-            let size_hint = crate::get_request_size_boxed!(next)?;
-            let res_buf = vec![0; size_hint.with_min_content(512)];
-            next.as_mut()
-                .commit_rx_buffer(res_buf, 0)
-                .map_err(|(_, e)| e)?;
-            let mut res_buf = crate::get_rx_buffer_boxed!(next).map_err(|(_, e)| e)?;
-            let mut code;
-            while {
-                let mut res_headers = [httparse::EMPTY_HEADER; 4];
-                let mut res = httparse::Response::new(&mut res_headers[..]);
-                (
-                    res.parse(&res_buf)
+            let mut reader = StreamReader::new();
+            let mut expected_header_size = 1;
+            let mut code = None;
+            while reader
+                .peek_at_least(&mut lower, expected_header_size, |data| {
+                    if data.len() > 1024 {
+                        return Err(FlowError::UnexpectedData);
+                    }
+                    expected_header_size = data.len() + 1;
+                    let mut res_headers = [httparse::EMPTY_HEADER; 4];
+                    let mut res = httparse::Response::new(&mut res_headers[..]);
+                    let ret = res
+                        .parse(&data)
                         .map_err(|_| FlowError::UnexpectedData)?
-                        .is_partial(),
-                    code = res.code,
-                )
-                    .0
-            } {
-                let offset = res_buf.len();
-                if offset > 1024 {
-                    return Err(FlowError::UnexpectedData)?;
-                }
-                let size_hint = crate::get_request_size_boxed!(next)?.with_min_content(512);
-                res_buf.resize(offset + size_hint, 0);
-                next.as_mut()
-                    .commit_rx_buffer(res_buf, offset)
-                    .map_err(|(_, e)| e)?;
-                res_buf = crate::get_rx_buffer_boxed!(next).map_err(|(_, e)| e)?;
-            }
+                        .is_partial();
+                    code = res.code;
+                    Ok(ret)
+                })
+                .await??
+            {}
             code.filter(|c| (200..=299).contains(c))
                 .ok_or(FlowError::UnexpectedData)?;
         }
         if let Some(initial_data_size) = initial_data.len().try_into().ok() {
-            let (mut tx_buffer, offset) = crate::get_tx_buffer_boxed!(next, initial_data_size)?;
+            let (mut tx_buffer, offset) = crate::get_tx_buffer_boxed!(lower, initial_data_size)?;
             tx_buffer[offset..].copy_from_slice(initial_data);
-            next.as_mut().commit_tx_buffer(tx_buffer)?;
+            lower.as_mut().commit_tx_buffer(tx_buffer)?;
         }
-        Ok(next)
+        Ok(lower)
     }
 }

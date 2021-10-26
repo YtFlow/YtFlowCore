@@ -3,12 +3,12 @@ use std::pin::Pin;
 use std::sync::Weak;
 
 use cidr::IpCidr;
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use crate::flow::*;
 
 pub struct Condition {
-    pub ip_ranges: SmallVec<[IpCidr; 1]>,
+    pub ip_ranges: SmallVec<[IpCidr; 2]>,
     pub port_ranges: SmallVec<[RangeInclusive<u16>; 4]>,
 }
 
