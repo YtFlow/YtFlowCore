@@ -9,6 +9,7 @@ pub mod netif;
 pub mod redirect;
 pub mod resolve_dest;
 pub mod shadowsocks;
+pub mod simple_dispatcher;
 pub mod socket;
 pub mod tls;
 pub mod trojan;

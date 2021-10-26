@@ -19,11 +19,14 @@ async-trait = "0.1"
 parking_lot = "0.11"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 thiserror = "1"
+pin-project-lite = "0.2"
+
+# Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union"] }
 lru = "0.7"
-pin-project-lite = "0.2"
 arc-swap = "1"
+cidr = "0.2"
 
 # FFI
 libc = "0.2"
