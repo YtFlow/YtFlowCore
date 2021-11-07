@@ -89,8 +89,10 @@ impl StreamReader {
         on_data: C,
     ) -> FlowResult<T> {
         let mut on_data = Some(on_data);
-        poll_fn(|cx| self.poll_peek_at_least(cx, stream.as_mut(), len, on_data.take().unwrap()))
-            .await
+        poll_fn(|cx| {
+            self.poll_peek_at_least(cx, stream.as_mut(), len, |b| on_data.take().unwrap()(b))
+        })
+        .await
     }
 
     pub async fn read_exact<T, C: FnOnce(&mut [u8]) -> T>(
@@ -100,6 +102,7 @@ impl StreamReader {
         on_data: C,
     ) -> FlowResult<T> {
         let mut on_data = Some(on_data);
-        poll_fn(|cx| self.poll_read_exact(cx, stream.as_mut(), len, on_data.take().unwrap())).await
+        poll_fn(|cx| self.poll_read_exact(cx, stream.as_mut(), len, |b| on_data.take().unwrap()(b)))
+            .await
     }
 }
