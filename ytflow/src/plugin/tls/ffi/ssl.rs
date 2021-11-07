@@ -101,8 +101,12 @@ impl Ssl {
     pub fn shutdown(&mut self) -> SslResult {
         if self.has_ssl_error {
             return SslResult::Ok(0);
+        }
+        let ret = unsafe { SSL_shutdown(self.inner) };
+        if ret == 0 {
+            SslResult::WantRead
         } else {
-            self.ret_to_error(unsafe { SSL_shutdown(self.inner) })
+            self.ret_to_error(ret)
         }
     }
 

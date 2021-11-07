@@ -103,6 +103,9 @@ impl Stream for SslStream {
             tx_buf, ssl, lower, ..
         } = &mut *self;
         let (tx_buf, offset) = tx_buf.insert((buffer, 0));
+        if tx_buf.len() == 0 {
+            return Ok(());
+        }
         let written = match ssl.write(tx_buf.as_slice()) {
             SslResult::Ok(r) => r as usize,
             SslResult::Other => return Err(FlowError::UnexpectedData),
