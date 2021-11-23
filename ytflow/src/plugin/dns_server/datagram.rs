@@ -74,7 +74,7 @@ impl DatagramSessionHandler for DnsDatagramHandler {
                             }
                             .map(|addr| Record::from_rdata(name.clone(), ttl, RData::AAAA(addr))),
                         ),
-
+                        // TODO: SRV
                         _ => (res_code = ResponseCode::NotImp, continue).1,
                     }
                 }

@@ -6,7 +6,8 @@ mod bindings {
     windows::include_bindings!();
 }
 mod collections;
-mod plugin;
+mod tun_plugin;
+mod vpn_plugin;
 
 /// Creates a new instance of Windows.Networking.Vpn.IVpnPlugIn.
 /// Returns 0 on success, otherwise failure.
@@ -19,7 +20,7 @@ extern "C" fn CreateVpnPlugIn(plugin_out: *mut *mut c_void) -> i32 {
     }));
     use crate::bindings::Windows::Networking::Vpn::IVpnPlugIn;
 
-    let plugin: IVpnPlugIn = crate::plugin::VpnPlugIn::new().into();
+    let plugin: IVpnPlugIn = crate::vpn_plugin::VpnPlugIn::new().into();
     unsafe { *plugin_out = std::mem::transmute(plugin) };
     0
 }

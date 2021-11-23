@@ -38,10 +38,10 @@ pub struct HostResolver {
 }
 
 impl HostResolver {
-    pub fn new(datagram_hosts: Vec<Weak<dyn DatagramSessionFactory>>) -> Self {
-        let mut dns_configs = Vec::with_capacity(datagram_hosts.len());
-        let mut factory_ids = Vec::with_capacity(datagram_hosts.len());
-        dns_configs.reserve(datagram_hosts.len());
+    pub fn new(datagram_hosts: impl Iterator<Item = Weak<dyn DatagramSessionFactory>>) -> Self {
+        let size_hint = datagram_hosts.size_hint().1.unwrap_or(0);
+        let mut dns_configs = Vec::with_capacity(size_hint);
+        let mut factory_ids = Vec::with_capacity(size_hint);
         {
             let mut guard = UDP_FACTORIES.write();
             let (max_id, factories) = &mut *guard;
@@ -57,6 +57,8 @@ impl HostResolver {
                 factory_ids.push(*max_id);
             }
         }
+        dns_configs.shrink_to_fit();
+        factory_ids.shrink_to_fit();
         let inner =
             AsyncResolver::<GenericConnection, GenericConnectionProvider<FlowRuntime>>::new(
                 ResolverConfig::from_parts(None, vec![], NameServerConfigGroup::from(dns_configs)),

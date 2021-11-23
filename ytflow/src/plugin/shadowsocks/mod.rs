@@ -22,35 +22,79 @@ where
     crypto_phantom: std::marker::PhantomData<C>,
 }
 
-pub fn create_factory(
-    method: &str,
-    password: &str,
-    next: Weak<dyn StreamOutboundFactory>,
-) -> Option<Arc<dyn StreamOutboundFactory>> {
+#[rustfmt::skip]
+#[derive(Clone, Copy)]
+pub enum SupportedCipher {
+    None, Rc4, Rc4Md5,
+    Aes128Cfb, Aes192Cfb, Aes256Cfb,
+    Aes128Ctr, Aes192Ctr, Aes256Ctr,
+    Camellia128Cfb, Camellia192Cfb, Camellia256Cfb,
+    Aes128Gcm, Aes256Gcm,
+    Chacha20Ietf, Chacha20IetfPoly1305, XChacha20IetfPoly1305,
+}
+
+pub trait ReceiveFactory {
+    fn receive_factory<F: CreateFactory>(self, factory: F);
+}
+
+pub trait CreateFactory {
+    type Factory: StreamOutboundFactory + 'static;
+    fn create_factory(self, next: Weak<dyn StreamOutboundFactory>) -> Self::Factory;
+}
+
+struct FactoryCreator<C: ShadowCrypto>
+where
+    [(); C::KEY_LEN]: ,
+{
+    key: [u8; C::KEY_LEN],
+    crypto_phantom: std::marker::PhantomData<C>,
+}
+
+impl<C: ShadowCrypto> CreateFactory for FactoryCreator<C>
+where
+    [(); C::KEY_LEN]: ,
+    [(); C::IV_LEN]: ,
+    [(); C::PRE_CHUNK_OVERHEAD]: ,
+    [(); C::POST_CHUNK_OVERHEAD]: ,
+{
+    type Factory = ShadowsocksStreamOutboundFactory<C>;
+    fn create_factory(self, next: Weak<dyn StreamOutboundFactory>) -> Self::Factory {
+        let Self {
+            key,
+            crypto_phantom,
+        } = self;
+        ShadowsocksStreamOutboundFactory {
+            key,
+            crypto_phantom,
+            next,
+        }
+    }
+}
+
+pub fn create_factory<R: ReceiveFactory>(method: SupportedCipher, password: &[u8], r: R) {
     use util::openssl_bytes_to_key as bk;
 
-    let p = password.as_bytes();
+    let p = password;
     #[rustfmt::skip]
-    Some(match method {
-        "none" | "plain" => Arc::new(ShadowsocksStreamOutboundFactory::<Plain> { key: [], crypto_phantom: PhantomData, next }),
-        "rc4" => Arc::new(ShadowsocksStreamOutboundFactory::<Rc4>{ key: bk(p), crypto_phantom: PhantomData, next}),
-        "rc4-md5" => Arc::new(ShadowsocksStreamOutboundFactory::<Rc4Md5>{ key: bk(p), crypto_phantom: PhantomData, next}),
-        "aes-128-cfb" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-192-cfb" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes192Cfb> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-256-cfb" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-128-ctr" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes128Ctr> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-192-ctr" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes192Ctr> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-256-ctr" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes128Ctr> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "camellia-128-cfb" => Arc::new(ShadowsocksStreamOutboundFactory::<Camellia128Cfb> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "camellia-192-cfb" => Arc::new(ShadowsocksStreamOutboundFactory::<Camellia192Cfb> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "camellia-256-cfb" => Arc::new(ShadowsocksStreamOutboundFactory::<Camellia128Cfb> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-128-gcm" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes128Gcm> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "aes-256-gcm" => Arc::new(ShadowsocksStreamOutboundFactory::<Aes256Gcm> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "chacha20-ietf" => Arc::new(ShadowsocksStreamOutboundFactory::<Chacha20Ietf> { key: bk(p), crypto_phantom: PhantomData, next}),
-        "chacha20-ietf-poly1305" => Arc::new(ShadowsocksStreamOutboundFactory::<Chacha20IetfPoly1305> { key: bk(p), crypto_phantom: PhantomData, next }),
-        "xchacha20-ietf-poly1305" => Arc::new(ShadowsocksStreamOutboundFactory::<XChacha20IetfPoly1305> { key: bk(p), crypto_phantom: PhantomData, next }),
-        _ => return None,
-    })
+    match method {
+        SupportedCipher::None => r.receive_factory(FactoryCreator::<Plain> { key: [], crypto_phantom: PhantomData }),
+        SupportedCipher::Rc4=> r.receive_factory(FactoryCreator::<Rc4>{ key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Rc4Md5 => r.receive_factory(FactoryCreator::<Rc4Md5>{ key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes128Cfb => r.receive_factory(FactoryCreator::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes192Cfb => r.receive_factory(FactoryCreator::<Aes192Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes256Cfb => r.receive_factory(FactoryCreator::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes128Ctr => r.receive_factory(FactoryCreator::<Aes128Ctr> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes192Ctr => r.receive_factory(FactoryCreator::<Aes192Ctr> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes256Ctr => r.receive_factory(FactoryCreator::<Aes128Ctr> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Camellia128Cfb => r.receive_factory(FactoryCreator::<Camellia128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Camellia192Cfb => r.receive_factory(FactoryCreator::<Camellia192Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Camellia256Cfb => r.receive_factory(FactoryCreator::<Camellia128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes128Gcm => r.receive_factory(FactoryCreator::<Aes128Gcm> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes256Gcm => r.receive_factory(FactoryCreator::<Aes256Gcm> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Chacha20Ietf => r.receive_factory(FactoryCreator::<Chacha20Ietf> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Chacha20IetfPoly1305 => r.receive_factory(FactoryCreator::<Chacha20IetfPoly1305> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::XChacha20IetfPoly1305 => r.receive_factory(FactoryCreator::<XChacha20IetfPoly1305> { key: bk(p), crypto_phantom: PhantomData }),
+    }
 }
 
 impl<C: ShadowCrypto> ShadowsocksStreamOutboundFactory<C>

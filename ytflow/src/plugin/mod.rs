@@ -6,6 +6,7 @@ pub mod host_resolver;
 pub mod http_proxy;
 pub mod ip_stack;
 pub mod netif;
+pub mod null;
 pub mod redirect;
 pub mod resolve_dest;
 pub mod shadowsocks;

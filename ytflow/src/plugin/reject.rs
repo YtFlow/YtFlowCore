@@ -9,3 +9,9 @@ impl StreamHandler for RejectHandler {
         drop(lower);
     }
 }
+
+impl DatagramSessionHandler for RejectHandler {
+    fn on_session(&self, lower: Pin<Box<dyn DatagramSession>>, _context: Box<FlowContext>) {
+        drop(lower);
+    }
+}

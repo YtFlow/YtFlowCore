@@ -1,0 +1,15 @@
+[package]
+name = "ytflow-openssl-src"
+version = "0.1.0"
+authors = ["bdbai <bdbaiapp@163.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["staticlib"]
+
+[build-dependencies]
+openssl-src = "300"
+
+[dependencies]

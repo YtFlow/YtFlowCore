@@ -16,13 +16,13 @@ pub struct RxBufDesc {
     offset: usize,
 }
 
-pub(super) struct IpStackStream<P: IpTxBuf> {
-    pub(super) socket_entry: TcpSocketEntry<P>,
+pub(super) struct IpStackStream {
+    pub(super) socket_entry: TcpSocketEntry,
     pub(super) rx_buf: Option<RxBufDesc>,
     pub(super) tx_buf: Option<(Buffer, usize)>,
 }
 
-impl<P: IpTxBuf> IpStackStream<P> {
+impl IpStackStream {
     pub(super) async fn handshake(&mut self) -> Result<(), ()> {
         timeout(
             Duration::from_millis(1000 * 60),
@@ -41,7 +41,7 @@ impl<P: IpTxBuf> IpStackStream<P> {
     }
 }
 
-impl<P: IpTxBuf> Stream for IpStackStream<P> {
+impl Stream for IpStackStream {
     // Read
     fn poll_request_size(
         self: Pin<&mut Self>,
@@ -188,7 +188,7 @@ impl<P: IpTxBuf> Stream for IpStackStream<P> {
     }
 }
 
-impl<P: IpTxBuf> Drop for IpStackStream<P> {
+impl Drop for IpStackStream {
     fn drop(&mut self) {
         let local_port = self.socket_entry.local_port;
         let mut socket_guard = self.socket_entry.lock();

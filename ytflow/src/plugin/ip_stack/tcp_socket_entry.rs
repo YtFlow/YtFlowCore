@@ -7,15 +7,15 @@ use smoltcp::socket::{SocketHandle, TcpSocket};
 
 use super::*;
 
-pub(super) struct TcpSocketEntry<P: IpTxBuf> {
+pub(super) struct TcpSocketEntry {
     pub(super) socket_handle: SocketHandle,
     pub(super) local_port: u16,
-    pub(super) stack: Arc<FairMutex<IpStackInner<P>>>,
+    pub(super) stack: Arc<FairMutex<IpStackInner>>,
     pub(super) most_recent_scheduled_poll: Arc<AtomicI64>,
 }
 
-impl<P: IpTxBuf> TcpSocketEntry<P> {
-    pub fn lock(&self) -> SocketEntryGuard<'_, P> {
+impl TcpSocketEntry {
+    pub fn lock(&self) -> SocketEntryGuard<'_> {
         SocketEntryGuard {
             entry: self,
             guard: self.stack.lock(),
@@ -23,12 +23,12 @@ impl<P: IpTxBuf> TcpSocketEntry<P> {
     }
 }
 
-pub(super) struct SocketEntryGuard<'s, P: IpTxBuf> {
-    pub(super) entry: &'s TcpSocketEntry<P>,
-    pub(super) guard: FairMutexGuard<'s, IpStackInner<P>>,
+pub(super) struct SocketEntryGuard<'s> {
+    pub(super) entry: &'s TcpSocketEntry,
+    pub(super) guard: FairMutexGuard<'s, IpStackInner>,
 }
 
-impl<'s, P: IpTxBuf> SocketEntryGuard<'s, P> {
+impl<'s> SocketEntryGuard<'s> {
     pub fn with_socket<R>(&mut self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
         let TcpSocketEntry {
             local_port,

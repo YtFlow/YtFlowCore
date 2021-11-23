@@ -6,7 +6,7 @@ use std::task::Poll;
 use async_trait::async_trait;
 
 use crate::flow::context::FlowContext;
-use crate::flow::result::{FlowError, FlowResult};
+use crate::flow::error::{FlowError, FlowResult};
 
 // TODO: custom buffer with offset
 pub type Buffer = Vec<u8>;

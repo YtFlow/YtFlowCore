@@ -6,27 +6,27 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build-dependencies]
-openssl-src = "300"
-
 [target.'cfg(windows)'.build-dependencies]
 windows = "0.21"
 
 [dependencies]
+ytflow-openssl-src = { path = "../ytflow-openssl-src" }
 
 # Primitive
+bitflags = "1"
 async-trait = "0.1"
 parking_lot = "0.11"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 thiserror = "1"
 pin-project-lite = "0.2"
+chrono = "*"
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union"] }
 lru = "0.7"
 arc-swap = "1"
-cidr = "0.2"
+cidr = { version = "0.2", features = ["serde"] }
 
 # FFI
 libc = "0.2"
@@ -40,6 +40,14 @@ base64 = "0.13"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
 crypto2 = { version = "0.1", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
+
+# Data
+serde = { version = "1", features = ["derive"] }
+refinery = { version = "0.7", features = ["rusqlite"] }
+refinery-core = "*"
+rusqlite = { version = "*", features = ["chrono", "winsqlite3"] }
+libsqlite3-sys = "*"
+ciborium = { git = "https://github.com/enarx/ciborium.git" }
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.21"

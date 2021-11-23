@@ -88,7 +88,11 @@ fn create_host_resolver(
         udp_factories.push(factory as _);
     }
 
-    (HostResolver::new(weak_udp_factories), vec![], udp_factories)
+    (
+        HostResolver::new(weak_udp_factories.into_iter()),
+        vec![],
+        udp_factories,
+    )
 }
 
 #[async_trait]

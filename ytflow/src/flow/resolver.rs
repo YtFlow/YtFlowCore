@@ -12,11 +12,7 @@ pub type ResolveResultV6 = super::FlowResult<SmallVec<[Ipv6Addr; 2]>>;
 
 #[async_trait]
 pub trait Resolver: Send + Sync {
-    async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
-        unimplemented!()
-    }
-    async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
-        unimplemented!()
-    }
-    async fn resolve_reverse(&'_ self, ip: IpAddr) -> FlowResult<String>;
+    async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4;
+    async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6;
+    async fn resolve_reverse(&self, ip: IpAddr) -> FlowResult<String>;
 }
