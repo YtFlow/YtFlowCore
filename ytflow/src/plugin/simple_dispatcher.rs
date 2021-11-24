@@ -3,10 +3,12 @@ use std::pin::Pin;
 use std::sync::Weak;
 
 use cidr::IpCidr;
+use serde::Deserialize;
 use smallvec::SmallVec;
 
 use crate::flow::*;
 
+#[derive(Clone, Deserialize)]
 pub struct Condition {
     pub ip_ranges: SmallVec<[IpCidr; 2]>,
     pub port_ranges: SmallVec<[RangeInclusive<u16>; 4]>,
@@ -58,13 +60,13 @@ pub type StreamRule = Rule<Weak<dyn StreamHandler>>;
 pub type DatagramRule = Rule<Weak<dyn DatagramSessionHandler>>;
 
 pub struct SimpleStreamDispatcher {
-    rules: Vec<StreamRule>,
-    fallback: Weak<dyn StreamHandler>,
+    pub rules: Vec<StreamRule>,
+    pub fallback: Weak<dyn StreamHandler>,
 }
 
 pub struct SimpleDatagramDispatcher {
-    rules: Vec<DatagramRule>,
-    fallback: Weak<dyn DatagramSessionHandler>,
+    pub rules: Vec<DatagramRule>,
+    pub fallback: Weak<dyn DatagramSessionHandler>,
 }
 
 impl StreamHandler for SimpleStreamDispatcher {

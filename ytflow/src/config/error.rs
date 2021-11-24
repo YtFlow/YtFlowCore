@@ -38,8 +38,6 @@ pub enum ConfigError {
 pub enum LoadError {
     #[error("error in config")]
     Config(#[from] ConfigError),
-    // #[error("error while initializing the plugin")]
-    // Flow(#[from] crate::flow::FlowError),
     #[error("{0} cannot select a useable network interface")]
     NoUseableNetif(String),
     #[error(r#"plugin {initiator:} requires {descriptor:} to be fully loaded"#)]

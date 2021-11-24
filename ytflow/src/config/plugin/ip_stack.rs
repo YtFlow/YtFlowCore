@@ -17,9 +17,8 @@ impl<'de> IpStackFactory<'de> {
         let Plugin { name, param, .. } = plugin;
         let config: Self =
             parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
-        let config_cloned = config.clone();
         Ok(ParsedPlugin {
-            factory: config_cloned,
+            factory: config.clone(),
             requires: vec![
                 Descriptor {
                     descriptor: config.tun,

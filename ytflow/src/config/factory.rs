@@ -84,6 +84,16 @@ pub(super) fn create_factory_from_plugin(
         "http-proxy" => box_result(HttpProxyFactory::parse(plugin)),
         "ip-stack" => box_result(IpStackFactory::parse(plugin)),
         "netif" => box_result(NetifFactory::parse(plugin)),
+        "resolve-dest" => box_result(ResolveDestFactory::parse(plugin)),
+        "socket" => box_result(SocketFactory::parse(plugin)),
+        "tls" => box_result(TlsFactory::parse(plugin)),
+        "fake-ip" => box_result(FakeIpFactory::parse(plugin)),
+        "forward" => box_result(ForwardFactory::parse(plugin)),
+        "redirect" => box_result(RedirectFactory::parse(plugin)),
+        "simple-dispatcher" => box_result(SimpleDispatcherFactory::parse(plugin)),
+        "trojan" => box_result(TrojanFactory::parse(plugin)),
+        "reject" => box_result(RejectFactory::parse(plugin)),
+        "null" => box_result(NullFactory::parse(plugin)),
         _ => no_such_type_err,
     }
 }

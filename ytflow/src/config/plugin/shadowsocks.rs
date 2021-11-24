@@ -73,10 +73,11 @@ impl<'de> ShadowsocksFactory<'de> {
                     descriptor: name.to_string() + ".tcp",
                     r#type: AccessPointType::StreamOutboundFactory,
                 },
-                Descriptor {
-                    descriptor: name.to_string() + ".udp",
-                    r#type: AccessPointType::DatagramSessionFactory,
-                },
+                // TODO:
+                // Descriptor {
+                //     descriptor: name.to_string() + ".udp",
+                //     r#type: AccessPointType::DatagramSessionFactory,
+                // },
             ],
         })
     }

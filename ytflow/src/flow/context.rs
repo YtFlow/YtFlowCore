@@ -1,12 +1,15 @@
 use std::net::{IpAddr, SocketAddr};
 
-#[derive(Debug, Clone)]
+use serde::Deserialize;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "type", content = "dest")]
 pub enum Destination {
     DomainName(String),
     Ip(IpAddr),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct DestinationAddr {
     pub dest: Destination,
     pub port: u16,

@@ -27,7 +27,7 @@ pub enum FamilyPreference {
     PreferIpv6,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct Netif {
     pub name: String,
     pub ipv4_addr: Option<SocketAddrV4>,
