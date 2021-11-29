@@ -21,7 +21,7 @@ impl NetifFactory {
             requires: vec![],
             provides: vec![Descriptor {
                 descriptor: name.to_string() + ".netif",
-                r#type: AccessPointType::Netif,
+                r#type: AccessPointType::NETIF,
             }],
         })
     }

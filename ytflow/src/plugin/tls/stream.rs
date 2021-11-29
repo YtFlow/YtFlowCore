@@ -1,4 +1,3 @@
-use std::future::Future;
 use std::num::NonZeroUsize;
 use std::os::raw::c_int;
 use std::pin::Pin;
@@ -37,7 +36,10 @@ impl SslStreamFactory {
 }
 
 impl Stream for SslStream {
-    fn poll_request_size(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
+    fn poll_request_size(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<FlowResult<SizeHint>> {
         Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }))
     }
 
@@ -56,8 +58,8 @@ impl Stream for SslStream {
     ) -> Poll<Result<Buffer, (Buffer, FlowError)>> {
         let Self {
             ssl,
-            rx_buf: rx_buf_opt,
             lower,
+            rx_buf: rx_buf_opt,
             ..
         } = &mut *self;
         let (rx_buf, offset) = rx_buf_opt.as_mut().unwrap();
@@ -99,9 +101,7 @@ impl Stream for SslStream {
     }
 
     fn commit_tx_buffer(mut self: Pin<&mut Self>, buffer: Buffer) -> FlowResult<()> {
-        let Self {
-            tx_buf, ssl, lower, ..
-        } = &mut *self;
+        let Self { tx_buf, ssl, .. } = &mut *self;
         let (tx_buf, offset) = tx_buf.insert((buffer, 0));
         if tx_buf.len() == 0 {
             return Ok(());
@@ -109,7 +109,7 @@ impl Stream for SslStream {
         let written = match ssl.write(tx_buf.as_slice()) {
             SslResult::Ok(r) => r as usize,
             SslResult::Other => return Err(FlowError::UnexpectedData),
-            SslResult::Fatal(s) => {
+            SslResult::Fatal(_) => {
                 // TODO: log error
                 return Err(FlowError::UnexpectedData);
             }
@@ -253,7 +253,7 @@ fn poll_ssl_action(
                                 ssl.inner_data_mut().rx_buf = Some((buf, 0));
                                 e
                             })?;
-                        ssl.inner_data_mut().rx_buf.insert((buf, 0));
+                        ssl.inner_data_mut().rx_buf = Some((buf, 0));
                     }
                 }
                 ssl.inner_data_mut().rx_size_hint = None;

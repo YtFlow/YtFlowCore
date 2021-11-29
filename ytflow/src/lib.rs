@@ -1,3 +1,4 @@
+#![allow(unused_unsafe)]
 #![feature(generic_const_exprs)]
 #![feature(stmt_expr_attributes)]
 #![feature(const_btree_new)]

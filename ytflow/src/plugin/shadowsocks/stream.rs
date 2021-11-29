@@ -10,7 +10,7 @@ use crate::flow::*;
 
 pub enum RxCryptoState<C: ShadowCrypto>
 where
-    [(); C::KEY_LEN]: ,
+    [(); C::KEY_LEN]:,
 {
     ReadingIv { key: [u8; C::KEY_LEN] },
     Ready(C),
@@ -18,7 +18,7 @@ where
 
 pub struct ShadowsocksStream<C: ShadowCrypto>
 where
-    [(); C::KEY_LEN]: ,
+    [(); C::KEY_LEN]:,
 {
     pub internal_rx_buf: Option<Vec<u8>>,
     pub rx_buf: Option<(Vec<u8>, usize)>,
@@ -31,10 +31,10 @@ where
 
 impl<C: ShadowCrypto + Unpin> Stream for ShadowsocksStream<C>
 where
-    [(); C::KEY_LEN]: ,
-    [(); C::IV_LEN]: ,
-    [(); C::PRE_CHUNK_OVERHEAD]: ,
-    [(); C::POST_CHUNK_OVERHEAD]: ,
+    [(); C::KEY_LEN]:,
+    [(); C::IV_LEN]:,
+    [(); C::PRE_CHUNK_OVERHEAD]:,
+    [(); C::POST_CHUNK_OVERHEAD]:,
 {
     fn poll_request_size(
         mut self: Pin<&mut Self>,
@@ -165,7 +165,7 @@ where
                 Some(b) => b,
                 None => {
                     let buf = ready!(lower.as_mut().poll_rx_buffer(cx))
-                        .map_err(|(buf, e)| (rx_buf.take().unwrap().0, e))?;
+                        .map_err(|(_buf, e)| (rx_buf.take().unwrap().0, e))?;
                     internal_rx_buf_opt.insert(buf)
                 }
             };

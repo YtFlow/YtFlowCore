@@ -19,7 +19,7 @@ pub(super) struct IpStackDatagramSession {
 
 impl IpStackDatagramSession {
     fn close(&mut self) {
-        if let Some(rx) = self.rx.take() {
+        if let Some(_) = self.rx.take() {
             // Safety: SocketEntry is taken out exactly once.
             unsafe { drop(ManuallyDrop::take(&mut self.timer)) };
             let mut stack_guard = self.stack.lock();
@@ -29,7 +29,7 @@ impl IpStackDatagramSession {
 }
 
 impl DatagramSession for IpStackDatagramSession {
-    fn poll_send_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_send_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<()> {
         Poll::Ready(())
     }
     fn send_to(mut self: Pin<&mut Self>, src: DestinationAddr, buf: Buffer) {
@@ -39,7 +39,7 @@ impl DatagramSession for IpStackDatagramSession {
             // Ignore oversized packet
             None => return,
         };
-        let from_ip = match &src.dest {
+        let _from_ip = match &src.dest {
             Destination::Ip(ip) => ip,
             // TODO: print diagnostic message: Cannot send datagram to unresolved destination
             _ => return,
@@ -51,14 +51,14 @@ impl DatagramSession for IpStackDatagramSession {
         let mut stack_guard = self.stack.lock();
         use smoltcp::phy::{Device, TxToken};
         let sender = stack_guard.netif.device_mut().transmit();
-        let mut ip_buf = match sender {
+        let ip_buf = match sender {
             Some(b) => b,
             None => return,
         };
         match (&self.local_endpoint, &src.dest) {
             (IpAddress::Ipv4(dst_v4), Destination::Ip(IpAddr::V4(src_ip))) => {
                 let src_ip: Ipv4Address = src_ip.clone().into();
-                ip_buf.consume(
+                let _ = ip_buf.consume(
                     smoltcp::time::Instant::from_micros_const(0),
                     buf.len() + 48,
                     |ip_buf| {
@@ -82,7 +82,7 @@ impl DatagramSession for IpStackDatagramSession {
                     },
                 );
             }
-            (IpAddress::Ipv6(dst_v6), _) => todo!(),
+            (IpAddress::Ipv6(_dst_v6), _) => todo!(),
             // Ignore unmatched IP version
             _ => return,
         }

@@ -5,8 +5,7 @@ use futures::future::poll_fn;
 use tokio::sync::Semaphore;
 use trust_dns_resolver::proto::op::{Message as DnsMessage, MessageType, ResponseCode};
 use trust_dns_resolver::proto::rr::{RData, Record, RecordType};
-use trust_dns_resolver::proto::serialize::binary::{BinDecodable, BinEncodable};
-use trust_dns_resolver::proto::xfer::DnsResponse;
+use trust_dns_resolver::proto::serialize::binary::BinDecodable;
 
 use crate::flow::*;
 
@@ -28,7 +27,7 @@ impl DnsDatagramHandler {
 }
 
 impl DatagramSessionHandler for DnsDatagramHandler {
-    fn on_session(&self, mut session: Pin<Box<dyn DatagramSession>>, context: Box<FlowContext>) {
+    fn on_session(&self, mut session: Pin<Box<dyn DatagramSession>>, _context: Box<FlowContext>) {
         let resolver = match self.resolver.upgrade() {
             Some(resolver) => resolver,
             None => return,
@@ -58,7 +57,8 @@ impl DatagramSessionHandler for DnsDatagramHandler {
                 let mut ans_records = Vec::with_capacity(msg.queries().len());
                 for query in msg.queries() {
                     let name = query.name();
-                    let mut name_str = name.to_lowercase().to_ascii();
+                    let name_str = name.to_lowercase().to_ascii();
+                    #[allow(unreachable_code)]
                     match query.query_type() {
                         RecordType::A => ans_records.extend(
                             match resolver.resolve_ipv4(name_str).await {

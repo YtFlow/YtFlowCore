@@ -1,7 +1,7 @@
 mod tcp;
 mod udp;
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
@@ -93,7 +93,7 @@ impl DatagramSessionFactory for SocketOutboundFactory {
                     Some(r) => r,
                     None => return Err(FlowError::NoOutbound),
                 };
-                let ip = match resolver.resolve_ipv4(domain).await?.get(0) {
+                let _ip = match resolver.resolve_ipv4(domain).await?.get(0) {
                     Some(ip) => *ip,
                     None => return Err(FlowError::NoOutbound),
                 };

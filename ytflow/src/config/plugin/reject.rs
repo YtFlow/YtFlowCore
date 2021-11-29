@@ -13,11 +13,11 @@ impl RejectFactory {
             provides: vec![
                 Descriptor {
                     descriptor: name.clone() + ".tcp",
-                    r#type: AccessPointType::StreamHandler,
+                    r#type: AccessPointType::STREAM_HANDLER,
                 },
                 Descriptor {
                     descriptor: name + ".udp",
-                    r#type: AccessPointType::DatagramSessionHandler,
+                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 },
             ],
         })

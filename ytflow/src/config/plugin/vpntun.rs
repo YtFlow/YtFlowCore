@@ -14,7 +14,7 @@ thread_local! {
 #[derive(Clone, Deserialize)]
 pub struct VpnTunFactory<'a> {
     pub ipv4: Option<Ipv4Addr>,
-    pub ipv6: Option<Ipv4Addr>,
+    pub ipv6: Option<Ipv6Addr>,
     pub ipv4_route: Vec<Ipv4Cidr>,
     pub ipv6_route: Vec<Ipv6Cidr>,
     pub dns: Vec<IpAddr>,
@@ -31,7 +31,7 @@ impl<'de> VpnTunFactory<'de> {
             requires: vec![],
             provides: vec![Descriptor {
                 descriptor: name.to_string() + ".tun",
-                r#type: AccessPointType::Tun,
+                r#type: AccessPointType::TUN,
             }],
         })
     }

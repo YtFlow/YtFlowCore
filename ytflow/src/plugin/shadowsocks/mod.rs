@@ -6,7 +6,7 @@ mod xchacha20;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::pin::Pin;
-use std::sync::{Arc, Weak};
+use std::sync::Weak;
 
 use async_trait::async_trait;
 
@@ -15,7 +15,7 @@ use crypto::*;
 
 struct ShadowsocksStreamOutboundFactory<C: ShadowCrypto>
 where
-    [(); C::KEY_LEN]: ,
+    [(); C::KEY_LEN]:,
 {
     key: [u8; C::KEY_LEN],
     next: Weak<dyn StreamOutboundFactory>,
@@ -44,7 +44,7 @@ pub trait CreateFactory {
 
 struct FactoryCreator<C: ShadowCrypto>
 where
-    [(); C::KEY_LEN]: ,
+    [(); C::KEY_LEN]:,
 {
     key: [u8; C::KEY_LEN],
     crypto_phantom: std::marker::PhantomData<C>,
@@ -52,10 +52,10 @@ where
 
 impl<C: ShadowCrypto> CreateFactory for FactoryCreator<C>
 where
-    [(); C::KEY_LEN]: ,
-    [(); C::IV_LEN]: ,
-    [(); C::PRE_CHUNK_OVERHEAD]: ,
-    [(); C::POST_CHUNK_OVERHEAD]: ,
+    [(); C::KEY_LEN]:,
+    [(); C::IV_LEN]:,
+    [(); C::PRE_CHUNK_OVERHEAD]:,
+    [(); C::POST_CHUNK_OVERHEAD]:,
 {
     type Factory = ShadowsocksStreamOutboundFactory<C>;
     fn create_factory(self, next: Weak<dyn StreamOutboundFactory>) -> Self::Factory {
@@ -99,10 +99,10 @@ pub fn create_factory<R: ReceiveFactory>(method: SupportedCipher, password: &[u8
 
 impl<C: ShadowCrypto> ShadowsocksStreamOutboundFactory<C>
 where
-    [(); C::KEY_LEN]: ,
-    [(); C::IV_LEN]: ,
-    [(); C::PRE_CHUNK_OVERHEAD]: ,
-    [(); C::POST_CHUNK_OVERHEAD]: ,
+    [(); C::KEY_LEN]:,
+    [(); C::IV_LEN]:,
+    [(); C::PRE_CHUNK_OVERHEAD]:,
+    [(); C::POST_CHUNK_OVERHEAD]:,
 {
     fn get_req(&self, context: &FlowContext, initial_data: &[u8]) -> (Vec<u8>, C) {
         let mut tx_handshake = Vec::with_capacity(259 + initial_data.len());
@@ -135,10 +135,10 @@ where
 #[async_trait]
 impl<C: ShadowCrypto> StreamOutboundFactory for ShadowsocksStreamOutboundFactory<C>
 where
-    [(); C::KEY_LEN]: ,
-    [(); C::IV_LEN]: ,
-    [(); C::PRE_CHUNK_OVERHEAD]: ,
-    [(); C::POST_CHUNK_OVERHEAD]: ,
+    [(); C::KEY_LEN]:,
+    [(); C::IV_LEN]:,
+    [(); C::PRE_CHUNK_OVERHEAD]:,
+    [(); C::POST_CHUNK_OVERHEAD]:,
 {
     async fn create_outbound(
         &self,

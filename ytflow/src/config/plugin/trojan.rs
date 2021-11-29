@@ -22,17 +22,17 @@ impl<'de> TrojanFactory<'de> {
             requires: vec![
                 Descriptor {
                     descriptor: config.tcp_next,
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
                 Descriptor {
                     descriptor: config.udp_next,
-                    r#type: AccessPointType::DatagramSessionFactory,
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 },
             ],
             provides: vec![
                 Descriptor {
                     descriptor: name.to_string() + ".tcp",
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
                 // TODO:
                 // Descriptor {

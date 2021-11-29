@@ -1,13 +1,11 @@
 use std::io::{self, ErrorKind::WouldBlock};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::num::NonZeroUsize;
 use std::pin::Pin;
-use std::sync::Weak;
 use std::task::{Context, Poll};
 
-use async_trait::async_trait;
 use futures::ready;
-use tokio::io::{AsyncWrite, AsyncWriteExt};
+use tokio::io::AsyncWrite;
 use tokio::net::TcpSocket;
 
 use crate::flow::*;
@@ -54,7 +52,7 @@ impl Stream for TcpStream {
                 Err(e) if e.kind() == WouldBlock => {
                     continue;
                 }
-                Err(e) => {
+                Err(_e) => {
                     // TODO: log error
                     break Poll::Ready(Err((rx_buf.take().unwrap().buffer, FlowError::Eof)));
                 }

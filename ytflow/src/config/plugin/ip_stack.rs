@@ -22,15 +22,15 @@ impl<'de> IpStackFactory<'de> {
             requires: vec![
                 Descriptor {
                     descriptor: config.tun,
-                    r#type: AccessPointType::Tun,
+                    r#type: AccessPointType::TUN,
                 },
                 Descriptor {
                     descriptor: config.tcp_next,
-                    r#type: AccessPointType::StreamHandler,
+                    r#type: AccessPointType::STREAM_HANDLER,
                 },
                 Descriptor {
                     descriptor: config.udp_next,
-                    r#type: AccessPointType::DatagramSessionHandler,
+                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 },
             ],
             provides: vec![],

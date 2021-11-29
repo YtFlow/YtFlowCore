@@ -48,7 +48,7 @@ pub struct Database {
 
 fn connect(path: impl AsRef<Path>) -> DataResult<Connection> {
     setup_temp();
-    let mut db = Connection::open(&path)?;
+    let db = Connection::open(&path)?;
     db.pragma_update(None, "foreign_keys", &"ON")?;
     Ok(db)
 }

@@ -3,6 +3,7 @@ use crate::config::*;
 use crate::plugin::null::Null;
 use crate::plugin::shadowsocks::{self, SupportedCipher};
 
+#[allow(dead_code)]
 pub struct ShadowsocksFactory<'de> {
     cipher: SupportedCipher,
     password: &'de [u8],
@@ -61,17 +62,17 @@ impl<'de> ShadowsocksFactory<'de> {
             requires: vec![
                 Descriptor {
                     descriptor: tcp_next,
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
                 Descriptor {
                     descriptor: udp_next,
-                    r#type: AccessPointType::DatagramSessionFactory,
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 },
             ],
             provides: vec![
                 Descriptor {
                     descriptor: name.to_string() + ".tcp",
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
                 // TODO:
                 // Descriptor {
@@ -85,25 +86,19 @@ impl<'de> ShadowsocksFactory<'de> {
 
 impl<'de> Factory for ShadowsocksFactory<'de> {
     fn load(&mut self, name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        let Self {
-            cipher,
-            password,
-            tcp_next,
-            udp_next: _,
-        } = self;
         struct FactoryReceiver<'set, 'de, 'f, 'r> {
             plugin_name: String,
             set: &'set mut PartialPluginSet<'f>,
             tcp_next: &'de str,
             result: &'r mut LoadResult<()>,
-        };
+        }
         impl<'set, 'de, 'f, 'r> shadowsocks::ReceiveFactory for FactoryReceiver<'set, 'de, 'f, 'r> {
             fn receive_factory<F: shadowsocks::CreateFactory>(self, factory: F) {
                 let tcp_ap = self.plugin_name.clone() + ".tcp";
                 let factory = Arc::new_cyclic(|weak| {
                     self.set
                         .stream_outbounds
-                        .insert(tcp_ap.clone(), (weak.clone() as _));
+                        .insert(tcp_ap.clone(), weak.clone() as _);
                     let tcp_next = self
                         .set
                         .get_or_create_stream_outbound(self.plugin_name, self.tcp_next)
@@ -126,7 +121,7 @@ impl<'de> Factory for ShadowsocksFactory<'de> {
             FactoryReceiver {
                 plugin_name: name,
                 set,
-                tcp_next,
+                tcp_next: self.tcp_next,
                 result: &mut res,
             },
         );

@@ -5,10 +5,8 @@ use std::slice::{from_raw_parts, from_raw_parts_mut};
 use std::string::ToString;
 use std::sync::Arc;
 
-use flume::{bounded, Receiver, Sender, TryRecvError, TrySendError};
+use flume::{bounded, Receiver, Sender, TryRecvError};
 use windows::{implement, Interface, Result};
-
-use ytflow::plugin::ip_stack::IpStack;
 
 use crate::bindings::Windows;
 use crate::bindings::Windows::Foundation::Collections::IVectorView;
@@ -21,16 +19,6 @@ use crate::bindings::Windows::Networking::Vpn::{
 use crate::bindings::Windows::Storage::Streams::Buffer;
 use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
 use crate::collections::SimpleHostNameVectorView;
-
-fn query_slice_from_ibuffer(buf: &Buffer) -> &[u8] {
-    let len = buf.Length().unwrap() as _;
-    let byte_access: IBufferByteAccess = buf.cast().unwrap();
-    #[allow(unused_unsafe)]
-    unsafe {
-        let ptr = byte_access.Buffer().unwrap();
-        from_raw_parts(ptr, len)
-    }
-}
 
 /// Safety: user must ensure the output slice does not outlive the buffer instance.
 pub(crate) unsafe fn query_slice_from_ibuffer_mut(buf: &mut Buffer) -> &'static mut [u8] {
@@ -134,7 +122,7 @@ impl VpnPlugIn {
     fn Connect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
         let channel = channel.as_ref().unwrap();
 
-        if let Some(inner) = &self.0 {
+        if self.0.is_some() {
             return channel.TerminateConnection("A fresh reconnect is required");
         }
 

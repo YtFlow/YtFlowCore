@@ -1,4 +1,3 @@
-use std::net::IpAddr;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
@@ -46,7 +45,7 @@ fn handle_context(
 
 #[async_trait]
 impl StreamHandler for StreamForwardResolver {
-    fn on_stream(&self, lower: Pin<Box<dyn Stream>>, mut context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Pin<Box<dyn Stream>>, context: Box<FlowContext>) {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return,
@@ -56,7 +55,7 @@ impl StreamHandler for StreamForwardResolver {
 }
 
 impl DatagramSessionHandler for DatagramForwardResolver {
-    fn on_session(&self, lower: Pin<Box<dyn DatagramSession>>, mut context: Box<FlowContext>) {
+    fn on_session(&self, lower: Pin<Box<dyn DatagramSession>>, context: Box<FlowContext>) {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return,

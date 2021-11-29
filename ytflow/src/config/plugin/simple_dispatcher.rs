@@ -28,22 +28,22 @@ impl<'de> SimpleDispatcherFactory<'de> {
         let mut requires = Vec::with_capacity(config.rules.len() + 2);
         requires.push(Descriptor {
             descriptor: config.fallback_tcp,
-            r#type: AccessPointType::StreamHandler,
+            r#type: AccessPointType::STREAM_HANDLER,
         });
         requires.push(Descriptor {
             descriptor: config.fallback_udp,
-            r#type: AccessPointType::DatagramSessionHandler,
+            r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
         });
         requires.extend(config.rules.iter().map(|r| {
             if r.is_udp {
                 Descriptor {
                     descriptor: r.next,
-                    r#type: AccessPointType::DatagramSessionHandler,
+                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 }
             } else {
                 Descriptor {
                     descriptor: r.next,
-                    r#type: AccessPointType::StreamHandler,
+                    r#type: AccessPointType::STREAM_HANDLER,
                 }
             }
         }));
@@ -53,11 +53,11 @@ impl<'de> SimpleDispatcherFactory<'de> {
             provides: vec![
                 Descriptor {
                     descriptor: name.to_string() + ".tcp",
-                    r#type: AccessPointType::StreamHandler,
+                    r#type: AccessPointType::STREAM_HANDLER,
                 },
                 Descriptor {
                     descriptor: name.to_string() + ".udp",
-                    r#type: AccessPointType::DatagramSessionHandler,
+                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 },
             ],
         })

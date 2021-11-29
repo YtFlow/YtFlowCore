@@ -4,7 +4,6 @@ crate::opaque_ffi_struct!(SSL);
 
 use super::bio::{Bio, BioData, BIO};
 use super::ctx::SSL_CTX;
-use crate::flow::Buffer;
 
 extern "C" {
     fn SSL_new(ctx: *mut SSL_CTX) -> *mut SSL;

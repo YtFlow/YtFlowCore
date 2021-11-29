@@ -21,11 +21,11 @@ impl<'de> FakeIpFactory<'de> {
             factory: config.clone(),
             requires: vec![Descriptor {
                 descriptor: config.fallback,
-                r#type: AccessPointType::Resolver,
+                r#type: AccessPointType::RESOLVER,
             }],
             provides: vec![Descriptor {
                 descriptor: name.to_string() + ".resolver",
-                r#type: AccessPointType::Resolver,
+                r#type: AccessPointType::RESOLVER,
             }],
         })
     }

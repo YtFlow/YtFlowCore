@@ -1,6 +1,3 @@
-use std::pin::Pin;
-use std::task::{Context, Poll};
-
 use super::*;
 
 pub type TunBufferSignature = [*mut usize; 2];

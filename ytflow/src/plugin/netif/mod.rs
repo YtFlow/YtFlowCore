@@ -10,8 +10,6 @@ use std::sync::{
 use arc_swap::ArcSwap;
 use serde::Deserialize;
 
-use crate::flow::*;
-
 #[derive(Clone, Deserialize)]
 #[serde(tag = "type", content = "netif")]
 pub enum SelectionMode {
@@ -39,8 +37,8 @@ pub struct NetifSelector {
     selection: SelectionMode,
     prefer: FamilyPreference,
     cached_netif: ArcSwap<Netif>,
-    monitor: sys::ChangeMonitor,
     change_token: AtomicU8,
+    _monitor: sys::ChangeMonitor,
 }
 
 impl NetifSelector {
@@ -52,7 +50,7 @@ impl NetifSelector {
                 selection,
                 prefer,
                 cached_netif: ArcSwap::new(Arc::new(netif)),
-                monitor: sys::ChangeMonitor::new(move || {
+                _monitor: sys::ChangeMonitor::new(move || {
                     if let Some(this) = this.upgrade() {
                         if let Some(netif) = pick_netif(&this.selection, &this.prefer) {
                             this.cached_netif.store(Arc::new(netif));

@@ -53,7 +53,7 @@ impl UdpSocket for FlowDatagramSocket {
                 Some((index, SessionState::Binding(fut))) => {
                     let fut_res = match ready!(fut.as_mut().poll(cx)) {
                         Ok(r) => r,
-                        Err(e) => Err(io::Error::new(
+                        Err(_) => Err(io::Error::new(
                             io::ErrorKind::ConnectionRefused,
                             "Cannot bind UDP socket for DNS",
                         ))?,
@@ -84,15 +84,6 @@ impl UdpSocket for FlowDatagramSocket {
     ) -> Poll<io::Result<usize>> {
         let mut guard = self.0.lock();
         if let (None, SocketAddr::V4(addrv4)) = (&*guard, target) {
-            let addrv4 = match target {
-                SocketAddr::V4(addr) => addr,
-                SocketAddr::V6(addr) => {
-                    return Poll::Ready(Err(io::Error::new(
-                        io::ErrorKind::Unsupported,
-                        "Unexpected IPv6 DNS address",
-                    )))
-                }
-            };
             let index = u32::from_ne_bytes(addrv4.ip().octets());
             let factories_guard = UDP_FACTORIES.read();
             let factory = factories_guard
@@ -127,7 +118,7 @@ impl UdpSocket for FlowDatagramSocket {
                 ),
             ));
         }
-        let (index, session) = loop {
+        let session = loop {
             match &mut *guard {
                 None => {
                     return Poll::Ready(Err(io::Error::new(
@@ -138,7 +129,7 @@ impl UdpSocket for FlowDatagramSocket {
                 Some((index, SessionState::Binding(fut))) => {
                     let fut_res = match ready!(fut.as_mut().poll(cx)) {
                         Ok(r) => r,
-                        Err(e) => Err(io::Error::new(
+                        Err(_) => Err(io::Error::new(
                             io::ErrorKind::ConnectionRefused,
                             "Cannot bind UDP socket for DNS",
                         ))?,
@@ -146,7 +137,7 @@ impl UdpSocket for FlowDatagramSocket {
                     *guard = Some((*index, SessionState::Ready(fut_res)));
                     continue;
                 }
-                Some((index, SessionState::Ready(session))) => break (index, session),
+                Some((_, SessionState::Ready(session))) => break session,
             }
         };
         ready!(session.as_mut().poll_send_ready(cx));

@@ -32,11 +32,11 @@ impl<'de> RedirectFactory<'de> {
                 .iter()
                 .map(|t| Descriptor {
                     descriptor: *t,
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 })
                 .chain(config.udp_next.iter().map(|u| Descriptor {
                     descriptor: *u,
-                    r#type: AccessPointType::DatagramSessionFactory,
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 }))
                 .collect(),
             provides: config
@@ -44,11 +44,11 @@ impl<'de> RedirectFactory<'de> {
                 .iter()
                 .map(|_| Descriptor {
                     descriptor: name.to_string() + ".tcp",
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 })
                 .chain(config.udp_next.iter().map(|_| Descriptor {
                     descriptor: name.to_string() + ".udp",
-                    r#type: AccessPointType::DatagramSessionFactory,
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 }))
                 .collect(),
         })

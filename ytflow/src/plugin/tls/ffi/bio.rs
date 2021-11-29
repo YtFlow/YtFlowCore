@@ -36,7 +36,6 @@ extern "C" {
     fn BIO_up_ref(a: *mut BIO) -> c_int;
     fn BIO_get_data(bio: *mut BIO) -> *mut c_void;
     fn BIO_set_data(bio: *mut BIO, ptr: *mut c_void);
-    fn BIO_get_init(bio: *mut BIO) -> c_int;
     fn BIO_set_init(bio: *mut BIO, init: c_int);
     fn BIO_set_flags(bio: *mut BIO, flags: c_int);
 }
@@ -87,13 +86,13 @@ extern "C" fn bread(bio: *mut BIO, buf: *mut c_char, len: c_int) -> c_int {
     let (rx_buf, offset) = match bio_data.rx_buf.as_mut() {
         Some(buf) => buf,
         None => {
-            BIO_set_retry_read(bio);
+            bio_set_retry_read(bio);
             return -1;
         }
     };
     let to_read = (rx_buf.len() - *offset).min(len as usize);
     if to_read == 0 {
-        BIO_set_retry_read(bio);
+        bio_set_retry_read(bio);
         return -1;
     }
     let src = &mut rx_buf[*offset..(*offset + to_read)];
@@ -109,13 +108,13 @@ extern "C" fn bwrite(bio: *mut BIO, buf: *const c_char, len: c_int) -> c_int {
     let (tx_buf, offset) = match bio_data.tx_buf.as_mut() {
         Some(buf) => buf,
         None => {
-            BIO_set_retry_write(bio);
+            bio_set_retry_write(bio);
             return -1;
         }
     };
     let to_write = (tx_buf.len() - *offset).min(len as usize);
     if to_write == 0 {
-        BIO_set_retry_write(bio);
+        bio_set_retry_write(bio);
         return -1;
     }
     let src = unsafe { std::slice::from_raw_parts(buf as *const _, len as usize) };
@@ -139,16 +138,12 @@ extern "C" fn bctrl(bio: *mut BIO, cmd: c_int, _larg: c_long, _parg: *mut c_void
     }
 }
 
-fn BIO_set_retry_read(bio: *mut BIO) {
+fn bio_set_retry_read(bio: *mut BIO) {
     unsafe { BIO_set_flags(bio, BIO_FLAGS_READ | BIO_FLAGS_SHOULD_RETRY) }
 }
 
-fn BIO_set_retry_write(bio: *mut BIO) {
+fn bio_set_retry_write(bio: *mut BIO) {
     unsafe { BIO_set_flags(bio, BIO_FLAGS_WRITE | BIO_FLAGS_SHOULD_RETRY) }
-}
-
-unsafe fn get_data<'a>(bio: *const BIO) -> &'a BioData {
-    unsafe { &*(BIO_get_data(bio as *mut _) as *const _) }
 }
 
 unsafe fn get_data_mut<'a>(bio: *mut BIO) -> &'a mut BioData {
@@ -220,7 +215,7 @@ impl Drop for BioInner {
 
 pub struct Bio {
     pub(super) inner: BioInner,
-    pub(super) meth: BioMethod,
+    _meth: BioMethod,
 }
 
 impl Bio {
@@ -229,11 +224,7 @@ impl Bio {
         // Safety: Fields are dropped in declaration order so that
         // BIO is dropped before BIO_METHOD
         let inner = unsafe { BioInner::new(meth.inner) };
-        Self { meth, inner }
-    }
-
-    pub(super) fn get_data(&self) -> &BioData {
-        unsafe { get_data(self.inner.inner) }
+        Self { _meth: meth, inner }
     }
 
     pub(super) fn get_data_mut(&mut self) -> &mut BioData {

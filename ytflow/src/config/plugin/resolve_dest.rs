@@ -35,11 +35,11 @@ impl<'de> ResolveDestFactory<'de> {
                 .iter()
                 .map(|t| Descriptor {
                     descriptor: *t,
-                    r#type: AccessPointType::StreamHandler,
+                    r#type: AccessPointType::STREAM_HANDLER,
                 })
                 .chain(config.udp_next.iter().map(|u| Descriptor {
                     descriptor: *u,
-                    r#type: AccessPointType::DatagramSessionHandler,
+                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 }))
                 .collect(),
             provides: config
@@ -47,11 +47,11 @@ impl<'de> ResolveDestFactory<'de> {
                 .iter()
                 .map(|_| Descriptor {
                     descriptor: name.to_string() + ".tcp",
-                    r#type: AccessPointType::StreamHandler,
+                    r#type: AccessPointType::STREAM_HANDLER,
                 })
                 .chain(config.udp_next.iter().map(|_| Descriptor {
                     descriptor: name.to_string() + ".udp",
-                    r#type: AccessPointType::DatagramSessionHandler,
+                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 }))
                 .collect(),
         })

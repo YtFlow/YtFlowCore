@@ -13,15 +13,15 @@ impl NullFactory {
             provides: vec![
                 Descriptor {
                     descriptor: name.clone() + ".tcp",
-                    r#type: AccessPointType::StreamOutboundFactory,
+                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
                 Descriptor {
                     descriptor: name.clone() + ".udp",
-                    r#type: AccessPointType::DatagramSessionFactory,
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 },
                 Descriptor {
                     descriptor: name + ".resolver",
-                    r#type: AccessPointType::Resolver,
+                    r#type: AccessPointType::RESOLVER,
                 },
             ],
         })

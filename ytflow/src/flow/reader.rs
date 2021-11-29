@@ -61,7 +61,7 @@ impl StreamReader {
     pub fn poll_peek_at_least<T, C: FnOnce(&mut [u8]) -> T>(
         &mut self,
         cx: &mut Context<'_>,
-        mut stream: Pin<&mut dyn Stream>,
+        stream: Pin<&mut dyn Stream>,
         len: usize,
         on_data: C,
     ) -> Poll<FlowResult<T>> {
@@ -84,7 +84,7 @@ impl StreamReader {
 
     pub async fn peek_at_least<T, C: FnOnce(&mut [u8]) -> T, P: DerefMut<Target = dyn Stream>>(
         &mut self,
-        mut stream: &mut Pin<P>,
+        stream: &mut Pin<P>,
         len: usize,
         on_data: C,
     ) -> FlowResult<T> {

@@ -8,10 +8,8 @@ use crate::bindings::Windows::Networking::Vpn::{VpnChannel, VpnPacketBuffer};
 use crate::bindings::Windows::Storage::Streams::Buffer as NativeBuffer;
 
 unsafe fn token_to_native_buffer(token: TunBufferToken) -> (VpnPacketBuffer, NativeBuffer) {
-    unsafe {
-        let ([vpn_buffer_ptr, buffer_ptr], _) = token.into_parts();
-        (transmute(vpn_buffer_ptr), transmute(buffer_ptr))
-    }
+    let ([vpn_buffer_ptr, buffer_ptr], _) = token.into_parts();
+    (transmute(vpn_buffer_ptr), transmute(buffer_ptr))
 }
 
 pub(super) struct VpnTun {
@@ -58,7 +56,7 @@ impl Tun for VpnTun {
         self.send_buffer(vpn_buffer);
     }
     fn return_tx_buffer(&self, buf: TunBufferToken) {
-        let (vpn_buffer, buffer) = unsafe { token_to_native_buffer(buf) };
+        let (vpn_buffer, _) = unsafe { token_to_native_buffer(buf) };
         // Try to consume the potentially invalid packet to prevent leak.
         self.send_buffer(vpn_buffer);
     }

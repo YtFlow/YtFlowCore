@@ -1,4 +1,4 @@
-use std::net::{IpAddr, SocketAddr};
+use std::net::IpAddr;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::{Acquire, Relaxed};
 use std::sync::{Arc, Weak};
@@ -6,11 +6,11 @@ use std::sync::{Arc, Weak};
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use super::{Netif, NetifSelector};
+use super::NetifSelector;
 use crate::flow::*;
 use crate::plugin::host_resolver::HostResolver;
-use crate::plugin::redirect::{DatagramSessionRedirectFactory, StreamRedirectOutboundFactory};
 
+#[allow(dead_code)]
 pub struct NetifHostResolver {
     inner: RwLock<(
         HostResolver,
@@ -24,6 +24,7 @@ pub struct NetifHostResolver {
 }
 
 impl NetifHostResolver {
+    #[allow(dead_code)]
     pub fn new(
         selector: Arc<NetifSelector>,
         tcp_next: Weak<dyn StreamOutboundFactory>,

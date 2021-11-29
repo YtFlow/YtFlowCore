@@ -1,11 +1,10 @@
 use std::future::Future;
 use std::io;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::pin::Pin;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use async_trait::async_trait;
 use futures::ready;
 use tokio::io::ReadBuf;
 
@@ -31,22 +30,19 @@ impl DatagramSession for UdpSocket {
         let Self { tx_buf, socket, .. } = &mut *self;
         let (addr, buf) = loop {
             match tx_buf.as_mut() {
-                Some((ResolvingAddr::Resolving(fut), buf)) => match ready!(fut.as_mut().poll(cx)) {
-                    Ok(addr) => {
-                        let (addr, buf) =
-                            if let (ResolvingAddr::Ready(addr), buf) = tx_buf.take().unwrap() {
-                                (addr, buf)
-                            } else {
-                                unreachable!()
-                            };
-                        *tx_buf = Some((ResolvingAddr::Ready(addr), buf));
-                        continue;
+                Some((ResolvingAddr::Resolving(fut), _buf)) => {
+                    match ready!(fut.as_mut().poll(cx)) {
+                        Ok(addr) => {
+                            let buf = tx_buf.take().unwrap().1;
+                            *tx_buf = Some((ResolvingAddr::Ready(addr), buf));
+                            continue;
+                        }
+                        Err(_) => {
+                            *tx_buf = None;
+                            return Poll::Ready(());
+                        }
                     }
-                    Err(_) => {
-                        *tx_buf = None;
-                        return Poll::Ready(());
-                    }
-                },
+                }
                 Some((ResolvingAddr::Ready(addr), buf)) => break (*addr, buf),
                 None => return Poll::Ready(()),
             }

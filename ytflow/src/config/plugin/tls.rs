@@ -21,11 +21,11 @@ impl<'de> TlsFactory<'de> {
             factory: config,
             requires: vec![Descriptor {
                 descriptor: next,
-                r#type: AccessPointType::StreamOutboundFactory,
+                r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
             }],
             provides: vec![Descriptor {
                 descriptor: name.to_string() + ".tcp",
-                r#type: AccessPointType::StreamOutboundFactory,
+                r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
             }],
         })
     }

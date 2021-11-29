@@ -9,17 +9,16 @@ pub(super) use super::param::*;
 pub(super) use super::set::*;
 use super::*;
 pub(super) use crate::data::Plugin;
-pub(super) use crate::flow::FlowResult;
 
 bitflags! {
     pub struct AccessPointType: u8 {
-        const StreamHandler          = 0b00000001;
-        const DatagramSessionHandler = 0b00000010;
-        const StreamOutboundFactory  = 0b00000100;
-        const DatagramSessionFactory = 0b00001000;
-        const Resolver               = 0b00010000;
-        const Tun                    = 0b00100000;
-        const Netif                  = 0b01000000;
+        const STREAM_HANDLER           = 0b00000001;
+        const DATAGRAM_SESSION_HANDLER = 0b00000010;
+        const STREAM_OUTBOUND_FACTORY  = 0b00000100;
+        const DATAGRAM_SESSION_FACTORY = 0b00001000;
+        const RESOLVER                 = 0b00010000;
+        const TUN                      = 0b00100000;
+        const NETIF                    = 0b01000000;
     }
 }
 
@@ -44,7 +43,7 @@ pub(super) trait Factory {
 
 impl<'de, 'f> Factory for Box<dyn Factory + 'f> {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        (&mut *self).load(plugin_name, set)
+        (&mut **self).load(plugin_name, set)
     }
 }
 

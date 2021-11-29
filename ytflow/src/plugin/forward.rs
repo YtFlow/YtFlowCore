@@ -208,6 +208,7 @@ impl DatagramSessionHandler for DatagramForwardHandler {
             let mut uplink_buf = None;
             let mut downlink_buf = None;
             poll_fn(|cx| {
+                #[allow(unreachable_code)]
                 loop {
                     if let Some((addr, buf)) = uplink_buf.take() {
                         match lower.as_mut().poll_send_ready(cx) {

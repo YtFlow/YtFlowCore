@@ -3,7 +3,6 @@ use std::mem::ManuallyDrop;
 use std::sync::{Arc, Weak};
 
 use super::*;
-use crate::data::Plugin;
 use crate::flow::*;
 use crate::plugin::netif::NetifSelector;
 

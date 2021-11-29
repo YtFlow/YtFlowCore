@@ -1,4 +1,4 @@
-use std::collections::hash_map::{Entry, HashMap};
+use std::collections::HashMap;
 use std::net::IpAddr;
 
 use async_trait::async_trait;
@@ -23,7 +23,7 @@ impl FakeIp {
             inner: Mutex::new((0, HashMap::new(), HashMap::new())),
         }
     }
-    fn lookup_or_alloc(&self, mut domain: String) -> u16 {
+    fn lookup_or_alloc(&self, domain: String) -> u16 {
         let mut guard = self.inner.lock();
         let (index, table, rtable) = &mut *guard;
         if let Some(suffix) = table.get(&domain) {
@@ -51,13 +51,13 @@ impl FakeIp {
 
 #[async_trait]
 impl Resolver for FakeIp {
-    async fn resolve_ipv4(&self, mut domain: String) -> ResolveResultV4 {
+    async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
         Ok(smallvec![(((self.prefix_v4 as u32) << 16)
             | (self.lookup_or_alloc(domain) as u32))
             .to_be_bytes()
             .into()])
     }
-    async fn resolve_ipv6(&self, mut domain: String) -> ResolveResultV6 {
+    async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
         let mut bytes = [0; 16];
         bytes[..14].copy_from_slice(&self.prefix_v6);
         let index = self.lookup_or_alloc(domain);

@@ -22,17 +22,17 @@ impl<'de> SocketFactory<'de> {
             requires: vec![
                 Descriptor {
                     descriptor: config.resolver,
-                    r#type: AccessPointType::Resolver,
+                    r#type: AccessPointType::RESOLVER,
                 },
                 Descriptor {
                     descriptor: config.netif,
-                    r#type: AccessPointType::Netif,
+                    r#type: AccessPointType::NETIF,
                 },
             ],
             provides: vec![Descriptor {
                 descriptor: name.clone(),
-                r#type: AccessPointType::StreamOutboundFactory
-                    | AccessPointType::DatagramSessionFactory,
+                r#type: AccessPointType::STREAM_OUTBOUND_FACTORY
+                    | AccessPointType::DATAGRAM_SESSION_FACTORY,
             }],
         })
     }

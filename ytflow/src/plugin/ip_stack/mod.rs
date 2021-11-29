@@ -12,7 +12,6 @@ use std::sync::{Arc, Weak};
 use std::time::Instant;
 
 use flume::{bounded, Sender, TrySendError};
-use futures::future::poll_fn;
 use parking_lot::{const_fair_mutex, FairMutex, FairMutexGuard};
 use smoltcp::iface::{Interface, InterfaceBuilder, Route, Routes};
 use smoltcp::phy::{Checksum, ChecksumCapabilities, DeviceCapabilities, Medium};
@@ -81,9 +80,7 @@ impl<'d> smoltcp::phy::RxToken for RxToken<'d> {
     where
         F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
     {
-        use std::mem::ManuallyDrop;
-
-        let mut buf = self
+        let buf = self
             .0
             .take()
             .expect("Consuming a RxToken without tx buffer set");
@@ -114,7 +111,7 @@ impl<'d> smoltcp::phy::TxToken for TxToken<'d> {
     where
         F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
     {
-        let mut buf = self
+        let buf = self
             .0
             .as_mut()
             .expect("Consuming a TxToken without tx buffer set");
@@ -249,7 +246,6 @@ impl IpStack {
         let IpStackInner {
             netif,
             tcp_sockets,
-            udp_sockets,
             tcp_next,
             ..
         } = &mut *guard;

@@ -22,7 +22,6 @@ impl<'f> ProfilePluginFactory<'f> {
         (Self(res.factories), res.errors)
     }
     pub fn load_all(self, rt_handle: &tokio::runtime::Handle) -> (set::PluginSet, Vec<LoadError>) {
-        use std::collections::HashMap;
         use std::mem::ManuallyDrop;
 
         let rt_handle_cloned = rt_handle.clone();

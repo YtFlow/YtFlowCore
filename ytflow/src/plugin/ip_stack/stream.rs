@@ -8,7 +8,6 @@ use futures::ready;
 use tokio::time::timeout;
 
 use super::tcp_socket_entry::*;
-use super::*;
 use crate::flow::*;
 
 pub struct RxBufDesc {

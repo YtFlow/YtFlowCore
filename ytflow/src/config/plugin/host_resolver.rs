@@ -3,7 +3,6 @@ use serde::Deserialize;
 use crate::config::factory::*;
 use crate::config::*;
 use crate::plugin::host_resolver;
-use crate::plugin::null::Null;
 
 #[derive(Deserialize)]
 pub struct HostResolverFactory<'a> {
@@ -21,18 +20,18 @@ impl<'de> HostResolverFactory<'de> {
         let mut requires = Vec::with_capacity(config.udp.len() + config.tcp.len());
         requires.extend(config.udp.iter().map(|c| Descriptor {
             descriptor: *c,
-            r#type: AccessPointType::DatagramSessionFactory,
+            r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
         }));
         requires.extend(config.tcp.iter().map(|c| Descriptor {
             descriptor: *c,
-            r#type: AccessPointType::StreamOutboundFactory,
+            r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
         }));
         Ok(ParsedPlugin {
             factory: config,
             requires,
             provides: vec![Descriptor {
                 descriptor: name.to_string() + ".resolver",
-                r#type: AccessPointType::Resolver,
+                r#type: AccessPointType::RESOLVER,
             }],
         })
     }

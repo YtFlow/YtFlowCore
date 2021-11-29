@@ -23,11 +23,11 @@ impl<'de> DnsServerFactory<'de> {
             factory: config,
             requires: vec![Descriptor {
                 descriptor: resolver,
-                r#type: AccessPointType::Resolver,
+                r#type: AccessPointType::RESOLVER,
             }],
             provides: vec![Descriptor {
                 descriptor: name.to_string() + ".udp",
-                r#type: AccessPointType::DatagramSessionHandler,
+                r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
             }],
         })
     }
