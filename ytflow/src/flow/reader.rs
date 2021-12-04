@@ -16,10 +16,22 @@ impl StreamReader {
         StreamReader::PollSizeHint(Vec::with_capacity(4096))
     }
 
+    // TODO: remove this function
     pub fn buf_mut(&mut self) -> Option<&mut Buffer> {
         match self {
             StreamReader::PollSizeHint(buf) => Some(buf),
             _ => None,
+        }
+    }
+
+    pub fn advance(&mut self, len: usize) -> bool {
+        match self {
+            StreamReader::PollSizeHint(buf) => {
+                // TODO: better drain strategy
+                buf.drain(..len);
+                true
+            }
+            _ => false,
         }
     }
 
@@ -77,6 +89,7 @@ impl StreamReader {
     ) -> Poll<FlowResult<T>> {
         self.poll_core(cx, stream, len, |buf| {
             let ret = on_data(&mut buf[..len]);
+            // TODO: better drain strategy
             buf.drain(..len);
             ret
         })
