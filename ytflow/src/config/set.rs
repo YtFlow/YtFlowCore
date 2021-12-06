@@ -142,15 +142,19 @@ impl<'a> PartialPluginSet<'a> {
 
 impl Drop for PluginSet {
     fn drop(&mut self) {
+        // In case some destructors need the async runtime to spawn new tasks
         let _enter_guard = self.rt_handle.enter();
         unsafe {
-            ManuallyDrop::drop(&mut self.stream_handlers);
-            ManuallyDrop::drop(&mut self.stream_outbounds);
-            ManuallyDrop::drop(&mut self.datagram_handlers);
-            ManuallyDrop::drop(&mut self.datagram_outbounds);
-            ManuallyDrop::drop(&mut self.resolver);
-            ManuallyDrop::drop(&mut self.tun);
-            ManuallyDrop::drop(&mut self.netif);
+            // We must move ownership out from all the `ManuallyDrop`s at once,
+            // and bind them to a named variable (not `_`), so that they will
+            // be dropped even when a panic occurs in these destructors.
+            let _stream_handlers = ManuallyDrop::take(&mut self.stream_handlers);
+            let _stream_outbounds = ManuallyDrop::take(&mut self.stream_outbounds);
+            let _datagram_handlers = ManuallyDrop::take(&mut self.datagram_handlers);
+            let _datagram_outbounds = ManuallyDrop::take(&mut self.datagram_outbounds);
+            let _resolver = ManuallyDrop::take(&mut self.resolver);
+            let _tun = ManuallyDrop::take(&mut self.tun);
+            let _netif = ManuallyDrop::take(&mut self.netif);
         }
     }
 }
