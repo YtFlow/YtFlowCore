@@ -9,6 +9,15 @@ pub enum Destination {
     Ip(IpAddr),
 }
 
+impl ToString for Destination {
+    fn to_string(&self) -> String {
+        match self {
+            Destination::DomainName(s) => s.clone(),
+            Destination::Ip(ip) => ip.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct DestinationAddr {
     pub dest: Destination,

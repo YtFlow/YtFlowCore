@@ -84,7 +84,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             outbound_factory.create_outbound(context, &req[..]).await?
         };
         {
-            let mut reader = StreamReader::new();
+            let mut reader = StreamReader::new(4096);
             let mut expected_header_size = 1;
             let mut code = None;
             while reader

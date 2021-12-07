@@ -4,6 +4,7 @@
 #![feature(const_btree_new)]
 #![feature(arc_new_cyclic)]
 #![feature(bool_to_option)]
+#![feature(vec_spare_capacity)]
 
 mod bindings {
     windows::include_bindings!();

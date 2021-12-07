@@ -12,8 +12,8 @@ pub enum StreamReader {
 }
 
 impl StreamReader {
-    pub fn new() -> Self {
-        StreamReader::PollSizeHint(Vec::with_capacity(4096))
+    pub fn new(capacity: usize) -> Self {
+        StreamReader::PollSizeHint(Vec::with_capacity(capacity))
     }
 
     // TODO: remove this function

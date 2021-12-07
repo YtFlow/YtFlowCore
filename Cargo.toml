@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "ytflow",
-    "ytflow-openssl-src",
     "ytflow-uwp-plugin",
 ]
 

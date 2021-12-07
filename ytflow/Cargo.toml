@@ -10,7 +10,6 @@ edition = "2021"
 windows = "0.21"
 
 [dependencies]
-ytflow-openssl-src = { path = "../ytflow-openssl-src" }
 
 # Primitive
 bitflags = "1"
@@ -40,6 +39,9 @@ base64 = "0.13"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
 crypto2 = { version = "0.1", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
+# UWP build is only supported since OpenSSL 3.0
+openssl = { version = "^0.10.38", features = ["vendored"] }
+tokio-openssl = "0.6"
 
 # Data
 serde = { version = "1", features = ["derive"] }

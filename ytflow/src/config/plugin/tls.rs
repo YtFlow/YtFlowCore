@@ -7,7 +7,7 @@ use crate::plugin::tls;
 
 #[derive(Deserialize)]
 pub struct TlsFactory<'a> {
-    sni: &'a str,
+    sni: Option<&'a str>,
     next: &'a str,
 }
 
@@ -43,8 +43,8 @@ impl<'de> Factory for TlsFactory<'de> {
                     Arc::downgrade(&(Arc::new(Null)))
                 }
             };
-            let _sni = self.sni;
-            tls::SslStreamFactory::new(next)
+
+            tls::SslStreamFactory::new(next, self.sni.map(|s| s.to_string()))
         });
         set.fully_constructed
             .stream_outbounds
