@@ -121,18 +121,17 @@ impl StreamForwardHandler {
         mut lower: Pin<Box<dyn Stream>>,
         context: Box<FlowContext>,
     ) -> FlowResult<()> {
-        let mut initial_size_hint = None;
+        let mut initial_uplink_state = ForwardState::AwatingSizeHint;
         let initial_data = timeout(tokio::time::Duration::from_millis(100), async {
             let size = crate::get_request_size_boxed!(lower)?;
-            initial_size_hint = Some(size);
+            initial_uplink_state = ForwardState::PollingTxBuf(size);
             let buf = vec![0; size.with_min_content(1500)];
             lower
                 .as_mut()
                 .commit_rx_buffer(buf, 0)
                 .map_err(|(_, e)| e)?;
-            // TODO: 怎么处理?
             let initial_data = crate::get_rx_buffer_boxed!(lower).map_err(|(_, e)| e);
-            initial_size_hint = None;
+            initial_uplink_state = ForwardState::AwatingSizeHint;
             initial_data
         })
         .await
@@ -155,33 +154,34 @@ impl StreamForwardHandler {
             }
         };
 
-        // let initial_uplink_state = if let Some(size_hint) = initial_size_hint {
-        //     // Overwrite the inflight buffer for inbound read with the one from outbound
-        //     let (tx_buffer, offset) = crate::get_tx_buffer_boxed!(
-        //         outbound,
-        //         size_hint.with_min_content(4096).try_into().unwrap()
-        //     )?;
-        //     lower
-        //         .as_mut()
-        //         .commit_rx_buffer(tx_buffer, offset)
-        //         .map_err(|(mut b, e)| {
-        //             // Return buffer
-        //             b.resize(offset, 0);
-        //             let _ = outbound.as_mut().commit_tx_buffer(b);
-        //             e
-        //         })?;
-        //     ForwardState::PollingRxBuf { offset }
-        // } else {
-        //     ForwardState::AwatingSizeHint
-        // };
-        let initial_uplink_state = ForwardState::AwatingSizeHint;
-        // TODO: If initial_data is None, proceed to downlink until we pull our buffer back from lower
+        let mut initial_downlink_state = ForwardState::AwatingSizeHint;
+        if let ForwardState::PollingTxBuf(_) = initial_uplink_state {
+            // If lower failed to fill initial data, try to extract the temporary
+            // buffer out, and forward downlink at the same time.
+            poll_fn(|cx| {
+                match lower.as_mut().poll_rx_buffer(cx) {
+                    Poll::Ready(Ok(_)) => return Poll::Ready(Ok(())),
+                    Poll::Ready(Err((_, e))) => return Poll::Ready(Err(e)),
+                    _ => {}
+                }
+                if let r @ Poll::Ready(Err(_)) = poll_forward_oneway(
+                    cx,
+                    outbound.as_mut(),
+                    lower.as_mut(),
+                    &mut initial_downlink_state,
+                ) {
+                    return r;
+                };
+                Poll::Pending
+            })
+            .await?;
+        }
 
         // Drop earlier to prevent StreamForward outliving outbound
         let _ = StreamForward {
             stream_local: lower.as_mut(),
             stream_remote: outbound.as_mut(),
-            downlink_state: ForwardState::AwatingSizeHint,
+            downlink_state: initial_downlink_state,
             uplink_state: initial_uplink_state,
         }
         .await?;

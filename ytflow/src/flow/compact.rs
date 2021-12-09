@@ -210,7 +210,7 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for Compa
         // We have to use a spawn here because we have no access to a waker
         // that guarantees to wake up the same task to continue writing.
         replace_with::replace_with_or_abort(&mut self.tx_buf, move |tx| match tx {
-            CompactFlowTxState::NoBuffer(mut tx, waker) => {
+            CompactFlowTxState::NoBuffer(mut tx, _) => {
                 CompactFlowTxState::Writing(tokio::spawn(async move {
                     let mut e = None;
                     if offset < buffer.len() {
@@ -232,7 +232,7 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for Compa
         // if let CompactFlowTxState::Writing(handle) = &mut self.tx_buf {
         match &mut self.tx_buf {
             CompactFlowTxState::Writing(handle) => {
-                let (buf, mut tx, e) = ready!(poll_join_handle(handle, cx));
+                let (_, mut tx, e) = ready!(poll_join_handle(handle, cx));
                 if let Some(e) = e {
                     return Poll::Ready(Err(e.into()));
                 }
