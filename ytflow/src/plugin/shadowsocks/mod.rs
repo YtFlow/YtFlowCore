@@ -157,7 +157,7 @@ where
         };
         // Must specify C explicitly due to https://github.com/rust-lang/rust/issues/83249
         Ok(Box::pin(stream::ShadowsocksStream::<C> {
-            internal_rx_buf: Some(Vec::with_capacity(4096)),
+            reader: StreamReader::new(4096),
             rx_buf: None,
             rx_chunk_size: std::num::NonZeroUsize::new(4096).unwrap(),
             lower: next,

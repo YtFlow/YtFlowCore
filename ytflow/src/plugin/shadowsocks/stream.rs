@@ -20,12 +20,12 @@ pub struct ShadowsocksStream<C: ShadowCrypto>
 where
     [(); C::KEY_LEN]:,
 {
-    pub internal_rx_buf: Option<Vec<u8>>,
+    pub reader: StreamReader,
     pub rx_buf: Option<(Vec<u8>, usize)>,
     pub rx_chunk_size: NonZeroUsize,
-    pub tx_offset: usize,
     pub rx_crypto: RxCryptoState<C>,
     pub tx_crypto: C,
+    pub tx_offset: usize,
     pub lower: Pin<Box<dyn Stream>>,
 }
 
@@ -41,97 +41,39 @@ where
         cx: &mut Context<'_>,
     ) -> Poll<FlowResult<SizeHint>> {
         let Self {
-            internal_rx_buf,
             lower,
             rx_crypto: crypto,
             rx_chunk_size,
+            reader,
             ..
         } = &mut *self;
-        // Retrieve IV
-        let crypto = loop {
-            let key = match crypto {
-                RxCryptoState::Ready(c) => break c,
-                RxCryptoState::ReadingIv { key } => *key,
-            };
-            let chunk = match internal_rx_buf.as_mut() {
-                Some(c) => c,
-                None => {
-                    let buf = ready!(lower.as_mut().poll_rx_buffer(cx)).map_err(|(buf, err)| {
-                        *internal_rx_buf = Some(buf);
-                        err
-                    })?;
-                    internal_rx_buf.insert(buf)
-                }
-            };
-            let iv = match chunk.get_mut(..C::IV_LEN) {
-                Some(o) => o,
-                None => {
-                    // Need more data for size
-                    let size_hint = ready!(lower.as_mut().poll_request_size(cx))?;
-                    let size_hint = size_hint.with_min_content(4096);
-                    let offset = chunk.len();
-                    let desired_size = size_hint + offset;
-                    chunk.resize(desired_size, 0);
-                    lower
-                        .as_mut()
-                        .commit_rx_buffer(internal_rx_buf.take().unwrap(), offset)
-                        .map_err(|(b, err)| {
-                            *internal_rx_buf = Some(b);
-                            err
-                        })?;
-                    continue;
-                }
-            };
-            *crypto = RxCryptoState::Ready(C::create_crypto(&key, (&*iv).try_into().unwrap()));
-            chunk.drain(..C::IV_LEN);
-        };
-        if C::PRE_CHUNK_OVERHEAD == 0 {
-            return Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }));
-        }
-        // Retrieve size of next chunk (AEAD only)
         loop {
-            let chunk = match internal_rx_buf.as_mut() {
-                Some(c) => c,
-                None => {
-                    *internal_rx_buf = Some(ready!(lower.as_mut().poll_rx_buffer(cx)).map_err(
-                        |(buf, err)| {
-                            *internal_rx_buf = Some(buf);
-                            err
-                        },
-                    )?);
-                    continue;
+            match crypto {
+                RxCryptoState::ReadingIv { key } => {
+                    let mut iv = [0; C::IV_LEN];
+                    ready!(
+                        reader.poll_read_exact(cx, lower.as_mut(), C::IV_LEN, |buf| iv
+                            .copy_from_slice(buf))
+                    )?;
+                    *crypto =
+                        RxCryptoState::Ready(C::create_crypto(key, (&iv).try_into().unwrap()));
                 }
-            };
-            let overhead = match chunk.get_mut(..C::PRE_CHUNK_OVERHEAD) {
-                Some(o) => o,
-                None => {
-                    // Need more data for size
-                    let size_hint = ready!(lower.as_mut().poll_request_size(cx))?;
-                    let size_hint = size_hint.with_min_content(4096);
-                    let offset = chunk.len();
-                    let desired_size = size_hint + offset;
-                    chunk.resize(desired_size, 0);
-                    lower
-                        .as_mut()
-                        .commit_rx_buffer(internal_rx_buf.take().unwrap(), offset)
-                        .map_err(|(b, err)| {
-                            *internal_rx_buf = Some(b);
-                            err
-                        })?;
-                    continue;
+                RxCryptoState::Ready(_) if C::PRE_CHUNK_OVERHEAD == 0 => {
+                    return Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }));
                 }
-            };
-            let ret = Poll::Ready(
-                crypto
-                    .decrypt_size(overhead.try_into().unwrap())
-                    .map(|s| {
-                        *rx_chunk_size = s;
-                        SizeHint::AtLeast(s.get())
-                    })
-                    .ok_or(FlowError::UnexpectedData),
-            );
-            chunk.drain(..C::PRE_CHUNK_OVERHEAD);
-            break ret;
+                RxCryptoState::Ready(crypto) => {
+                    // Retrieve size of next chunk (AEAD only)
+                    let size = ready!(reader.poll_read_exact(
+                        cx,
+                        lower.as_mut(),
+                        C::PRE_CHUNK_OVERHEAD,
+                        |buf| crypto.decrypt_size(buf.try_into().unwrap())
+                    ))?
+                    .ok_or(FlowError::UnexpectedData)?;
+                    *rx_chunk_size = size;
+                    return Poll::Ready(Ok(SizeHint::AtLeast(size.get() + C::POST_CHUNK_OVERHEAD)));
+                }
+            }
         }
     }
 
@@ -149,68 +91,64 @@ where
         cx: &mut Context<'_>,
     ) -> Poll<Result<Buffer, (Buffer, FlowError)>> {
         let Self {
-            internal_rx_buf: internal_rx_buf_opt,
             lower,
-            rx_buf,
+            rx_buf: rx_buf_opt,
             rx_chunk_size,
             rx_crypto: crypto,
+            reader,
             ..
         } = &mut *self;
         let crypto = match crypto {
             RxCryptoState::ReadingIv { .. } => panic!("Polling rx buffer when IV not ready"),
             RxCryptoState::Ready(c) => c,
         };
-        loop {
-            let internal_rx_buf = match internal_rx_buf_opt {
-                Some(b) => b,
-                None => {
-                    let buf = ready!(lower.as_mut().poll_rx_buffer(cx))
-                        .map_err(|(_buf, e)| (rx_buf.take().unwrap().0, e))?;
-                    internal_rx_buf_opt.insert(buf)
-                }
-            };
-            let chunk_size = if C::POST_CHUNK_OVERHEAD == 0 {
-                // For stream cipher, decode as much as possible
-                internal_rx_buf.len()
-            } else {
-                // For AEAD cipher, decode an exact chunk
-                rx_chunk_size.get()
-            };
-            let total_chunk_size = chunk_size + C::POST_CHUNK_OVERHEAD;
-            if let Some(chunk) = internal_rx_buf
-                .get_mut(..total_chunk_size)
-                .filter(|s| !s.is_empty())
-            {
-                let (chunk, post_overhead) = chunk.split_at_mut(chunk_size);
-                let (mut rx_buf, rx_buf_offset) = rx_buf.take().unwrap();
-                if !crypto.decrypt(chunk, (&post_overhead[..]).try_into().unwrap()) {
-                    break Poll::Ready(Err((rx_buf, FlowError::UnexpectedData)));
-                }
-                rx_buf.truncate(rx_buf_offset + chunk_size);
-                rx_buf[rx_buf_offset..].copy_from_slice(chunk);
-                internal_rx_buf.drain(..total_chunk_size);
-                break Poll::Ready(Ok(rx_buf));
+        let (rx_buf, offset) = match rx_buf_opt.as_mut() {
+            Some((buf, offset)) => (buf, *offset),
+            None => panic!("Polling rx buffer without committing"),
+        };
+        let res = if C::POST_CHUNK_OVERHEAD == 0 {
+            // Stream cipher
+            let res = ready!(reader.poll_peek_at_least(cx, lower.as_mut(), 1, |buf| {
+                let to_write = buf.len().min(rx_buf.len() - offset);
+                let buf = &mut buf[..to_write];
+                let _ = crypto.decrypt(buf, &[0; C::POST_CHUNK_OVERHEAD]);
+                rx_buf[offset..(offset + to_write)].copy_from_slice(buf);
+                to_write
+            }));
+            if let Ok(written) = &res {
+                let _ = reader.advance(*written);
             }
-            let size_hint = ready!(lower.as_mut().poll_request_size(cx))
-                .map_err(|e| (rx_buf.take().unwrap().0, e))?;
-            let size_hint = size_hint.with_min_content(if C::POST_CHUNK_OVERHEAD == 0 {
-                // Stream cipher
-                4096
-            } else {
-                // AEAD cipher
-                chunk_size + C::POST_CHUNK_OVERHEAD
-            });
-            let offset = internal_rx_buf.len();
-            let desired_size = size_hint + offset;
-            internal_rx_buf.resize(desired_size, 0);
-            lower
-                .as_mut()
-                .commit_rx_buffer(internal_rx_buf_opt.take().unwrap(), offset)
-                .map_err(|(b, e)| {
-                    *internal_rx_buf_opt = Some(b);
-                    (rx_buf.take().unwrap().0, e)
-                })?;
-        }
+            res
+        } else {
+            // AEAD cipher
+            let chunk_size = rx_chunk_size.get();
+            let res = ready!(reader.poll_read_exact(
+                cx,
+                lower.as_mut(),
+                chunk_size + C::POST_CHUNK_OVERHEAD,
+                |buf| {
+                    let (buf, post_overhead) = buf.split_at_mut(chunk_size);
+                    if !crypto.decrypt(buf, (&*post_overhead).try_into().unwrap()) {
+                        return false;
+                    }
+                    rx_buf[offset..(offset + chunk_size)].copy_from_slice(buf);
+                    true
+                }
+            ));
+            res.and_then(|dec_success| {
+                dec_success
+                    .then_some(chunk_size)
+                    .ok_or(FlowError::UnexpectedData)
+            })
+        };
+        let mut buf = rx_buf_opt.take().unwrap().0;
+        Poll::Ready(match res {
+            Ok(len) => {
+                buf.truncate(len + offset);
+                Ok(buf)
+            }
+            Err(e) => Err((buf, e)),
+        })
     }
 
     fn poll_tx_buffer(
