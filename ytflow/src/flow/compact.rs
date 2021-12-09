@@ -1,10 +1,12 @@
+use std::future::Future;
 use std::io;
 use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::task::{Context, Poll, Waker};
 
 use futures::ready;
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio::io::{AsyncRead, AsyncWrite, AsyncWriteExt, ReadBuf, ReadHalf, WriteHalf};
+use tokio::task::JoinHandle;
 
 use super::{Buffer, FlowError, FlowResult, SizeHint, Stream, StreamReader};
 
@@ -13,11 +15,15 @@ pub struct CompactStream {
     pub reader: StreamReader,
 }
 
+enum CompactFlowTxState<S> {
+    Writing(JoinHandle<(Buffer, WriteHalf<S>, Option<io::Error>)>),
+    NoBuffer(WriteHalf<S>, Waker),
+}
+
 pub struct CompactFlow<S> {
-    pub inner: S,
+    pub rx_inner: ReadHalf<S>,
     pub rx_buf: Option<(Buffer, usize)>,
-    pub tx_buf: Option<(Buffer, usize)>,
-    pub waker: Option<Waker>,
+    tx_buf: CompactFlowTxState<S>,
 }
 
 fn convert_error(err: FlowError) -> io::Error {
@@ -32,30 +38,24 @@ fn convert_error(err: FlowError) -> io::Error {
     }
 }
 
-impl<S: AsyncWrite + Unpin> CompactFlow<S> {
-    fn poll_try_write(&mut self) -> Poll<()> {
-        let Self {
-            tx_buf: tx_buf_opt,
-            inner,
-            waker,
-            ..
-        } = &mut *self;
-        let (tx_buf, offset) = match tx_buf_opt {
-            Some(buf) => buf,
-            None => return Poll::Ready(()),
-        };
-        if let Some(waker) = waker.as_ref() {
-            let mut cx = Context::from_waker(waker);
-            while *offset < tx_buf.len() {
-                let poll_res = Pin::new(&mut *inner).poll_write(&mut cx, &tx_buf[*offset..]);
-                match poll_res {
-                    Poll::Ready(Ok(written)) => *offset += written,
-                    Poll::Ready(Err(_)) => return Poll::Ready(()),
-                    Poll::Pending => return Poll::Pending,
-                }
-            }
+fn poll_join_handle<T>(handle: &mut JoinHandle<T>, cx: &mut Context<'_>) -> Poll<T> {
+    match ready!(Pin::new(handle).poll(cx)).map_err(|e| e.try_into_panic()) {
+        Ok(r) => Poll::Ready(r),
+        Err(Ok(e)) => std::panic::resume_unwind(e),
+        Err(Err(_)) => panic!("A CompactFlow write has been expectedly aborted"),
+    }
+}
+
+impl<S: AsyncRead + AsyncWrite + Send + 'static> CompactFlow<S> {
+    pub fn new(inner: S, tx_buf_size: usize) -> Self {
+        let (rx, tx) = tokio::io::split(inner);
+        Self {
+            rx_inner: rx,
+            rx_buf: None,
+            tx_buf: CompactFlowTxState::Writing(tokio::spawn(async move {
+                (vec![0; tx_buf_size], tx, None)
+            })),
         }
-        Poll::Ready(())
     }
 }
 
@@ -116,9 +116,12 @@ impl AsyncWrite for CompactStream {
     }
 }
 
-impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin> Stream for CompactFlow<S> {
+impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for CompactFlow<S> {
     // Read
-    fn poll_request_size(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
+    fn poll_request_size(
+        self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+    ) -> Poll<FlowResult<SizeHint>> {
         Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }))
     }
     fn commit_rx_buffer(
@@ -134,7 +137,7 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin> Stream for CompactFlow<S> 
         cx: &mut Context<'_>,
     ) -> Poll<Result<Buffer, (Buffer, FlowError)>> {
         let Self {
-            inner,
+            rx_inner: inner,
             rx_buf: rx_buf_opt,
             ..
         } = &mut *self;
@@ -164,44 +167,81 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin> Stream for CompactFlow<S> 
         cx: &mut Context<'_>,
         size: NonZeroUsize,
     ) -> Poll<FlowResult<(Buffer, usize)>> {
-        if self
-            .waker
-            .as_ref()
-            .filter(|w| cx.waker().will_wake(w))
-            .is_none()
-        {
-            self.waker = Some(cx.waker().clone());
-        }
-        let Self {
-            tx_buf: tx_buf_opt,
-            inner,
-            ..
-        } = &mut *self;
-        let (tx_buf, offset) = tx_buf_opt.as_mut().expect("CompactFlow: tx_buf not set");
-        while *offset < tx_buf.len() {
-            let written = ready!(Pin::new(&mut *inner).poll_write(cx, &tx_buf[*offset..]))?;
-            *offset += written;
-        }
-        tx_buf.resize(size.get(), 0);
-        Poll::Ready(Ok((tx_buf_opt.take().unwrap().0, 0)))
+        let (mut buf, tx) = match &mut self.tx_buf {
+            CompactFlowTxState::NoBuffer(_, _) => {
+                panic!("Polling CompactFlow without previous buffer committed")
+            }
+            CompactFlowTxState::Writing(handle) => {
+                let (buf, tx, e) = ready!(poll_join_handle(handle, cx));
+                if let Some(e) = e {
+                    return Poll::Ready(Err(e.into()));
+                }
+                (buf, tx)
+            }
+        };
+        self.tx_buf = CompactFlowTxState::NoBuffer(tx, cx.waker().clone());
+        buf.clear();
+        buf.resize(size.get(), 0);
+        Poll::Ready(Ok((buf, 0)))
     }
     fn commit_tx_buffer(mut self: Pin<&mut Self>, buffer: Buffer) -> FlowResult<()> {
-        self.tx_buf = Some((buffer, 0));
-        let _ = self.poll_try_write();
+        let mut offset = 0;
+        loop {
+            match &mut self.tx_buf {
+                CompactFlowTxState::NoBuffer(tx, waker) => {
+                    if buffer.len() == offset {
+                        break;
+                    }
+                    match Pin::new(tx)
+                        .poll_write(&mut Context::from_waker(&waker), &buffer[offset..])
+                    {
+                        Poll::Ready(Ok(written)) => {
+                            offset += written;
+                        }
+                        Poll::Ready(Err(e)) => return Err(e.into()),
+                        Poll::Pending => break,
+                    }
+                }
+                CompactFlowTxState::Writing(_) => {
+                    panic!("Cannot commit tx buffer when an inflight write is not ready")
+                }
+            }
+        }
+        // We have to use a spawn here because we have no access to a waker
+        // that guarantees to wake up the same task to continue writing.
+        replace_with::replace_with_or_abort(&mut self.tx_buf, move |tx| match tx {
+            CompactFlowTxState::NoBuffer(mut tx, waker) => {
+                CompactFlowTxState::Writing(tokio::spawn(async move {
+                    let mut e = None;
+                    if offset < buffer.len() {
+                        if let Err(err) = tx.write_all(&buffer[offset..]).await {
+                            e = Some(err);
+                        }
+                    }
+                    (buffer, tx, e)
+                }))
+            }
+            CompactFlowTxState::Writing(_) => {
+                unreachable!("CompactFlowTxState has been checked not to hold a task")
+            }
+        });
         Ok(())
     }
 
     fn poll_close_tx(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
-        let Self { tx_buf, inner, .. } = &mut *self;
-        if let Some((tx_buf, offset)) = tx_buf.as_mut() {
-            while *offset < tx_buf.len() {
-                let written =
-                    ready!(Pin::new(&mut *inner).poll_write(&mut *cx, &tx_buf[*offset..]))?;
-                *offset += written;
+        // if let CompactFlowTxState::Writing(handle) = &mut self.tx_buf {
+        match &mut self.tx_buf {
+            CompactFlowTxState::Writing(handle) => {
+                let (buf, mut tx, e) = ready!(poll_join_handle(handle, cx));
+                if let Some(e) = e {
+                    return Poll::Ready(Err(e.into()));
+                }
+                let res = Pin::new(&mut tx).poll_flush(cx);
+                self.tx_buf = CompactFlowTxState::NoBuffer(tx, cx.waker().clone());
+                res
             }
+            CompactFlowTxState::NoBuffer(tx, _) => Pin::new(tx).poll_flush(cx),
         }
-
-        ready!(Pin::new(inner).poll_flush(cx))?;
-        Poll::Ready(Ok(()))
+        .map(|r| r.map_err(Into::into))
     }
 }

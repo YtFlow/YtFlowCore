@@ -97,11 +97,6 @@ impl StreamOutboundFactory for SslStreamFactory {
 
         Pin::new(&mut ssl_stream).write(initial_data).await?;
 
-        Ok(Box::pin(CompactFlow {
-            inner: ssl_stream,
-            rx_buf: None,
-            tx_buf: Some((vec![0; 4096], 4096)),
-            waker: None,
-        }))
+        Ok(Box::pin(CompactFlow::new(ssl_stream, 4096)))
     }
 }

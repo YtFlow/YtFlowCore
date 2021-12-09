@@ -19,6 +19,7 @@ futures = { version = "0.3", default-features = false, features = ["std", "async
 thiserror = "1"
 pin-project-lite = "0.2"
 chrono = "*"
+replace_with = "0.1"
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
