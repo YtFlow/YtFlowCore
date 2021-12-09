@@ -65,11 +65,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         if initial_data.len() > 0 {
             tcp_stream.write_all(initial_data).await?;
         }
-        Ok(Box::pin(tcp::TcpStream {
-            inner: tcp_stream,
-            rx_buf: None,
-            tx_buf: Some((vec![0; 4 * 1024], 4 * 1024)),
-        }))
+        Ok(Box::pin(CompactFlow::new(tcp_stream, 4096)))
     }
 }
 
