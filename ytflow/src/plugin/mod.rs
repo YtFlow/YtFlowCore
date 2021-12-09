@@ -14,6 +14,4 @@ pub mod simple_dispatcher;
 pub mod socket;
 pub mod tls;
 pub mod trojan;
-// TODO:
-// pub mod itworks;
 pub mod reject;
