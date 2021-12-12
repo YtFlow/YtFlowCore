@@ -1,4 +1,3 @@
-use std::pin::Pin;
 use std::sync::Weak;
 
 use async_trait::async_trait;
@@ -37,7 +36,7 @@ impl StreamOutboundFactory for TrojanStreamOutboundFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Pin<Box<dyn Stream>>> {
+    ) -> FlowResult<Box<dyn Stream>> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
 
         let mut tx_handshake = Vec::with_capacity(320 + initial_data.len());

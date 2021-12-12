@@ -298,10 +298,10 @@ impl IpStack {
                                 most_recent_scheduled_poll: Arc::new(AtomicI64::new(i64::MAX)),
                             },
                             rx_buf: None,
-                            tx_buf: Some((vec![0; 4 * 1024], 4 * 1024)),
+                            tx_buf: Some((Vec::with_capacity(4 * 1024), 0)),
                         };
                         if stream.handshake().await.is_ok() {
-                            next.on_stream(Box::pin(stream) as _, Box::new(ctx));
+                            next.on_stream(Box::new(stream) as _, Box::new(ctx));
                         }
                     }
                 });
@@ -341,7 +341,7 @@ impl IpStack {
                 let stack_inner = self.inner.clone();
                 tokio::spawn(async move {
                     next.on_session(
-                        Box::pin(datagram::IpStackDatagramSession {
+                        Box::new(datagram::IpStackDatagramSession {
                             stack: stack_inner,
                             local_endpoint: src_addr.into(),
                             local_port: src_port,

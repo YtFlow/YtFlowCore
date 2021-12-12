@@ -1,3 +1,4 @@
+use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 
@@ -29,10 +30,10 @@ impl IpStackDatagramSession {
 }
 
 impl DatagramSession for IpStackDatagramSession {
-    fn poll_send_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_send_ready(&mut self, _cx: &mut Context<'_>) -> Poll<()> {
         Poll::Ready(())
     }
-    fn send_to(mut self: Pin<&mut Self>, src: DestinationAddr, buf: Buffer) {
+    fn send_to(&mut self, src: DestinationAddr, buf: Buffer) {
         self.has_io_within_tick = true;
         let payload_len: u16 = match buf.len().try_into().ok().filter(|&l| l <= 1500 - 48) {
             Some(l) => l,
@@ -87,10 +88,7 @@ impl DatagramSession for IpStackDatagramSession {
             _ => return,
         }
     }
-    fn poll_recv_from(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Option<(DestinationAddr, Buffer)>> {
+    fn poll_recv_from(&mut self, cx: &mut Context) -> Poll<Option<(DestinationAddr, Buffer)>> {
         let rx = Pin::new(match self.rx.as_mut() {
             Some(rx) => rx,
             None => return Poll::Ready(None),
@@ -107,13 +105,13 @@ impl DatagramSession for IpStackDatagramSession {
                 if std::mem::replace(&mut self.has_io_within_tick, false) {
                     Poll::Pending
                 } else {
-                    self.get_mut().close();
+                    self.close();
                     Poll::Ready(None)
                 }
             }
         }
     }
-    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
+    fn poll_shutdown(&mut self, _cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
         Poll::Ready(Ok(()))
     }
 }

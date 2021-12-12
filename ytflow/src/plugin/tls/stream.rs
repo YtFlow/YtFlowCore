@@ -36,7 +36,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Pin<Box<dyn Stream>>> {
+    ) -> FlowResult<Box<dyn Stream>> {
         let Self { ctx, sni, next } = self;
         let outbound_factory = next.upgrade().ok_or(FlowError::NoOutbound)?;
 
@@ -50,12 +50,12 @@ impl StreamOutboundFactory for SslStreamFactory {
         .expect("Cannot create SSL");
 
         // Extract initial data from handshake to sent to lower
-        let initial_data_container = Arc::new(const_mutex(Some(Buffer::with_capacity(4096))));
+        let initial_data_container = Arc::new(const_mutex(Some(Buffer::new())));
         let mut ssl_stream = tokio_openssl::SslStream::new(
             ssl,
             CompactStream {
                 reader: StreamReader::new(4096),
-                inner: Box::pin(InitialDataExtractStream {
+                inner: Box::new(InitialDataExtractStream {
                     data: initial_data_container.clone(),
                 }),
             },
@@ -97,6 +97,6 @@ impl StreamOutboundFactory for SslStreamFactory {
 
         Pin::new(&mut ssl_stream).write(initial_data).await?;
 
-        Ok(Box::pin(CompactFlow::new(ssl_stream, 4096)))
+        Ok(Box::new(CompactFlow::new(ssl_stream, 4096)))
     }
 }

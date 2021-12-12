@@ -2,6 +2,7 @@ use std::future::Future;
 use std::io;
 use std::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::pin::Pin;
+
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
@@ -26,7 +27,7 @@ pub(super) struct UdpSocket {
 }
 
 impl DatagramSession for UdpSocket {
-    fn poll_send_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_send_ready(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         let Self { tx_buf, socket, .. } = &mut *self;
         let (addr, buf) = loop {
             match tx_buf.as_mut() {
@@ -51,7 +52,7 @@ impl DatagramSession for UdpSocket {
         *tx_buf = None;
         Poll::Ready(())
     }
-    fn send_to(mut self: Pin<&mut Self>, dst: DestinationAddr, buf: Buffer) {
+    fn send_to(&mut self, dst: DestinationAddr, buf: Buffer) {
         let port = dst.port;
         match dst.dest {
             Destination::Ip(ip) => {
@@ -78,10 +79,7 @@ impl DatagramSession for UdpSocket {
         }
     }
 
-    fn poll_recv_from(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Option<(DestinationAddr, Buffer)>> {
+    fn poll_recv_from(&mut self, cx: &mut Context) -> Poll<Option<(DestinationAddr, Buffer)>> {
         let Self {
             rx_buf: buf,
             socket,
@@ -95,7 +93,7 @@ impl DatagramSession for UdpSocket {
         let buf = buf.filled().to_vec();
         Poll::Ready(Some((addr.into(), buf)))
     }
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
+    fn poll_shutdown(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
         self.poll_send_ready(cx).map(|()| Ok(()))
     }
 }

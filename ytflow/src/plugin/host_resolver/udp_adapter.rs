@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::io;
 use std::net::SocketAddr;
-use std::pin::Pin;
+
 use std::sync::Weak;
 use std::task::{Context, Poll};
 
@@ -18,8 +18,8 @@ pub static UDP_FACTORIES: RwLock<(u32, BTreeMap<u32, Weak<dyn DatagramSessionFac
     const_rwlock((0, BTreeMap::new()));
 
 enum SessionState {
-    Binding(BoxFuture<'static, FlowResult<Pin<Box<dyn DatagramSession>>>>),
-    Ready(Pin<Box<dyn DatagramSession>>),
+    Binding(BoxFuture<'static, FlowResult<Box<dyn DatagramSession>>>),
+    Ready(Box<dyn DatagramSession>),
 }
 
 pub struct FlowDatagramSocket(Mutex<Option<(u32, SessionState)>>);

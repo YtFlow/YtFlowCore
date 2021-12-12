@@ -1,4 +1,3 @@
-use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
 
@@ -45,7 +44,7 @@ fn handle_context(
 
 #[async_trait]
 impl StreamHandler for StreamForwardResolver {
-    fn on_stream(&self, lower: Pin<Box<dyn Stream>>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return,
@@ -55,7 +54,7 @@ impl StreamHandler for StreamForwardResolver {
 }
 
 impl DatagramSessionHandler for DatagramForwardResolver {
-    fn on_session(&self, lower: Pin<Box<dyn DatagramSession>>, context: Box<FlowContext>) {
+    fn on_session(&self, lower: Box<dyn DatagramSession>, context: Box<FlowContext>) {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return,
@@ -66,7 +65,7 @@ impl DatagramSessionHandler for DatagramForwardResolver {
         };
         handle_context(&self.resolver, context, move |c| {
             next.on_session(
-                Box::pin(DatagramForwardSession {
+                Box::new(DatagramForwardSession {
                     is_ipv6: c.local_peer.is_ipv6(),
                     resolver,
                     lower,
@@ -82,7 +81,7 @@ impl DatagramSessionHandler for DatagramForwardResolver {
 struct DatagramForwardSession {
     is_ipv6: bool,
     resolver: Arc<dyn Resolver>,
-    lower: Pin<Box<dyn DatagramSession>>,
+    lower: Box<dyn DatagramSession>,
     resolving: Option<BoxFuture<'static, (DestinationAddr, Buffer)>>,
     reverse_resolving: Option<BoxFuture<'static, (DestinationAddr, Buffer)>>,
 }
@@ -91,10 +90,7 @@ struct DatagramForwardSession {
 unsafe impl Sync for DatagramForwardSession {}
 
 impl DatagramSession for DatagramForwardSession {
-    fn poll_recv_from(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Option<(DestinationAddr, Buffer)>> {
+    fn poll_recv_from(&mut self, cx: &mut Context) -> Poll<Option<(DestinationAddr, Buffer)>> {
         if let Some(mut fut) = self.resolving.take() {
             return if let Poll::Ready(ret) = fut.as_mut().poll(cx) {
                 Poll::Ready(Some(ret))
@@ -125,7 +121,7 @@ impl DatagramSession for DatagramForwardSession {
         self.poll_recv_from(cx)
     }
 
-    fn poll_send_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
+    fn poll_send_ready(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         if let Some(mut fut) = self.reverse_resolving.take() {
             if let Poll::Ready((dest, buf)) = fut.as_mut().poll(cx) {
                 self.lower.as_mut().send_to(dest, buf);
@@ -139,7 +135,7 @@ impl DatagramSession for DatagramForwardSession {
         self.lower.as_mut().poll_send_ready(cx)
     }
 
-    fn send_to(mut self: Pin<&mut Self>, remote_peer: DestinationAddr, buf: Buffer) {
+    fn send_to(&mut self, remote_peer: DestinationAddr, buf: Buffer) {
         let (ip, port) = match remote_peer {
             DestinationAddr {
                 dest: Destination::Ip(ip),
@@ -153,7 +149,7 @@ impl DatagramSession for DatagramForwardSession {
         }));
     }
 
-    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
+    fn poll_shutdown(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
         self.lower.as_mut().poll_shutdown(cx)
     }
 }

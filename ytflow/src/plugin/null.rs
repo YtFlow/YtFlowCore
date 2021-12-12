@@ -1,5 +1,4 @@
 use std::net::IpAddr;
-use std::pin::Pin;
 
 use async_trait::async_trait;
 
@@ -13,14 +12,14 @@ impl StreamOutboundFactory for Null {
         &self,
         _context: Box<FlowContext>,
         _initial_data: &'_ [u8],
-    ) -> FlowResult<Pin<Box<dyn Stream>>> {
+    ) -> FlowResult<Box<dyn Stream>> {
         Err(FlowError::NoOutbound)
     }
 }
 
 #[async_trait]
 impl DatagramSessionFactory for Null {
-    async fn bind(&self, _context: Box<FlowContext>) -> FlowResult<Pin<Box<dyn DatagramSession>>> {
+    async fn bind(&self, _context: Box<FlowContext>) -> FlowResult<Box<dyn DatagramSession>> {
         Err(FlowError::NoOutbound)
     }
 }

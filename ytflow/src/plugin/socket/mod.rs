@@ -2,7 +2,7 @@ mod tcp;
 mod udp;
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
-use std::pin::Pin;
+
 use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
@@ -22,7 +22,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Pin<Box<dyn Stream>>> {
+    ) -> FlowResult<Box<dyn Stream>> {
         let port = context.remote_peer.port;
         let (bind_addr_v4, bind_addr_v6) = self
             .netif_selector
@@ -65,13 +65,13 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         if initial_data.len() > 0 {
             tcp_stream.write_all(initial_data).await?;
         }
-        Ok(Box::pin(CompactFlow::new(tcp_stream, 4096)))
+        Ok(Box::new(CompactFlow::new(tcp_stream, 4096)))
     }
 }
 
 #[async_trait]
 impl DatagramSessionFactory for SocketOutboundFactory {
-    async fn bind(&self, context: Box<FlowContext>) -> FlowResult<Pin<Box<dyn DatagramSession>>> {
+    async fn bind(&self, context: Box<FlowContext>) -> FlowResult<Box<dyn DatagramSession>> {
         let (bind_addr_v4, bind_addr_v6) = self
             .netif_selector
             .read(|netif| (netif.ipv4_addr, netif.ipv6_addr));
@@ -104,7 +104,7 @@ impl DatagramSessionFactory for SocketOutboundFactory {
             None => return Err(FlowError::NoOutbound),
         };
         socket.writable().await?;
-        Ok(Box::pin(udp::UdpSocket {
+        Ok(Box::new(udp::UdpSocket {
             socket,
             tx_buf: None,
             rx_buf: vec![0; 2000],

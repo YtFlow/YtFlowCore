@@ -5,7 +5,7 @@ mod xchacha20;
 
 use std::convert::TryInto;
 use std::marker::PhantomData;
-use std::pin::Pin;
+
 use std::sync::Weak;
 
 use async_trait::async_trait;
@@ -144,7 +144,7 @@ where
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Pin<Box<dyn Stream>>> {
+    ) -> FlowResult<Box<dyn Stream>> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
         let (next, tx_crypto) = {
             let (tx_buffer, tx_crypto) = self.get_req(&context, initial_data);
@@ -156,7 +156,7 @@ where
             )
         };
         // Must specify C explicitly due to https://github.com/rust-lang/rust/issues/83249
-        Ok(Box::pin(stream::ShadowsocksStream::<C> {
+        Ok(Box::new(stream::ShadowsocksStream::<C> {
             reader: StreamReader::new(4096),
             rx_buf: None,
             rx_chunk_size: std::num::NonZeroUsize::new(4096).unwrap(),

@@ -1,4 +1,3 @@
-use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 use std::time::Duration;
@@ -10,14 +9,9 @@ use tokio::time::timeout;
 use super::tcp_socket_entry::*;
 use crate::flow::*;
 
-pub struct RxBufDesc {
-    buffer: Buffer,
-    offset: usize,
-}
-
 pub(super) struct IpStackStream {
     pub(super) socket_entry: TcpSocketEntry,
-    pub(super) rx_buf: Option<RxBufDesc>,
+    pub(super) rx_buf: Option<Buffer>,
     pub(super) tx_buf: Option<(Buffer, usize)>,
 }
 
@@ -42,24 +36,17 @@ impl IpStackStream {
 
 impl Stream for IpStackStream {
     // Read
-    fn poll_request_size(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<FlowResult<SizeHint>> {
+    fn poll_request_size(&mut self, _cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
         Poll::Ready(Ok(Default::default()))
     }
 
-    fn commit_rx_buffer(
-        mut self: Pin<&mut Self>,
-        buffer: Buffer,
-        offset: usize,
-    ) -> Result<(), (Buffer, FlowError)> {
-        self.rx_buf = Some(RxBufDesc { buffer, offset });
+    fn commit_rx_buffer(&mut self, buffer: Buffer) -> Result<(), (Buffer, FlowError)> {
+        self.rx_buf = Some(buffer);
         Ok(())
     }
 
     fn poll_rx_buffer(
-        mut self: Pin<&mut Self>,
+        &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<Result<Buffer, (Buffer, FlowError)>> {
         let Self {
@@ -69,110 +56,105 @@ impl Stream for IpStackStream {
         } = &mut *self;
         let mut socket_guard = socket_entry.lock();
         ready!(socket_guard.with_socket(|socket| {
-            let RxBufDesc { buffer, offset } = rx_buf.as_mut().unwrap();
-            match socket.recv_slice(&mut buffer[*offset..]) {
+            let buffer = rx_buf
+                .as_mut()
+                .expect("Polling empty rx buffer from ip_stack");
+            let offset = buffer.len();
+            let target_len = std::cmp::min(buffer.capacity(), socket.recv_queue() + offset);
+            buffer.resize(target_len, 0);
+            match socket.recv_slice(&mut buffer[offset..]) {
                 Ok(0) => {
                     socket.register_recv_waker(cx.waker());
                     Poll::Pending
                 }
                 Ok(s) => {
-                    *offset += s;
+                    buffer.truncate(offset + s);
                     Poll::Ready(Ok(()))
                 }
-                Err(_) => Poll::Ready(Err((rx_buf.take().unwrap().buffer, FlowError::Eof))),
+                Err(_) => Poll::Ready(Err((rx_buf.take().unwrap(), FlowError::Eof))),
             }
         }))?;
         socket_guard.poll();
         drop(socket_guard);
-        let RxBufDesc {
-            mut buffer, offset, ..
-        } = rx_buf.take().unwrap();
-        buffer.truncate(offset);
-        Poll::Ready(Ok(buffer))
+        Poll::Ready(Ok(rx_buf.take().unwrap()))
     }
 
     // Write
     fn poll_tx_buffer(
-        mut self: Pin<&mut Self>,
+        &mut self,
         cx: &mut Context<'_>,
         size: std::num::NonZeroUsize,
-    ) -> Poll<FlowResult<(Buffer, usize)>> {
+    ) -> Poll<FlowResult<Buffer>> {
         let Self {
             tx_buf,
             socket_entry,
             ..
         } = &mut *self;
-        loop {
-            let (buffer, read_at) = tx_buf.as_mut().unwrap();
-            if buffer.len() <= *read_at {
-                let mut buf = std::mem::replace(buffer, Vec::new());
-                *tx_buf = None;
-                buf.resize(size.into(), 0);
-                break Poll::Ready(Ok((buf, 0)));
-            } else {
-                let mut socket_guard = socket_entry.lock();
-                match socket_guard.with_socket(|s| s.send_slice(&buffer[*read_at..])) {
-                    Ok(0) => {
-                        socket_guard.with_socket(|s| s.register_send_waker(cx.waker()));
-                        break Poll::Pending;
-                    }
-                    Ok(len) => {
-                        *read_at += len;
-                        socket_guard.poll();
-                        continue;
-                    }
-                    Err(_) => break Poll::Ready(Err(FlowError::Eof)),
+        let (buffer, read_at) = tx_buf
+            .as_mut()
+            .expect("IpStackStream: cannot pull buffer without committing");
+        while buffer.capacity() >= size.get()
+            && buffer.capacity() - buffer.len() + *read_at < size.get()
+        {
+            let mut socket_guard = socket_entry.lock();
+            match socket_guard.with_socket(|s| s.send_slice(&buffer[*read_at..])) {
+                Ok(0) => {
+                    socket_guard.with_socket(|s| s.register_send_waker(cx.waker()));
+                    return Poll::Pending;
                 }
+                Ok(len) => {
+                    *read_at += len;
+                    socket_guard.poll();
+                    continue;
+                }
+                Err(_) => return Poll::Ready(Err(FlowError::Eof)),
             }
         }
+        let (mut buf, read_at) = tx_buf.take().unwrap();
+        buf.drain(..read_at);
+        buf.reserve(size.get());
+        Poll::Ready(Ok(buf))
     }
 
-    fn commit_tx_buffer(mut self: Pin<&mut Self>, buffer: Buffer) -> FlowResult<()> {
+    fn commit_tx_buffer(&mut self, buffer: Buffer) -> FlowResult<()> {
+        self.tx_buf = Some((buffer, 0));
+        Ok(())
+    }
+
+    fn poll_flush_tx(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
         let Self {
             tx_buf,
             socket_entry,
             ..
         } = &mut *self;
+        let (tx_buf, read_at) = tx_buf
+            .as_mut()
+            .expect("IpStackStream: cannot flush without committing");
         let mut socket_guard = socket_entry.lock();
-        let written = socket_guard
-            .with_socket(|s| s.send_slice(&buffer[..]))
-            .map_err(|_| FlowError::Eof);
-        socket_guard.poll();
-        drop(socket_guard);
-        *tx_buf = Some((buffer, written.as_ref().map_or(0, |w| *w)));
-        written.map(|_| ())
+        while tx_buf.len() > *read_at {
+            match socket_guard.with_socket(|s| s.send_slice(&tx_buf[*read_at..])) {
+                Ok(0) => {
+                    socket_guard.with_socket(|s| s.register_send_waker(cx.waker()));
+                    return Poll::Pending;
+                }
+                Ok(s) => {
+                    *read_at += s;
+                    socket_guard.poll();
+                }
+                Err(_) => return Poll::Ready(Err(FlowError::Eof)),
+            }
+        }
+        Poll::Ready(Ok(()))
     }
 
-    fn poll_close_tx(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
-        let Self {
-            socket_entry,
-            tx_buf,
-            ..
-        } = &mut *self.as_mut();
-        if let Some((tx_buf, offset)) = tx_buf
-            .as_mut()
-            .filter(|(tx_buf, offset)| tx_buf.len() != *offset)
-        {
-            // Send remaining data in tx buf
-            let mut socket_guard = socket_entry.lock();
-            ready!(
-                socket_guard.with_socket(|s| match s.send_slice(&tx_buf[*offset..]) {
-                    Ok(sent) => {
-                        *offset += sent;
-                        if *offset != tx_buf.len() {
-                            Poll::Ready(())
-                        } else {
-                            s.register_send_waker(cx.waker());
-                            Poll::Pending
-                        }
-                    }
-                    Err(_) => Poll::Ready(()),
-                })
-            );
-            socket_guard.poll();
+    fn poll_close_tx(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
+        // Send remaining data in tx buf
+        if self.tx_buf.is_some() {
+            ready!(self.poll_flush_tx(cx))?;
         }
+
         // Send remaining data in socket buffer and FIN
-        let mut socket_guard = socket_entry.lock();
+        let mut socket_guard = self.socket_entry.lock();
         let res = socket_guard.with_socket(|s| {
             if s.send_queue() > 0 {
                 s.register_send_waker(cx.waker());

@@ -1,5 +1,5 @@
 use std::ops::RangeInclusive;
-use std::pin::Pin;
+
 use std::sync::Weak;
 
 use cidr::IpCidr;
@@ -70,7 +70,7 @@ pub struct SimpleDatagramDispatcher {
 }
 
 impl StreamHandler for SimpleStreamDispatcher {
-    fn on_stream(&self, lower: Pin<Box<dyn Stream>>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
         let handler = self
             .rules
             .iter()
@@ -83,7 +83,7 @@ impl StreamHandler for SimpleStreamDispatcher {
 }
 
 impl DatagramSessionHandler for SimpleDatagramDispatcher {
-    fn on_session(&self, session: Pin<Box<dyn DatagramSession>>, context: Box<FlowContext>) {
+    fn on_session(&self, session: Box<dyn DatagramSession>, context: Box<FlowContext>) {
         let handler = self
             .rules
             .iter()

@@ -2,7 +2,7 @@ pub(crate) mod util;
 
 use std::convert::TryInto;
 use std::io::Write;
-use std::pin::Pin;
+
 use std::sync::Weak;
 
 use async_trait::async_trait;
@@ -66,7 +66,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Pin<Box<dyn Stream>>> {
+    ) -> FlowResult<Box<dyn Stream>> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
         let mut lower = {
             let mut req =
@@ -88,7 +88,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             let mut expected_header_size = 1;
             let mut code = None;
             while reader
-                .peek_at_least(&mut lower, expected_header_size, |data| {
+                .peek_at_least(&mut *lower, expected_header_size, |data| {
                     if data.len() > 1024 {
                         return Err(FlowError::UnexpectedData);
                     }
@@ -108,8 +108,8 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
                 .ok_or(FlowError::UnexpectedData)?;
         }
         if let Some(initial_data_size) = initial_data.len().try_into().ok() {
-            let (mut tx_buffer, offset) = crate::get_tx_buffer_boxed!(lower, initial_data_size)?;
-            tx_buffer[offset..].copy_from_slice(initial_data);
+            let mut tx_buffer = crate::get_tx_buffer_boxed!(lower, initial_data_size)?;
+            tx_buffer.extend_from_slice(initial_data);
             lower.as_mut().commit_tx_buffer(tx_buffer)?;
         }
         Ok(lower)

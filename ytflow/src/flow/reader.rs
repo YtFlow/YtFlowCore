@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::{future::poll_fn, ready};
@@ -7,62 +5,60 @@ use futures::{future::poll_fn, ready};
 use super::*;
 
 pub enum StreamReader {
-    PollSizeHint(Buffer),
-    PollBuffer,
+    PollSizeHint(Buffer, usize),
+    PollBuffer(usize),
 }
 
 impl StreamReader {
     pub fn new(capacity: usize) -> Self {
-        StreamReader::PollSizeHint(Vec::with_capacity(capacity))
+        StreamReader::PollSizeHint(Vec::with_capacity(capacity), 0)
     }
 
-    // TODO: remove this function
-    pub fn buf_mut(&mut self) -> Option<&mut Buffer> {
+    pub fn advance(&mut self, len: usize) {
         match self {
-            StreamReader::PollSizeHint(buf) => Some(buf),
-            _ => None,
-        }
-    }
-
-    pub fn advance(&mut self, len: usize) -> bool {
-        match self {
-            StreamReader::PollSizeHint(buf) => {
-                // TODO: better drain strategy
-                buf.drain(..len);
-                true
+            StreamReader::PollSizeHint(buf, offset) => {
+                let new_offset = *offset + len;
+                let remaining = buf.len() - new_offset;
+                // Move at most 1024 bytes to the front
+                // FIXME: is 1024 a good threshold?
+                if remaining < 1024 {
+                    buf.drain(..new_offset);
+                    *offset = remaining;
+                } else {
+                    *offset = new_offset;
+                }
             }
-            _ => false,
+            StreamReader::PollBuffer(offset) => *offset += len,
         }
     }
 
-    fn poll_core<T, C: FnOnce(&mut Buffer) -> T>(
+    fn poll_core<T, C: FnOnce(&mut [u8]) -> T>(
         &mut self,
         cx: &mut Context<'_>,
-        mut stream: Pin<&mut dyn Stream>,
+        stream: &mut dyn Stream,
         len: usize,
         on_data: C,
     ) -> Poll<FlowResult<T>> {
         loop {
             match self {
-                StreamReader::PollSizeHint(buf) => {
-                    if buf.len() >= len {
-                        return Poll::Ready(Ok(on_data(buf)));
+                StreamReader::PollSizeHint(buf, offset) => {
+                    if buf.len() - *offset >= len {
+                        return Poll::Ready(Ok(on_data(&mut buf[*offset..])));
                     }
-                    let size_hint =
-                        ready!(stream.as_mut().poll_request_size(cx))?.with_min_content(4096);
+
+                    let size_hint = ready!(stream.poll_request_size(cx))?.with_min_content(4096);
                     let mut buf = std::mem::replace(buf, Vec::new());
-                    let already_read = buf.len();
-                    buf.resize(already_read + size_hint, 0);
-                    if let Err((b, e)) = stream.as_mut().commit_rx_buffer(buf, already_read) {
-                        *self = StreamReader::PollSizeHint(b);
+                    buf.reserve(size_hint);
+                    if let Err((b, e)) = stream.commit_rx_buffer(buf) {
+                        *self = StreamReader::PollSizeHint(b, 0);
                         return Poll::Ready(Err(e));
                     };
-                    *self = StreamReader::PollBuffer;
+                    *self = StreamReader::PollBuffer(*offset);
                 }
-                StreamReader::PollBuffer => match ready!(stream.as_mut().poll_rx_buffer(cx)) {
-                    Ok(buf) => *self = StreamReader::PollSizeHint(buf),
+                StreamReader::PollBuffer(offset) => match ready!(stream.poll_rx_buffer(cx)) {
+                    Ok(buf) => *self = StreamReader::PollSizeHint(buf, *offset),
                     Err((buf, e)) => {
-                        *self = StreamReader::PollSizeHint(buf);
+                        *self = StreamReader::PollSizeHint(buf, 0);
                         return Poll::Ready(Err(e));
                     }
                 },
@@ -73,7 +69,7 @@ impl StreamReader {
     pub fn poll_peek_at_least<T, C: FnOnce(&mut [u8]) -> T>(
         &mut self,
         cx: &mut Context<'_>,
-        stream: Pin<&mut dyn Stream>,
+        stream: &mut dyn Stream,
         len: usize,
         on_data: C,
     ) -> Poll<FlowResult<T>> {
@@ -83,39 +79,34 @@ impl StreamReader {
     pub fn poll_read_exact<T, C: FnOnce(&mut [u8]) -> T>(
         &mut self,
         cx: &mut Context<'_>,
-        stream: Pin<&mut dyn Stream>,
+        stream: &mut dyn Stream,
         len: usize,
         on_data: C,
     ) -> Poll<FlowResult<T>> {
-        self.poll_core(cx, stream, len, |buf| {
-            let ret = on_data(&mut buf[..len]);
-            // TODO: better drain strategy
-            buf.drain(..len);
-            ret
-        })
+        let res = self.poll_core(cx, stream, len, |buf| on_data(&mut buf[..len]));
+        if let Poll::Ready(Ok(_)) = &res {
+            self.advance(len);
+        }
+        res
     }
 
-    pub async fn peek_at_least<T, C: FnOnce(&mut [u8]) -> T, P: DerefMut<Target = dyn Stream>>(
+    pub async fn peek_at_least<T, C: FnOnce(&mut [u8]) -> T>(
         &mut self,
-        stream: &mut Pin<P>,
+        stream: &mut dyn Stream,
         len: usize,
         on_data: C,
     ) -> FlowResult<T> {
         let mut on_data = Some(on_data);
-        poll_fn(|cx| {
-            self.poll_peek_at_least(cx, stream.as_mut(), len, |b| on_data.take().unwrap()(b))
-        })
-        .await
+        poll_fn(|cx| self.poll_peek_at_least(cx, stream, len, |b| on_data.take().unwrap()(b))).await
     }
 
     pub async fn read_exact<T, C: FnOnce(&mut [u8]) -> T>(
         &mut self,
-        mut stream: Pin<&mut dyn Stream>,
+        stream: &mut dyn Stream,
         len: usize,
         on_data: C,
     ) -> FlowResult<T> {
         let mut on_data = Some(on_data);
-        poll_fn(|cx| self.poll_read_exact(cx, stream.as_mut(), len, |b| on_data.take().unwrap()(b)))
-            .await
+        poll_fn(|cx| self.poll_read_exact(cx, stream, len, |b| on_data.take().unwrap()(b))).await
     }
 }

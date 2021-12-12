@@ -12,62 +12,67 @@ use crate::flow::*;
 enum ForwardState {
     AwatingSizeHint,
     PollingTxBuf(SizeHint),
-    PollingRxBuf { offset: usize },
+    PollingRxBuf,
     Closing,
     Done,
 }
 
 struct StreamForward<'l, 'r> {
-    stream_local: Pin<&'l mut dyn Stream>,
-    stream_remote: Pin<&'r mut dyn Stream>,
+    stream_local: &'l mut dyn Stream,
+    stream_remote: &'r mut dyn Stream,
     uplink_state: ForwardState,
     downlink_state: ForwardState,
 }
 
 fn poll_forward_oneway(
     cx: &mut Context<'_>,
-    mut rx: Pin<&mut dyn Stream>,
-    mut tx: Pin<&mut dyn Stream>,
+    rx: &mut dyn Stream,
+    tx: &mut dyn Stream,
     state: &mut ForwardState,
 ) -> Poll<FlowResult<()>> {
     loop {
         *state = match state {
             ForwardState::AwatingSizeHint => {
-                let size_hint = ready!(rx.as_mut().poll_request_size(cx))?;
-                ForwardState::PollingTxBuf(size_hint)
+                match rx.poll_request_size(cx) {
+                    Poll::Pending => {
+                        // TODO: do not poll when last flush is ready
+                        if let p @ Poll::Ready(Err(_)) = tx.poll_flush_tx(cx) {
+                            return p;
+                        }
+                        return Poll::Pending;
+                    }
+                    Poll::Ready(r) => ForwardState::PollingTxBuf(r?),
+                }
             }
             ForwardState::PollingTxBuf(size_hint) => {
-                let (buf, offset) = ready!(tx
-                    .as_mut()
-                    .poll_tx_buffer(cx, size_hint.with_min_content(4096).try_into().unwrap()))?;
-                if let Err((mut buf, e)) = rx.as_mut().commit_rx_buffer(buf, offset) {
+                let buf = ready!(
+                    tx.poll_tx_buffer(cx, size_hint.with_min_content(4096).try_into().unwrap())
+                )?;
+                if let Err((buf, e)) = rx.commit_rx_buffer(buf) {
                     // Return buffer
-                    buf.resize(offset, 0);
-                    let _ = tx.as_mut().commit_tx_buffer(buf);
-                    Err(e)?;
+                    let _ = tx.commit_tx_buffer(buf);
+                    return Poll::Ready(Err(e));
                 }
-                ForwardState::PollingRxBuf { offset }
+                ForwardState::PollingRxBuf
             }
-            ForwardState::PollingRxBuf { offset } => match ready!(rx.as_mut().poll_rx_buffer(cx)) {
+            ForwardState::PollingRxBuf => match ready!(rx.poll_rx_buffer(cx)) {
                 Ok(buf) => {
-                    tx.as_mut().commit_tx_buffer(buf)?;
+                    tx.commit_tx_buffer(buf)?;
                     ForwardState::AwatingSizeHint
                 }
-                Err((mut buf, FlowError::Eof)) => {
+                Err((buf, FlowError::Eof)) => {
                     // Return buffer
-                    buf.resize(*offset, 0);
-                    tx.as_mut().commit_tx_buffer(buf)?;
+                    tx.commit_tx_buffer(buf)?;
                     ForwardState::Closing
                 }
-                Err((mut buf, e)) => {
+                Err((buf, e)) => {
                     // Return buffer
-                    buf.resize(*offset, 0);
-                    let _ = tx.as_mut().commit_tx_buffer(buf);
+                    let _ = tx.commit_tx_buffer(buf);
                     return Poll::Ready(Err(e));
                 }
             },
             ForwardState::Closing => {
-                ready!(tx.as_mut().poll_close_tx(cx))?;
+                ready!(tx.poll_close_tx(cx))?;
                 ForwardState::Done
             }
             ForwardState::Done => return Poll::Ready(Ok(())),
@@ -86,18 +91,8 @@ impl<'l, 'r> Future for StreamForward<'l, 'r> {
             downlink_state,
         } = &mut *self;
         match (
-            poll_forward_oneway(
-                cx,
-                stream_remote.as_mut(),
-                stream_local.as_mut(),
-                downlink_state,
-            ),
-            poll_forward_oneway(
-                cx,
-                stream_local.as_mut(),
-                stream_remote.as_mut(),
-                uplink_state,
-            ),
+            poll_forward_oneway(cx, *stream_remote, *stream_local, downlink_state),
+            poll_forward_oneway(cx, *stream_local, *stream_remote, uplink_state),
         ) {
             (Poll::Ready(Ok(())), Poll::Ready(Ok(()))) => Poll::Ready(Ok(())),
             (Poll::Ready(Err(e)), _) | (_, Poll::Ready(Err(e))) => Poll::Ready(Err(e)),
@@ -118,7 +113,7 @@ pub struct DatagramForwardHandler {
 impl StreamForwardHandler {
     async fn handle_stream(
         outbound_factory: Arc<dyn StreamOutboundFactory>,
-        mut lower: Pin<Box<dyn Stream>>,
+        mut lower: Box<dyn Stream>,
         context: Box<FlowContext>,
     ) -> FlowResult<()> {
         let mut initial_uplink_state = ForwardState::AwatingSizeHint;
@@ -126,10 +121,7 @@ impl StreamForwardHandler {
             let size = crate::get_request_size_boxed!(lower)?;
             initial_uplink_state = ForwardState::PollingTxBuf(size);
             let buf = vec![0; size.with_min_content(1500)];
-            lower
-                .as_mut()
-                .commit_rx_buffer(buf, 0)
-                .map_err(|(_, e)| e)?;
+            lower.as_mut().commit_rx_buffer(buf).map_err(|(_, e)| e)?;
             let initial_data = crate::get_rx_buffer_boxed!(lower).map_err(|(_, e)| e);
             initial_uplink_state = ForwardState::AwatingSizeHint;
             initial_data
@@ -190,7 +182,7 @@ impl StreamForwardHandler {
 }
 
 impl StreamHandler for StreamForwardHandler {
-    fn on_stream(&self, lower: Pin<Box<dyn Stream>>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
         if let Some(outbound) = self.outbound.upgrade() {
             tokio::spawn(Self::handle_stream(outbound, lower, context));
         }
@@ -198,7 +190,7 @@ impl StreamHandler for StreamForwardHandler {
 }
 
 impl DatagramSessionHandler for DatagramForwardHandler {
-    fn on_session(&self, mut session: Pin<Box<dyn DatagramSession>>, context: Box<FlowContext>) {
+    fn on_session(&self, mut session: Box<dyn DatagramSession>, context: Box<FlowContext>) {
         let outbound = match self.outbound.upgrade() {
             Some(o) => o,
             None => return,

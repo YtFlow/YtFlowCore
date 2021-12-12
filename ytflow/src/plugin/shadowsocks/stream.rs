@@ -1,6 +1,6 @@
 use std::convert::TryInto;
 use std::num::NonZeroUsize;
-use std::pin::Pin;
+
 use std::task::{Context, Poll};
 
 use futures::ready;
@@ -21,12 +21,12 @@ where
     [(); C::KEY_LEN]:,
 {
     pub reader: StreamReader,
-    pub rx_buf: Option<(Vec<u8>, usize)>,
+    pub rx_buf: Option<Vec<u8>>,
     pub rx_chunk_size: NonZeroUsize,
     pub rx_crypto: RxCryptoState<C>,
     pub tx_crypto: C,
     pub tx_offset: usize,
-    pub lower: Pin<Box<dyn Stream>>,
+    pub lower: Box<dyn Stream>,
 }
 
 impl<C: ShadowCrypto + Unpin> Stream for ShadowsocksStream<C>
@@ -36,10 +36,7 @@ where
     [(); C::PRE_CHUNK_OVERHEAD]:,
     [(); C::POST_CHUNK_OVERHEAD]:,
 {
-    fn poll_request_size(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<FlowResult<SizeHint>> {
+    fn poll_request_size(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
         let Self {
             lower,
             rx_crypto: crypto,
@@ -77,17 +74,13 @@ where
         }
     }
 
-    fn commit_rx_buffer(
-        mut self: Pin<&mut Self>,
-        buffer: Buffer,
-        offset: usize,
-    ) -> Result<(), (Buffer, FlowError)> {
-        self.as_mut().rx_buf = Some((buffer, offset));
+    fn commit_rx_buffer(&mut self, buffer: Buffer) -> Result<(), (Buffer, FlowError)> {
+        self.rx_buf = Some(buffer);
         Ok(())
     }
 
     fn poll_rx_buffer(
-        mut self: Pin<&mut Self>,
+        &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<Result<Buffer, (Buffer, FlowError)>> {
         let Self {
@@ -102,23 +95,23 @@ where
             RxCryptoState::ReadingIv { .. } => panic!("Polling rx buffer when IV not ready"),
             RxCryptoState::Ready(c) => c,
         };
-        let (rx_buf, offset) = match rx_buf_opt.as_mut() {
-            Some((buf, offset)) => (buf, *offset),
+        let rx_buf = match rx_buf_opt.as_mut() {
+            Some(buf) => buf,
             None => panic!("Polling rx buffer without committing"),
         };
         let res = if C::POST_CHUNK_OVERHEAD == 0 {
             // Stream cipher
             let res = ready!(reader.poll_peek_at_least(cx, lower.as_mut(), 1, |buf| {
-                let to_write = buf.len().min(rx_buf.len() - offset);
+                let to_write = buf.len().min(rx_buf.capacity() - rx_buf.len());
                 let buf = &mut buf[..to_write];
                 let _ = crypto.decrypt(buf, &[0; C::POST_CHUNK_OVERHEAD]);
-                rx_buf[offset..(offset + to_write)].copy_from_slice(buf);
+                rx_buf.extend_from_slice(buf);
                 to_write
             }));
             if let Ok(written) = &res {
                 let _ = reader.advance(*written);
             }
-            res
+            Ok(())
         } else {
             // AEAD cipher
             let chunk_size = rx_chunk_size.get();
@@ -131,42 +124,39 @@ where
                     if !crypto.decrypt(buf, (&*post_overhead).try_into().unwrap()) {
                         return false;
                     }
-                    rx_buf[offset..(offset + chunk_size)].copy_from_slice(buf);
+                    rx_buf.extend_from_slice(buf);
                     true
                 }
             ));
-            res.and_then(|dec_success| {
-                dec_success
-                    .then_some(chunk_size)
-                    .ok_or(FlowError::UnexpectedData)
-            })
+            res.and_then(|dec_success| dec_success.then_some(()).ok_or(FlowError::UnexpectedData))
         };
-        let mut buf = rx_buf_opt.take().unwrap().0;
+        let buf = rx_buf_opt.take().unwrap();
         Poll::Ready(match res {
-            Ok(len) => {
-                buf.truncate(len + offset);
-                Ok(buf)
-            }
+            Ok(()) => Ok(buf),
             Err(e) => Err((buf, e)),
         })
     }
 
     fn poll_tx_buffer(
-        mut self: Pin<&mut Self>,
+        &mut self,
         cx: &mut Context<'_>,
         size: NonZeroUsize,
-    ) -> Poll<FlowResult<(Buffer, usize)>> {
-        let (buf, offset) = ready!(self.lower.as_mut().poll_tx_buffer(
+    ) -> Poll<FlowResult<Buffer>> {
+        let Self {
+            lower, tx_offset, ..
+        } = self;
+        let mut buf = ready!(lower.as_mut().poll_tx_buffer(
             cx,
             (size.get() + C::PRE_CHUNK_OVERHEAD + C::POST_CHUNK_OVERHEAD)
                 .try_into()
                 .unwrap()
         ))?;
-        self.tx_offset = offset;
-        Poll::Ready(Ok((buf, offset + C::PRE_CHUNK_OVERHEAD)))
+        *tx_offset = buf.len();
+        buf.extend_from_slice(&[0; C::PRE_CHUNK_OVERHEAD]);
+        Poll::Ready(Ok(buf))
     }
 
-    fn commit_tx_buffer(mut self: Pin<&mut Self>, mut buffer: Buffer) -> FlowResult<()> {
+    fn commit_tx_buffer(&mut self, mut buffer: Buffer) -> FlowResult<()> {
         let Self {
             lower,
             tx_crypto: crypto,
@@ -182,10 +172,14 @@ where
             (&mut post_overhead[..]).try_into().unwrap(),
         );
         buffer.extend_from_slice(post_overhead.as_ref());
-        lower.as_mut().commit_tx_buffer(buffer)
+        lower.commit_tx_buffer(buffer)
     }
 
-    fn poll_close_tx(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
+    fn poll_flush_tx(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
+        self.lower.poll_flush_tx(cx)
+    }
+
+    fn poll_close_tx(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
         self.lower.as_mut().poll_close_tx(cx)
     }
 }

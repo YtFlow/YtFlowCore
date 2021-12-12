@@ -1,4 +1,3 @@
-use std::pin::Pin;
 use std::sync::{Arc, Weak};
 
 use futures::future::poll_fn;
@@ -27,7 +26,7 @@ impl DnsDatagramHandler {
 }
 
 impl DatagramSessionHandler for DnsDatagramHandler {
-    fn on_session(&self, mut session: Pin<Box<dyn DatagramSession>>, _context: Box<FlowContext>) {
+    fn on_session(&self, mut session: Box<dyn DatagramSession>, _context: Box<FlowContext>) {
         let resolver = match self.resolver.upgrade() {
             Some(resolver) => resolver,
             None => return,
