@@ -11,7 +11,7 @@ use super::*;
 
 #[cfg(target_vendor = "uwp")]
 fn setup_temp() {
-    use windows::Windows::Storage::ApplicationData;
+    use windows::Storage::ApplicationData;
 
     use std::sync::Once;
     static SETUP_TEMP_ONCE: Once = Once::new();
@@ -23,7 +23,7 @@ fn setup_temp() {
         static mut sqlite3_temp_directory: *mut ::std::os::raw::c_char;
     }
 
-    fn setup_temp_core() -> windows::Result<()> {
+    fn setup_temp_core() -> windows::core::Result<()> {
         let mut temp_path = ApplicationData::Current()?
             .TemporaryFolder()?
             .Path()?
