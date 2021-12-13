@@ -6,9 +6,6 @@
 #![feature(bool_to_option)]
 #![feature(vec_spare_capacity)]
 
-mod bindings {
-    windows::include_bindings!();
-}
 pub mod config;
 pub mod data;
 pub mod flow;

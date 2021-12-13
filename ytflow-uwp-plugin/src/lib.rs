@@ -2,9 +2,6 @@
 
 use std::ffi::c_void;
 
-mod bindings {
-    windows::include_bindings!();
-}
 mod collections;
 mod tun_plugin;
 mod vpn_plugin;
@@ -18,7 +15,7 @@ extern "C" fn CreateVpnPlugIn(plugin_out: *mut *mut c_void) -> i32 {
         ytflow::log::debug_log(format!("PANIC: {:?}", info));
         default_hook(info);
     }));
-    use crate::bindings::Windows::Networking::Vpn::IVpnPlugIn;
+    use windows::Networking::Vpn::IVpnPlugIn;
 
     let plugin: IVpnPlugIn = crate::vpn_plugin::VpnPlugIn::new().into();
     unsafe { *plugin_out = std::mem::transmute(plugin) };

@@ -2,11 +2,11 @@ use std::net::{SocketAddr, SocketAddrV6};
 use widestring::ucstr::U16CStr;
 
 use super::super::*;
-use crate::bindings::Windows::Foundation::EventRegistrationToken;
-use crate::bindings::Windows::Networking::Connectivity::*;
-use crate::bindings::Windows::Win32::NetworkManagement::IpHelper::*;
-use crate::bindings::Windows::Win32::Networking::WinSock::*;
-use crate::bindings::Windows::Win32::System::Diagnostics::Debug::*;
+use windows::Foundation::EventRegistrationToken;
+use windows::Networking::Connectivity::*;
+use windows::Win32::Foundation::*;
+use windows::Win32::NetworkManagement::IpHelper::*;
+use windows::Win32::Networking::WinSock::*;
 
 const INET: u16 = AF_INET.0 as u16;
 const INET6: u16 = AF_INET6.0 as u16;

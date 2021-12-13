@@ -6,9 +6,6 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[target.'cfg(windows)'.build-dependencies]
-windows = "0.21"
-
 [dependencies]
 
 # Primitive
@@ -41,6 +38,7 @@ crypto2 = { version = "0.1", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
 # UWP build is only supported since OpenSSL 3.0
 openssl = { version = "^0.10.38", features = ["vendored"] }
+openssl-sys = "=0.9.71"
 tokio-openssl = "0.6"
 
 # Data
@@ -52,7 +50,7 @@ libsqlite3-sys = "*"
 ciborium = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows = "0.21"
+windows = { version = "0.28", features = ["Networking_Connectivity", "Storage", "Win32_Networking_WinSock", "Win32_NetworkManagement_IpHelper", "Win32_System_Diagnostics_Debug"] }
 widestring = "0.5"
 
 [dependencies.smoltcp]

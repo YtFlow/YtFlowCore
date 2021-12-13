@@ -9,10 +9,7 @@ edition = "2021"
 [lib]
 crate-type = ["staticlib"]
 
-[build-dependencies]
-windows = "0.21"
-
 [dependencies]
-windows = "0.21"
+windows = { version = "0.28", features = ["alloc", "std", "build", "Foundation_Collections", "Networking_Vpn", "Networking_Sockets", "Storage_Streams", "Win32_Foundation", "Win32_System_WinRT"] }
 ytflow = { path = "../ytflow" }
 flume = { version = "0.10", default-features = false, features = [] }

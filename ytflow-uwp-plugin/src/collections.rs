@@ -1,9 +1,9 @@
-use crate::bindings::Windows;
-use crate::bindings::Windows::Foundation::Collections::*;
-use crate::bindings::Windows::Networking::HostName;
-use crate::bindings::Windows::Win32::Foundation::E_BOUNDS;
 use std::rc::Rc;
-use windows::{implement, Result, RuntimeType};
+use windows as Windows;
+use windows::core::{implement, Result, RuntimeType};
+use windows::Foundation::Collections::*;
+use windows::Networking::HostName;
+use windows::Win32::Foundation::E_BOUNDS;
 
 #[implement(
     Windows::Foundation::Collections::IVectorView<Windows::Networking::HostName>,

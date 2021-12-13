@@ -1,24 +1,24 @@
 use std::cell::RefCell;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
 use std::rc::Rc;
-use std::slice::{from_raw_parts, from_raw_parts_mut};
+use std::slice::from_raw_parts_mut;
 use std::string::ToString;
 use std::sync::Arc;
 
-use flume::{bounded, Receiver, Sender, TryRecvError};
-use windows::{implement, Interface, Result};
+use crate::collections::SimpleHostNameVectorView;
 
-use crate::bindings::Windows;
-use crate::bindings::Windows::Foundation::Collections::IVectorView;
-use crate::bindings::Windows::Networking::HostName;
-use crate::bindings::Windows::Networking::Sockets::DatagramSocket;
-use crate::bindings::Windows::Networking::Vpn::{
+use flume::{bounded, Receiver, Sender, TryRecvError};
+use windows as Windows;
+use windows::core::{implement, Interface, Result};
+use windows::Foundation::Collections::IVectorView;
+use windows::Networking::HostName;
+use windows::Networking::Sockets::DatagramSocket;
+use windows::Networking::Vpn::{
     VpnChannel, VpnDomainNameAssignment, VpnDomainNameInfo, VpnDomainNameType, VpnPacketBuffer,
     VpnPacketBufferList, VpnRoute, VpnRouteAssignment,
 };
-use crate::bindings::Windows::Storage::Streams::Buffer;
-use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
-use crate::collections::SimpleHostNameVectorView;
+use windows::Storage::Streams::Buffer;
+use windows::Win32::System::WinRT::IBufferByteAccess;
 
 /// Safety: user must ensure the output slice does not outlive the buffer instance.
 pub(crate) unsafe fn query_slice_from_ibuffer_mut(buf: &mut Buffer) -> &'static mut [u8] {
