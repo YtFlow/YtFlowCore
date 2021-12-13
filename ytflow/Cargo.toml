@@ -18,7 +18,7 @@ parking_lot = "0.11"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 thiserror = "1"
 pin-project-lite = "0.2"
-chrono = "*"
+chrono = { version = "*", features = ["serde"] }
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
@@ -49,13 +49,13 @@ refinery = { version = "0.7", features = ["rusqlite"] }
 refinery-core = "*"
 rusqlite = { version = "*", features = ["chrono", "winsqlite3"] }
 libsqlite3-sys = "*"
-ciborium = { git = "https://github.com/enarx/ciborium.git" }
+ciborium = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 windows = "0.21"
 widestring = "0.5"
 
 [dependencies.smoltcp]
-git = "https://github.com/smoltcp-rs/smoltcp.git"
+version = "0.8"
 default-features = false
 features = ["std", "log", "alloc", "medium-ip", "medium-ethernet", "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp", "async"]

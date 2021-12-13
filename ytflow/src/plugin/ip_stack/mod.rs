@@ -13,9 +13,9 @@ use std::time::Instant;
 
 use flume::{bounded, Sender, TrySendError};
 use parking_lot::{const_fair_mutex, FairMutex, FairMutexGuard};
-use smoltcp::iface::{Interface, InterfaceBuilder, Route, Routes};
+use smoltcp::iface::{Interface, InterfaceBuilder, Route, Routes, SocketHandle};
 use smoltcp::phy::{Checksum, ChecksumCapabilities, DeviceCapabilities, Medium};
-use smoltcp::socket::{SocketSet, TcpSocket};
+use smoltcp::socket::TcpSocket;
 use smoltcp::storage::RingBuffer;
 use smoltcp::wire::{
     IpAddress, IpCidr, IpEndpoint, IpProtocol, Ipv4Address, Ipv4Packet, TcpPacket, UdpPacket,
@@ -132,7 +132,7 @@ pub struct IpStack {
 struct IpStackInner {
     netif: Interface<'static, Device>,
     // TODO: (router) also record src ip
-    tcp_sockets: BTreeMap<u16, SocketSet<'static>>,
+    tcp_sockets: BTreeMap<u16, SocketHandle>,
     udp_sockets: BTreeMap<u16, Sender<(DestinationAddr, Buffer)>>,
     tcp_next: Weak<dyn StreamHandler>,
     udp_next: Weak<dyn DatagramSessionHandler>,
@@ -144,11 +144,14 @@ impl IpStack {
         tcp_next: Weak<dyn StreamHandler>,
         udp_next: Weak<dyn DatagramSessionHandler>,
     ) {
-        let netif = InterfaceBuilder::new(Device {
-            tx: None,
-            rx: None,
-            tun: tun.clone(),
-        })
+        let netif = InterfaceBuilder::new(
+            Device {
+                tx: None,
+                rx: None,
+                tun: tun.clone(),
+            },
+            Vec::with_capacity(64),
+        )
         .ip_addrs(vec![IpCidr::new(
             Ipv4Address::new(192, 168, 3, 1).into(),
             0,
@@ -254,62 +257,59 @@ impl IpStack {
         dev.rx = Some(packet);
 
         let tcp_socket_count = tcp_sockets.len();
-        let set = match tcp_sockets.entry(src_port) {
-            Entry::Occupied(ent) => ent.into_mut(),
-            Entry::Vacant(_) if !is_syn || tcp_socket_count >= 1 << 10 => return,
-            Entry::Vacant(vac) => {
-                let next = match tcp_next.upgrade() {
-                    Some(n) => n,
-                    None => return,
-                };
-                let mut socket = TcpSocket::new(
-                    // Note: The buffer sizes effectively affect overall throughput.
-                    RingBuffer::new(vec![0; 1024 * 14]),
-                    RingBuffer::new(vec![0; 10240]),
-                );
-                socket
-                    .listen(IpEndpoint::new(dst_addr.into(), dst_port))
-                    // This unwrap cannot panic for a valid TCP packet because:
-                    // 1) The socket is just created
-                    // 2) dst_port != 0
-                    .unwrap();
-                socket.set_nagle_enabled(false);
-                // The default ACK delay (10ms) significantly reduces uplink throughput.
-                // Maybe due to the delay when sending ACK packets?
-                socket.set_ack_delay(None);
-                let mut set = SocketSet::new([None]);
-                let socket_handle = set.add(socket);
-                let ctx = FlowContext {
-                    local_peer: SocketAddr::new(src_addr, src_port).into(),
-                    remote_peer: DestinationAddr {
-                        dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
-                        port: dst_port,
-                    },
-                };
-                let set = vac.insert(set);
-                tokio::spawn({
-                    let stack = self.inner.clone();
-                    async move {
-                        let mut stream = stream::IpStackStream {
-                            socket_entry: tcp_socket_entry::TcpSocketEntry {
-                                socket_handle,
-                                stack,
-                                local_port: src_port,
-                                most_recent_scheduled_poll: Arc::new(AtomicI64::new(i64::MAX)),
-                            },
-                            rx_buf: None,
-                            tx_buf: Some((Vec::with_capacity(4 * 1024), 0)),
-                        };
-                        if stream.handshake().await.is_ok() {
-                            next.on_stream(Box::new(stream) as _, Box::new(ctx));
-                        }
-                    }
-                });
-                set
+        if let Entry::Vacant(vac) = tcp_sockets.entry(src_port) {
+            if !is_syn || tcp_socket_count >= 1 << 10 {
+                return;
             }
+            let next = match tcp_next.upgrade() {
+                Some(n) => n,
+                None => return,
+            };
+            let mut socket = TcpSocket::new(
+                // Note: The buffer sizes effectively affect overall throughput.
+                RingBuffer::new(vec![0; 1024 * 14]),
+                RingBuffer::new(vec![0; 10240]),
+            );
+            socket
+                .listen(IpEndpoint::new(dst_addr.into(), dst_port))
+                // This unwrap cannot panic for a valid TCP packet because:
+                // 1) The socket is just created
+                // 2) dst_port != 0
+                .unwrap();
+            socket.set_nagle_enabled(false);
+            // The default ACK delay (10ms) significantly reduces uplink throughput.
+            // Maybe due to the delay when sending ACK packets?
+            socket.set_ack_delay(None);
+            let socket_handle = netif.add_socket(socket);
+            vac.insert(socket_handle);
+            let ctx = FlowContext {
+                local_peer: SocketAddr::new(src_addr, src_port).into(),
+                remote_peer: DestinationAddr {
+                    dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
+                    port: dst_port,
+                },
+            };
+            tokio::spawn({
+                let stack = self.inner.clone();
+                async move {
+                    let mut stream = stream::IpStackStream {
+                        socket_entry: tcp_socket_entry::TcpSocketEntry {
+                            socket_handle,
+                            stack,
+                            local_port: src_port,
+                            most_recent_scheduled_poll: Arc::new(AtomicI64::new(i64::MAX)),
+                        },
+                        rx_buf: None,
+                        tx_buf: Some((Vec::with_capacity(4 * 1024), 0)),
+                    };
+                    if stream.handshake().await.is_ok() {
+                        next.on_stream(Box::new(stream) as _, Box::new(ctx));
+                    }
+                }
+            });
         };
         let now = Instant::now();
-        let _ = netif.poll(set, now.into());
+        let _ = netif.poll(now.into());
         // Polling the socket may wake a read/write waker. When a task polls the tx/rx
         // buffer from the corresponding stream, a delayed poll will be rescheduled.
         // Therefore, we don't have to poll the socket here.
@@ -378,7 +378,6 @@ impl IpStack {
 
 fn schedule_repoll(
     stack: Arc<FairMutex<IpStackInner>>,
-    local_port: u16,
     poll_at: Instant,
     most_recent_scheduled_poll: Arc<AtomicI64>,
 ) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>> {
@@ -393,15 +392,8 @@ fn schedule_repoll(
             return;
         }
         let mut stack_guard = stack.lock();
-        let IpStackInner {
-            netif, tcp_sockets, ..
-        } = &mut *stack_guard;
-        let set = match tcp_sockets.get_mut(&local_port) {
-            Some(s) => s,
-            None => return,
-        };
-        let _ = netif.poll(set, poll_at.into());
-        if let Some(delay) = netif.poll_delay(set, poll_at.into()) {
+        let _ = stack_guard.netif.poll(poll_at.into());
+        if let Some(delay) = stack_guard.netif.poll_delay(poll_at.into()) {
             let scheduled_poll_milli =
                 (smoltcp::time::Instant::from(Instant::now()) + delay).total_millis();
             if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed).into() {
@@ -412,7 +404,6 @@ fn schedule_repoll(
 
             tokio::spawn(schedule_repoll(
                 stack_cloned,
-                local_port,
                 poll_at + delay.into(),
                 most_recent_scheduled_poll,
             ));

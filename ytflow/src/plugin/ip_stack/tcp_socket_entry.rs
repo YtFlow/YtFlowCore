@@ -3,7 +3,8 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use parking_lot::FairMutex;
-use smoltcp::socket::{SocketHandle, TcpSocket};
+use smoltcp::iface::SocketHandle;
+use smoltcp::socket::TcpSocket;
 
 use super::*;
 
@@ -31,12 +32,12 @@ pub(super) struct SocketEntryGuard<'s> {
 impl<'s> SocketEntryGuard<'s> {
     pub fn with_socket<R>(&mut self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
         let TcpSocketEntry {
-            local_port,
             socket_handle,
+            stack,
             ..
         } = self.entry;
-        let set = self.guard.tcp_sockets.get_mut(local_port).unwrap();
-        let mut socket = set.get::<TcpSocket<'static>>(*socket_handle);
+        let mut guard = stack.lock();
+        let mut socket = guard.netif.get_socket::<TcpSocket<'static>>(*socket_handle);
         f(&mut socket)
     }
 
@@ -44,17 +45,12 @@ impl<'s> SocketEntryGuard<'s> {
         let now = Instant::now();
         let Self { entry, guard } = self;
         let TcpSocketEntry {
-            local_port,
             stack,
             most_recent_scheduled_poll,
             ..
         } = entry;
-        let IpStackInner {
-            netif, tcp_sockets, ..
-        } = &mut **guard;
-        let set = tcp_sockets.get_mut(local_port).unwrap();
-        let _ = netif.poll(set, now.into());
-        if let Some(delay) = netif.poll_delay(set, now.into()) {
+        let _ = guard.netif.poll(now.into());
+        if let Some(delay) = guard.netif.poll_delay(now.into()) {
             let scheduled_poll_milli = (smoltcp::time::Instant::from(now) + delay).total_millis();
             if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed).into() {
                 return;
@@ -64,7 +60,6 @@ impl<'s> SocketEntryGuard<'s> {
 
             tokio::spawn(schedule_repoll(
                 stack.clone(),
-                *local_port,
                 now + delay.into(),
                 Arc::clone(most_recent_scheduled_poll),
             ));
