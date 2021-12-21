@@ -1,0 +1,13 @@
+namespace = "ytflow_core"
+
+[parse]
+parse_deps = true
+include = ["ytflow"]
+extra_bindings = ["ytflow"]
+
+[defines]
+"windows" = "_WIN32"
+"unix" = "__unix__"
+
+[export.mangle]
+rename_types = "SnakeCase"

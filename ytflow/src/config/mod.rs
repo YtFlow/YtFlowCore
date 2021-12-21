@@ -5,6 +5,7 @@ pub mod factory;
 mod param;
 pub mod plugin;
 mod set;
+pub mod verify;
 
 pub use error::*;
 pub use set::PluginSet;
@@ -42,8 +43,4 @@ impl<'f> ProfilePluginFactory<'f> {
         partial_set.load_all();
         (partial_set.fully_constructed, partial_set.errors)
     }
-}
-
-pub fn verify_plugin(plugin: &Plugin) -> ConfigResult<()> {
-    factory::create_factory_from_plugin(plugin).map(|_| ())
 }

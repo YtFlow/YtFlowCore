@@ -5,7 +5,6 @@ mod xchacha20;
 
 use std::convert::TryInto;
 use std::marker::PhantomData;
-
 use std::sync::Weak;
 
 use async_trait::async_trait;

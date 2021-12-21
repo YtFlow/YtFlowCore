@@ -3,7 +3,7 @@ use std::ops::Deref;
 pub(super) use std::sync::Arc;
 
 use bitflags::bitflags;
-pub(super) use serde::Deserialize;
+pub(super) use serde::{Deserialize, Serialize};
 
 pub(super) use super::param::*;
 pub(super) use super::set::*;
@@ -11,6 +11,7 @@ use super::*;
 pub(super) use crate::data::Plugin;
 
 bitflags! {
+    #[derive(Deserialize, Serialize)]
     pub struct AccessPointType: u8 {
         const STREAM_HANDLER           = 0b00000001;
         const DATAGRAM_SESSION_HANDLER = 0b00000010;
@@ -22,14 +23,14 @@ bitflags! {
     }
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub(super) struct Descriptor<D: Deref<Target = str>> {
-    pub(super) descriptor: D,
-    pub(super) r#type: AccessPointType,
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Descriptor<D: Deref<Target = str>> {
+    pub descriptor: D,
+    pub r#type: AccessPointType,
 }
 
-type DemandDescriptor<'de> = Descriptor<&'de str>;
-type ProvideDescriptor = Descriptor<String>;
+pub type DemandDescriptor<'de> = Descriptor<&'de str>;
+pub type ProvideDescriptor = Descriptor<String>;
 
 pub(super) struct ParsedPlugin<'de, F: Factory> {
     pub(super) factory: F,

@@ -1,11 +1,12 @@
 use chrono::NaiveDateTime;
-use rusqlite::{Error as SqError, OptionalExtension, Row};
+use rusqlite::{params, Error as SqError, OptionalExtension, Row};
+use serde::Serialize;
 
 use super::*;
 
 pub type ProfileId = super::Id<Profile>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Profile {
     pub id: ProfileId,
     // TODO: uuid
@@ -55,5 +56,28 @@ impl Profile {
             .filter_map(|r: Result<Profile, SqError>| r.ok())
             .collect();
         Ok(ret)
+    }
+    pub fn create(name: String, locale: String, conn: &super::Connection) -> DataResult<u32> {
+        conn.execute(
+            "INSERT INTO `yt_profiles` (`name`, `locale`) VALUES (?, ?)",
+            [name, locale],
+        )?;
+        Ok(conn.last_insert_rowid() as u32)
+    }
+    pub fn update(
+        id: u32,
+        name: String,
+        locale: String,
+        conn: &super::Connection,
+    ) -> DataResult<()> {
+        conn.execute(
+            "UPDATE `yt_profiles` SET `name` = ?, `locale` = ? WHERE `id` = ?",
+            params![name, locale, id],
+        )?;
+        Ok(())
+    }
+    pub fn delete(id: u32, conn: &super::Connection) -> DataResult<()> {
+        conn.execute("DELETE FROM `yt_profiles` WHERE `id` = ?", [id])?;
+        Ok(())
     }
 }

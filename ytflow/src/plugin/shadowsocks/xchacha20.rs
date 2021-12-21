@@ -38,14 +38,14 @@ fn v512_i8_xor_inplace(a: &mut [u8], b: &[u8]) {
 
 /// XChaCha20
 #[derive(Clone)]
-pub struct XChacha20 {
+pub(super) struct XChacha20 {
     initial_state: [u32; 16],
 }
 
 impl XChacha20 {
-    pub const KEY_LEN: usize = 32;
-    pub const BLOCK_LEN: usize = 64;
-    pub const NONCE_LEN: usize = 24;
+    pub(super) const KEY_LEN: usize = 32;
+    pub(super) const BLOCK_LEN: usize = 64;
+    pub(super) const NONCE_LEN: usize = 24;
 
     #[allow(dead_code)]
     const CHACHA20_NONCE_LEN: usize = 12;

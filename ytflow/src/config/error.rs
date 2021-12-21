@@ -6,7 +6,7 @@ pub enum ConfigError {
     ParseParam(String),
     #[error(r#"config field "{field:}" for plugin "{plugin:}" is not valid"#)]
     InvalidParam { plugin: String, field: &'static str },
-    #[error(r#"cannot find descriptor "{descriptor:}" from plugin "{initiator:}""#)]
+    #[error(r#"cannot find descriptor "{descriptor:}" from plugin "{initiator:}", or "{descriptor:}" failed to load previously"#)]
     NoAccessPoint {
         initiator: String,
         descriptor: String,

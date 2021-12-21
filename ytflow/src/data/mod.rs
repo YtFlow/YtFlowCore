@@ -5,7 +5,10 @@ mod profile;
 
 use std::marker::PhantomData;
 
-#[derive(Debug)]
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+#[serde(transparent)]
 pub struct Id<T>(u32, PhantomData<T>);
 
 impl<T> Clone for Id<T> {
@@ -20,6 +23,16 @@ impl<T> PartialEq for Id<T> {
     }
 }
 impl<T> Eq for Id<T> {}
+impl<T> From<u32> for Id<T> {
+    fn from(id: u32) -> Self {
+        Self(id, PhantomData)
+    }
+}
+impl<T> Default for Id<T> {
+    fn default() -> Self {
+        Self(u32::default(), PhantomData)
+    }
+}
 
 pub use db::Connection;
 pub use db::Database;

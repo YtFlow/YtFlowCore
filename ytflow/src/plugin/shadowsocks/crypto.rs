@@ -66,7 +66,7 @@ impl ShadowCrypto for Plain {
     }
 }
 
-pub struct XChacha20IetfPoly1305 {
+pub(super) struct XChacha20IetfPoly1305 {
     chacha20: XChacha20,
     nonce: [u8; 24],
 }
@@ -82,9 +82,9 @@ impl XChacha20IetfPoly1305 {
     pub const A_MAX: usize = usize::MAX; // 2^32 - 1
 
     #[cfg(target_pointer_width = "64")]
-    pub const P_MAX: usize = 274877906880; // (2^32 - 1) * BLOCK_LEN
+    pub(super) const P_MAX: usize = 274877906880; // (2^32 - 1) * BLOCK_LEN
     #[cfg(target_pointer_width = "32")]
-    pub const P_MAX: usize = usize::MAX; // 2^32 - 1
+    pub(super) const P_MAX: usize = usize::MAX; // 2^32 - 1
 
     #[allow(dead_code)]
     #[cfg(target_pointer_width = "64")]

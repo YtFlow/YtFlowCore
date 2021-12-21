@@ -1,11 +1,12 @@
 use chrono::NaiveDateTime;
-use rusqlite::{Error as SqError, Row};
+use rusqlite::{params, Error as SqError, Row};
+use serde::Serialize;
 
 use super::*;
 
 pub type PluginId = super::Id<Plugin>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Plugin {
     pub id: PluginId,
     pub name: String,
@@ -58,5 +59,40 @@ impl Plugin {
             .filter_map(|r: Result<Plugin, SqError>| r.ok())
             .collect();
         Ok(ret)
+    }
+    pub fn create(
+        profile_id: super::ProfileId,
+        name: String,
+        desc: String,
+        plugin: String,
+        plugin_version: u16,
+        param: String,
+        conn: &super::Connection,
+    ) -> DataResult<u32> {
+        conn.execute(
+            "INSERT INTO `yt_plugins` (`profile_id`, `name`, `desc`, `plugin`, `plugin_version`, `param`) VALUES (?, ?, ?, ?, ?, ?)",
+            params![profile_id.0, name, desc, plugin, plugin_version, param],
+        )?;
+        Ok(conn.last_insert_rowid() as _)
+    }
+    pub fn update(
+        id: u32,
+        profile_id: super::ProfileId,
+        name: String,
+        desc: String,
+        plugin: String,
+        plugin_version: u16,
+        param: String,
+        conn: &super::Connection,
+    ) -> DataResult<()> {
+        conn.execute(
+            "UPDATE `yt_plugins` SET `profile_id` = ?, `name` = ?, `desc` = ?, `plugin` = ?, `plugin_version` = ?, `param` = ? WHERE `id` = ?",
+            params![profile_id.0, name, desc, plugin, plugin_version, param, id],
+        )?;
+        Ok(())
+    }
+    pub fn delete(id: u32, conn: &super::Connection) -> DataResult<()> {
+        conn.execute("DELETE FROM `yt_plugins` WHERE `id` = ?", [id])?;
+        Ok(())
     }
 }

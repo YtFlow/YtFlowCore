@@ -50,7 +50,15 @@ libsqlite3-sys = "*"
 ciborium = "0.2"
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.28", features = ["Networking_Connectivity", "Storage", "Win32_Networking_WinSock", "Win32_NetworkManagement_IpHelper", "Win32_System_Diagnostics_Debug"] }
+windows = { version = "0.28", features = [
+    "Foundation",
+    "Networking_Connectivity",
+    "Storage",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_Networking_WinSock",
+    "Win32_Foundation",
+] }
 widestring = "0.5"
 
 [dependencies.smoltcp]

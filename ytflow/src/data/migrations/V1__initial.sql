@@ -24,3 +24,10 @@ CREATE TABLE `yt_profile_entry_plugin` (
     `plugin_id` INTEGER NOT NULL REFERENCES `plugin`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (`profile_id`,`plugin_id`),
 );
+
+CREATE TRIGGER [yt_plugins_updated]
+AFTER UPDATE ON `yt_plugins`
+FOR EACH ROW
+BEGIN
+UPDATE `yt_plugins_updated` SET `updated_at` = (strftime('&s', 'now')) WHERE `id` = old.`id`
+END
