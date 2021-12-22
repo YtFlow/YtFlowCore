@@ -163,7 +163,7 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for Compa
 
     fn poll_close_tx(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
         ready!(self.poll_flush_tx(cx))?;
-        ready!(Pin::new(&mut self.inner).poll_flush(cx))?;
+        ready!(Pin::new(&mut self.inner).poll_shutdown(cx))?;
         Poll::Ready(Ok(()))
     }
 }

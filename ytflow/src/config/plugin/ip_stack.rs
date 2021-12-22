@@ -62,7 +62,7 @@ impl<'de> Factory for IpStackFactory<'de> {
                 })
             }
         };
-        ip_stack::IpStack::run(tun, tcp_next, udp_next);
+        ip_stack::run(tun, tcp_next, udp_next);
         Ok(())
     }
 }

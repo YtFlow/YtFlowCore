@@ -20,7 +20,7 @@ use smoltcp::storage::RingBuffer;
 use smoltcp::wire::{
     IpAddress, IpCidr, IpEndpoint, IpProtocol, Ipv4Address, Ipv4Packet, TcpPacket, UdpPacket,
 };
-use tokio::time::{interval, sleep_until};
+use tokio::time::sleep_until;
 
 use crate::flow::*;
 use crate::log::debug_log;
@@ -124,10 +124,7 @@ impl<'d> smoltcp::phy::TxToken for TxToken<'d> {
     }
 }
 
-#[derive(Clone)]
-pub struct IpStack {
-    inner: Arc<FairMutex<IpStackInner>>,
-}
+type IpStack = Arc<FairMutex<IpStackInner>>;
 
 struct IpStackInner {
     netif: Interface<'static, Device>,
@@ -138,242 +135,240 @@ struct IpStackInner {
     udp_next: Weak<dyn DatagramSessionHandler>,
 }
 
-impl IpStack {
-    pub fn run(
-        tun: Arc<dyn Tun>,
-        tcp_next: Weak<dyn StreamHandler>,
-        udp_next: Weak<dyn DatagramSessionHandler>,
-    ) {
-        let netif = InterfaceBuilder::new(
-            Device {
-                tx: None,
-                rx: None,
-                tun: tun.clone(),
-            },
-            Vec::with_capacity(64),
-        )
-        .ip_addrs(vec![IpCidr::new(
-            Ipv4Address::new(192, 168, 3, 1).into(),
-            0,
-        )])
-        .any_ip(true)
-        .routes(Routes::new(
-            [(
-                IpCidr::new(Ipv4Address::UNSPECIFIED.into(), 0),
-                // TODO: Custom IP Address
-                Route::new_ipv4_gateway(Ipv4Address::new(192, 168, 3, 1)),
-            )]
-            .into_iter()
-            .collect::<BTreeMap<_, _>>(),
-        ))
-        .finalize();
+pub fn run(
+    tun: Arc<dyn Tun>,
+    tcp_next: Weak<dyn StreamHandler>,
+    udp_next: Weak<dyn DatagramSessionHandler>,
+) {
+    let netif = InterfaceBuilder::new(
+        Device {
+            tx: None,
+            rx: None,
+            tun: tun.clone(),
+        },
+        Vec::with_capacity(64),
+    )
+    .ip_addrs(vec![IpCidr::new(
+        Ipv4Address::new(192, 168, 3, 1).into(),
+        0,
+    )])
+    .any_ip(true)
+    .routes(Routes::new(
+        [(
+            IpCidr::new(Ipv4Address::UNSPECIFIED.into(), 0),
+            // TODO: Custom IP Address
+            Route::new_ipv4_gateway(Ipv4Address::new(192, 168, 3, 1)),
+        )]
+        .into_iter()
+        .collect::<BTreeMap<_, _>>(),
+    ))
+    .finalize();
 
-        let inner = Arc::new(const_fair_mutex(IpStackInner {
-            netif,
-            tcp_sockets: BTreeMap::new(),
-            udp_sockets: BTreeMap::new(),
-            tcp_next,
-            udp_next,
-        }));
-        tokio::runtime::Handle::current().spawn_blocking(move || {
-            let stack = IpStack { inner };
-            while let Some(recv_buf) = tun.blocking_recv() {
-                stack.process_packet(recv_buf);
-            }
-        });
+    let stack = Arc::new(const_fair_mutex(IpStackInner {
+        netif,
+        tcp_sockets: BTreeMap::new(),
+        udp_sockets: BTreeMap::new(),
+        tcp_next,
+        udp_next,
+    }));
+    tokio::runtime::Handle::current().spawn_blocking(move || {
+        while let Some(recv_buf) = tun.blocking_recv() {
+            process_packet(&stack, recv_buf);
+        }
+    });
+}
+
+fn process_packet(stack: &IpStack, packet: Buffer) {
+    if packet.len() < 20 {
+        return;
     }
-
-    fn process_packet(&self, packet: Buffer) {
-        if packet.len() < 20 {
+    match packet[0] >> 4 {
+        0b0100 => {
+            let mut ipv4_packet = match Ipv4Packet::new_checked(packet) {
+                Ok(p) => p,
+                Err(_) => return,
+            };
+            let (src_addr, dst_addr) = (ipv4_packet.src_addr(), ipv4_packet.dst_addr());
+            match ipv4_packet.protocol() {
+                IpProtocol::Tcp => {
+                    let p = match TcpPacket::new_checked(ipv4_packet.payload_mut()) {
+                        Ok(p) => p,
+                        Err(_) => return,
+                    };
+                    let (src_port, dst_port, is_syn) = (p.src_port(), p.dst_port(), p.syn());
+                    process_tcp(
+                        stack,
+                        smoltcp_addr_to_std(src_addr.into()),
+                        dst_addr.into(),
+                        src_port,
+                        dst_port,
+                        is_syn,
+                        ipv4_packet.into_inner(),
+                    );
+                }
+                IpProtocol::Udp => {
+                    let mut p = match UdpPacket::new_checked(ipv4_packet.payload_mut()) {
+                        Ok(p) => p,
+                        Err(_) => return,
+                    };
+                    let (src_port, dst_port) = (p.src_port(), p.dst_port());
+                    process_udp(
+                        stack,
+                        smoltcp_addr_to_std(src_addr.into()),
+                        dst_addr.into(),
+                        src_port,
+                        dst_port,
+                        p.payload_mut(),
+                    );
+                }
+                _ => return,
+            }
+        }
+        0b0110 => {
+            // TODO: IPv6
             return;
         }
-        match packet[0] >> 4 {
-            0b0100 => {
-                let mut ipv4_packet = match Ipv4Packet::new_checked(packet) {
-                    Ok(p) => p,
-                    Err(_) => return,
-                };
-                let (src_addr, dst_addr) = (ipv4_packet.src_addr(), ipv4_packet.dst_addr());
-                match ipv4_packet.protocol() {
-                    IpProtocol::Tcp => {
-                        let p = match TcpPacket::new_checked(ipv4_packet.payload_mut()) {
-                            Ok(p) => p,
-                            Err(_) => return,
-                        };
-                        let (src_port, dst_port, is_syn) = (p.src_port(), p.dst_port(), p.syn());
-                        self.process_tcp(
-                            smoltcp_addr_to_std(src_addr.into()),
-                            dst_addr.into(),
-                            src_port,
-                            dst_port,
-                            is_syn,
-                            ipv4_packet.into_inner(),
-                        );
-                    }
-                    IpProtocol::Udp => {
-                        let mut p = match UdpPacket::new_checked(ipv4_packet.payload_mut()) {
-                            Ok(p) => p,
-                            Err(_) => return,
-                        };
-                        let (src_port, dst_port) = (p.src_port(), p.dst_port());
-                        self.process_udp(
-                            smoltcp_addr_to_std(src_addr.into()),
-                            dst_addr.into(),
-                            src_port,
-                            dst_port,
-                            p.payload_mut(),
-                        );
-                    }
-                    _ => return,
-                }
-            }
-            0b0110 => {
-                // TODO: IPv6
-                return;
-            }
-            _ => return,
+        _ => return,
+    };
+}
+
+#[inline]
+fn process_tcp(
+    stack: &IpStack,
+    src_addr: IpAddr,
+    dst_addr: smoltcp::wire::IpAddress,
+    src_port: u16,
+    dst_port: u16,
+    is_syn: bool,
+    packet: Buffer,
+) {
+    let mut guard = stack.lock();
+    let IpStackInner {
+        netif,
+        tcp_sockets,
+        tcp_next,
+        ..
+    } = &mut *guard;
+
+    let dev = netif.device_mut();
+    dev.rx = Some(packet);
+
+    let tcp_socket_count = tcp_sockets.len();
+    if let Entry::Vacant(vac) = tcp_sockets.entry(src_port) {
+        if !is_syn || tcp_socket_count >= 1 << 10 {
+            return;
+        }
+        let next = match tcp_next.upgrade() {
+            Some(n) => n,
+            None => return,
         };
-    }
-
-    #[inline]
-    fn process_tcp(
-        &self,
-        src_addr: IpAddr,
-        dst_addr: smoltcp::wire::IpAddress,
-        src_port: u16,
-        dst_port: u16,
-        is_syn: bool,
-        packet: Buffer,
-    ) {
-        let mut guard = self.inner.lock();
-        let IpStackInner {
-            netif,
-            tcp_sockets,
-            tcp_next,
-            ..
-        } = &mut *guard;
-
-        let dev = netif.device_mut();
-        dev.rx = Some(packet);
-
-        let tcp_socket_count = tcp_sockets.len();
-        if let Entry::Vacant(vac) = tcp_sockets.entry(src_port) {
-            if !is_syn || tcp_socket_count >= 1 << 10 {
-                return;
-            }
-            let next = match tcp_next.upgrade() {
-                Some(n) => n,
-                None => return,
-            };
-            let mut socket = TcpSocket::new(
-                // Note: The buffer sizes effectively affect overall throughput.
-                RingBuffer::new(vec![0; 1024 * 14]),
-                RingBuffer::new(vec![0; 10240]),
-            );
-            socket
-                .listen(IpEndpoint::new(dst_addr.into(), dst_port))
-                // This unwrap cannot panic for a valid TCP packet because:
-                // 1) The socket is just created
-                // 2) dst_port != 0
-                .unwrap();
-            socket.set_nagle_enabled(false);
-            // The default ACK delay (10ms) significantly reduces uplink throughput.
-            // Maybe due to the delay when sending ACK packets?
-            socket.set_ack_delay(None);
-            let socket_handle = netif.add_socket(socket);
-            vac.insert(socket_handle);
-            let ctx = FlowContext {
-                local_peer: SocketAddr::new(src_addr, src_port).into(),
-                remote_peer: DestinationAddr {
-                    dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
-                    port: dst_port,
-                },
-            };
-            tokio::spawn({
-                let stack = self.inner.clone();
-                async move {
-                    let mut stream = stream::IpStackStream {
-                        socket_entry: tcp_socket_entry::TcpSocketEntry {
-                            socket_handle,
-                            stack,
-                            local_port: src_port,
-                            most_recent_scheduled_poll: Arc::new(AtomicI64::new(i64::MAX)),
-                        },
-                        rx_buf: None,
-                        tx_buf: Some((Vec::with_capacity(4 * 1024), 0)),
-                    };
-                    if stream.handshake().await.is_ok() {
-                        next.on_stream(Box::new(stream) as _, Box::new(ctx));
-                    }
-                }
-            });
-        };
-        let now = Instant::now();
-        let _ = netif.poll(now.into());
-        // Polling the socket may wake a read/write waker. When a task polls the tx/rx
-        // buffer from the corresponding stream, a delayed poll will be rescheduled.
-        // Therefore, we don't have to poll the socket here.
-    }
-
-    #[inline]
-    fn process_udp(
-        &self,
-        src_addr: IpAddr,
-        dst_addr: smoltcp::wire::IpAddress,
-        src_port: u16,
-        dst_port: u16,
-        payload: &mut [u8],
-    ) {
-        let mut guard = self.inner.lock();
-        let IpStackInner {
-            udp_sockets,
-            udp_next,
-            ..
-        } = &mut *guard;
-        let tx = match udp_sockets.entry(src_port) {
-            Entry::Occupied(ent) => ent.into_mut(),
-            Entry::Vacant(vac) => {
-                let next = match udp_next.upgrade() {
-                    Some(next) => next,
-                    None => return,
-                };
-                let (tx, rx) = bounded(48);
-                let stack_inner = self.inner.clone();
-                tokio::spawn(async move {
-                    next.on_session(
-                        Box::new(datagram::IpStackDatagramSession {
-                            stack: stack_inner,
-                            local_endpoint: src_addr.into(),
-                            local_port: src_port,
-                            rx: Some(rx.into_stream()),
-                            has_io_within_tick: true,
-                            timer: ManuallyDrop::new(interval(tokio::time::Duration::from_secs(
-                                120,
-                            ))),
-                        }),
-                        Box::new(FlowContext {
-                            local_peer: SocketAddr::new(src_addr, src_port),
-                            remote_peer: DestinationAddr {
-                                dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
-                                port: dst_port,
-                            },
-                        }),
-                    );
-                });
-                vac.insert(tx)
-            }
-        };
-        if let Err(TrySendError::Disconnected(_)) = tx.try_send((
-            DestinationAddr {
+        let mut socket = TcpSocket::new(
+            // Note: The buffer sizes effectively affect overall throughput.
+            RingBuffer::new(vec![0; 1024 * 14]),
+            RingBuffer::new(vec![0; 10240]),
+        );
+        socket
+            .listen(IpEndpoint::new(dst_addr.into(), dst_port))
+            // This unwrap cannot panic for a valid TCP packet because:
+            // 1) The socket is just created
+            // 2) dst_port != 0
+            .unwrap();
+        socket.set_nagle_enabled(false);
+        // The default ACK delay (10ms) significantly reduces uplink throughput.
+        // Maybe due to the delay when sending ACK packets?
+        socket.set_ack_delay(None);
+        let socket_handle = netif.add_socket(socket);
+        vac.insert(socket_handle);
+        let ctx = FlowContext {
+            local_peer: SocketAddr::new(src_addr, src_port).into(),
+            remote_peer: DestinationAddr {
                 dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
                 port: dst_port,
             },
-            payload.to_vec(),
-        )) {
-            udp_sockets.remove(&src_port);
+        };
+        tokio::spawn({
+            let stack = stack.clone();
+            async move {
+                let mut stream = stream::IpStackStream {
+                    socket_entry: tcp_socket_entry::TcpSocketEntry {
+                        socket_handle,
+                        stack,
+                        local_port: src_port,
+                        most_recent_scheduled_poll: Arc::new(AtomicI64::new(i64::MAX)),
+                    },
+                    rx_buf: None,
+                    tx_buf: Some((Vec::with_capacity(4 * 1024), 0)),
+                };
+                if stream.handshake().await.is_ok() {
+                    next.on_stream(Box::new(stream) as _, Box::new(ctx));
+                }
+            }
+        });
+    };
+    let now = Instant::now();
+    let _ = netif.poll(now.into());
+    // Polling the socket may wake a read/write waker. When a task polls the tx/rx
+    // buffer from the corresponding stream, a delayed poll will be rescheduled.
+    // Therefore, we don't have to poll the socket here.
+}
+
+#[inline]
+fn process_udp(
+    stack: &IpStack,
+    src_addr: IpAddr,
+    dst_addr: smoltcp::wire::IpAddress,
+    src_port: u16,
+    dst_port: u16,
+    payload: &mut [u8],
+) {
+    let mut guard = stack.lock();
+    let IpStackInner {
+        udp_sockets,
+        udp_next,
+        ..
+    } = &mut *guard;
+    let tx = match udp_sockets.entry(src_port) {
+        Entry::Occupied(ent) => ent.into_mut(),
+        Entry::Vacant(vac) => {
+            let next = match udp_next.upgrade() {
+                Some(next) => next,
+                None => return,
+            };
+            let (tx, rx) = bounded(48);
+            let stack_inner = stack.clone();
+            tokio::spawn(async move {
+                next.on_session(
+                    Box::new(MultiplexedDatagramSessionAdapter::new(
+                        datagram::IpStackDatagramSession {
+                            stack: stack_inner,
+                            local_endpoint: src_addr.into(),
+                            local_port: src_port,
+                        },
+                        rx.into_stream(),
+                        120,
+                    )),
+                    Box::new(FlowContext {
+                        local_peer: SocketAddr::new(src_addr, src_port),
+                        remote_peer: DestinationAddr {
+                            dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
+                            port: dst_port,
+                        },
+                    }),
+                );
+            });
+            vac.insert(tx)
         }
-        // Drop packet when buffer is full
+    };
+    if let Err(TrySendError::Disconnected(_)) = tx.try_send((
+        DestinationAddr {
+            dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
+            port: dst_port,
+        },
+        payload.to_vec(),
+    )) {
+        udp_sockets.remove(&src_port);
     }
+    // Drop packet when buffer is full
 }
 
 fn schedule_repoll(

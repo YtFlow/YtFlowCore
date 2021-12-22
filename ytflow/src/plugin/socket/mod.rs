@@ -1,12 +1,15 @@
 mod tcp;
 mod udp;
 
+use std::collections::BTreeMap;
+use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
-
 use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
+use flume::{bounded, SendError};
 use tokio::io::AsyncWriteExt;
+use tokio::net::ToSocketAddrs;
 
 use crate::flow::*;
 use crate::plugin::netif::NetifSelector;
@@ -14,6 +17,81 @@ use crate::plugin::netif::NetifSelector;
 pub struct SocketOutboundFactory {
     pub resolver: Weak<dyn Resolver>,
     pub netif_selector: Arc<NetifSelector>,
+}
+
+pub fn listen_tcp(next: Weak<dyn StreamHandler>, addr: impl ToSocketAddrs + Send + 'static) {
+    tokio::spawn(async move {
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        loop {
+            match listener.accept().await {
+                Ok((stream, connector)) => {
+                    let next = match next.upgrade() {
+                        Some(lower) => lower,
+                        None => break Ok(()),
+                    };
+                    let remote_peer = stream.local_addr()?.into();
+                    next.on_stream(
+                        Box::new(CompactFlow::new(stream, 4096)),
+                        Box::new(FlowContext {
+                            local_peer: connector,
+                            remote_peer,
+                        }),
+                    )
+                }
+                // TODO: log error
+                Err(e) => break Err(e),
+            }
+        }
+    });
+}
+
+pub fn listen_udp(
+    next: Weak<dyn DatagramSessionHandler>,
+    addr: impl ToSocketAddrs + Send + 'static,
+) {
+    let mut session_map = BTreeMap::new();
+    let null_resolver: Arc<dyn Resolver> = Arc::new(crate::plugin::null::Null);
+    tokio::spawn(async move {
+        let listener = Arc::new(tokio::net::UdpSocket::bind(addr).await?);
+        let listen_addr: DestinationAddr = listener.local_addr()?.into();
+        let mut buf = [0u8; 4096];
+        loop {
+            let (size, from) = match listener.recv_from(&mut buf).await {
+                Ok(r) => r,
+                Err(_) => {
+                    // TODO: log error
+                    break io::Result::Ok(());
+                }
+            };
+            let tx = session_map.entry(from).or_insert_with(|| {
+                let (tx, rx) = bounded(64);
+                if let Some(next) = next.upgrade() {
+                    next.on_session(
+                        Box::new(MultiplexedDatagramSessionAdapter::new(
+                            udp::UdpSocket {
+                                socket: listener.clone(),
+                                tx_buf: None,
+                                resolver: null_resolver.clone(),
+                            },
+                            rx.into_stream(),
+                            120,
+                        )),
+                        Box::new(FlowContext {
+                            local_peer: from,
+                            remote_peer: listen_addr.clone(),
+                        }),
+                    );
+                }
+                tx
+            });
+            if let Err(SendError(_)) = tx
+                .send_async((listen_addr.clone(), buf[..size].to_vec()))
+                .await
+            {
+                session_map.remove(&from);
+            }
+        }
+    });
 }
 
 #[async_trait]
@@ -104,11 +182,30 @@ impl DatagramSessionFactory for SocketOutboundFactory {
             None => return Err(FlowError::NoOutbound),
         };
         socket.writable().await?;
-        Ok(Box::new(udp::UdpSocket {
-            socket,
-            tx_buf: None,
-            rx_buf: vec![0; 2000],
-            resolver,
-        }))
+        let socket = Arc::new(socket);
+        let (tx, rx) = bounded(0);
+        tokio::spawn({
+            let socket = socket.clone();
+            async move {
+                let mut buf = [0u8; 4096];
+                loop {
+                    let (size, from) = socket.recv_from(&mut buf).await?;
+                    if let Err(SendError(_)) =
+                        tx.send_async((from.into(), buf[..size].to_vec())).await
+                    {
+                        break io::Result::Ok(());
+                    };
+                }
+            }
+        });
+        Ok(Box::new(MultiplexedDatagramSessionAdapter::new(
+            udp::UdpSocket {
+                socket,
+                tx_buf: None,
+                resolver,
+            },
+            rx.into_stream(),
+            u32::MAX as u64 - 1,
+        )))
     }
 }
