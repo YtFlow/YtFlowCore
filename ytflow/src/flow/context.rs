@@ -31,6 +31,11 @@ impl Destination {
         *self = Destination::DomainName(Name::from_utf8(domain_name).map_err(|_| ())?.to_ascii());
         Ok(())
     }
+    pub fn from_domain_name(domain_name: String) -> Result<Self, ()> {
+        let mut res = Destination::DomainName(String::new());
+        res.set_domain_name(domain_name)?;
+        Ok(res)
+    }
 }
 
 impl From<SocketAddr> for DestinationAddr {

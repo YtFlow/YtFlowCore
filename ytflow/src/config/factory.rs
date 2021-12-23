@@ -91,11 +91,13 @@ pub(super) fn create_factory_from_plugin(
         "forward" => box_result(ForwardFactory::parse(plugin)),
         "redirect" => box_result(RedirectFactory::parse(plugin)),
         "simple-dispatcher" => box_result(SimpleDispatcherFactory::parse(plugin)),
-        "trojan" => box_result(TrojanFactory::parse(plugin)),
+        "trojan-client" => box_result(TrojanFactory::parse(plugin)),
         "reject" => box_result(RejectFactory::parse(plugin)),
         "null" => box_result(NullFactory::parse(plugin)),
         "socket-listener" => box_result(SocketListenerFactory::parse(plugin)),
         "system-resolver" => box_result(SystemResolverFactory::parse(plugin)),
+        "socks5-client" => box_result(Socks5ClientFactory::parse(plugin)),
+        "socks5-server" => box_result(Socks5ServerFactory::parse(plugin)),
         _ => no_such_type_err,
     }
 }

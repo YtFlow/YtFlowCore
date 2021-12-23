@@ -187,11 +187,11 @@ mod tests {
 
     #[test]
     fn test_select() {
-        // eprintln!("{:?}", select("WLAN"));
+        eprintln!("{:?}", select("WLAN"));
         eprintln!("{:?}", select_best());
     }
 
-    // #[test]
+    #[test]
     fn test_notify() {
         use std::sync::{Arc, Condvar, Mutex};
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
