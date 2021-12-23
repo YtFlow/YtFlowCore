@@ -95,6 +95,7 @@ pub(super) fn create_factory_from_plugin(
         "reject" => box_result(RejectFactory::parse(plugin)),
         "null" => box_result(NullFactory::parse(plugin)),
         "socket-listener" => box_result(SocketListenerFactory::parse(plugin)),
+        "system-resolver" => box_result(SystemResolverFactory::parse(plugin)),
         _ => no_such_type_err,
     }
 }

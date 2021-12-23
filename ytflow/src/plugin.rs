@@ -13,5 +13,6 @@ pub mod resolve_dest;
 pub mod shadowsocks;
 pub mod simple_dispatcher;
 pub mod socket;
+pub mod system_resolver;
 pub mod tls;
 pub mod trojan;
