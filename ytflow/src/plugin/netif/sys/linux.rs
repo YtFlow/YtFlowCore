@@ -54,7 +54,7 @@ impl NetifProvider {
                 loop {
                     *known_netifs.lock() = receive_netifs(&handle).await;
                     callback();
-                    while let Some((_, _)) = messages.next().await {}
+                    let _ = messages.next().await;
                 }
             }
         });
@@ -104,7 +104,7 @@ async fn receive_netifs(handle: &Handle) -> Vec<(Netif, Recommended)> {
         });
         match (addr.header.family as _, ip_nla.as_deref()) {
             (AF_INET, Some(&[a, b, c, d])) => v4.push(Ipv4Addr::new(a, b, c, d)),
-            (AF_INET6, Some(buf)) if buf.len() >= 16 => {
+            (AF_INET6, Some(buf)) if buf.len() = 16 => {
                 let octets: &[u8; 16] = buf.try_into().unwrap();
                 v6.push((*octets).into());
             }

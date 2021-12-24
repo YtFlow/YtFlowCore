@@ -133,44 +133,44 @@ fn get_sockaddr(addr: &SOCKET_ADDRESS) -> Option<SocketAddr> {
     }
 }
 
-pub fn select(name: &str) -> Option<Netif> {
-    let adapters = enum_adapters();
-    adapters
-        .into_iter()
-        .find(|(a, _)| a.name == name)
-        .map(|(a, _)| a)
-}
-
-pub fn select_best() -> Option<Netif> {
-    let adapters = enum_adapters();
-    let mut backup = None;
-    for (adapter, rate) in adapters {
-        match rate {
-            Rate::Recommended => return Some(adapter),
-            Rate::Backup if backup.is_none() => backup = Some(adapter),
-            _ => continue,
-        }
-    }
-    backup
-}
-
-pub struct ChangeMonitor {
+pub struct NetifProvider {
     event_token: EventRegistrationToken,
 }
 
-impl ChangeMonitor {
-    pub fn new<C: Fn() + Clone + 'static>(callback: C) -> ChangeMonitor {
+impl NetifProvider {
+    pub fn new<C: Fn() + Clone + Send + 'static>(callback: C) -> NetifProvider {
         let cb_cloned = callback.clone();
         tokio::spawn(async move { cb_cloned() });
         let event_token = NetworkInformation::NetworkStatusChanged(
             NetworkStatusChangedEventHandler::new(move |_sender| Ok(callback())),
         )
         .unwrap();
-        ChangeMonitor { event_token }
+        NetifProvider { event_token }
+    }
+
+    pub fn select(&self, name: &str) -> Option<Netif> {
+        let adapters = enum_adapters();
+        adapters
+            .into_iter()
+            .find(|(a, _)| a.name == name)
+            .map(|(a, _)| a)
+    }
+
+    pub fn select_best(&self) -> Option<Netif> {
+        let adapters = enum_adapters();
+        let mut backup = None;
+        for (adapter, rate) in adapters {
+            match rate {
+                Rate::Recommended => return Some(adapter),
+                Rate::Backup if backup.is_none() => backup = Some(adapter),
+                _ => continue,
+            }
+        }
+        backup
     }
 }
 
-impl Drop for ChangeMonitor {
+impl Drop for NetifProvider {
     fn drop(&mut self) {
         NetworkInformation::RemoveNetworkStatusChanged(self.event_token).unwrap();
     }
@@ -199,7 +199,7 @@ mod tests {
         let pair = Arc::new((Mutex::new(false), Condvar::new()));
         {
             let pair = pair.clone();
-            ChangeMonitor::new(move || {
+            NetifProvider::new(move || {
                 eprintln!("Changed");
                 let mut guard = pair.0.lock().unwrap();
                 *guard = true;

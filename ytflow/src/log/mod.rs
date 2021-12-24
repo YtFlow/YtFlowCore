@@ -1,7 +1,6 @@
 #[allow(unused)]
 #[cfg(windows)]
-pub fn debug_log(log: impl AsRef<OsStr>) {
-    use std::ffi::OsStr;
+pub fn debug_log(log: impl AsRef<std::ffi::OsStr>) {
     use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Foundation::PWSTR;
     use windows::Win32::System::Diagnostics::Debug::OutputDebugStringW;
