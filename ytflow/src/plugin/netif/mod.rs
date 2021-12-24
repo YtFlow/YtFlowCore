@@ -38,26 +38,30 @@ pub struct NetifSelector {
     prefer: FamilyPreference,
     cached_netif: ArcSwap<Netif>,
     change_token: AtomicU8,
-    _monitor: sys::ChangeMonitor,
+    provider: sys::NetifProvider,
 }
 
 impl NetifSelector {
     pub fn new(selection: SelectionMode, prefer: FamilyPreference) -> Option<Arc<Self>> {
-        let netif = pick_netif(&selection, &prefer)?;
+        let dummy_netif = Netif {
+            name: String::from("dummy_netif_awaiting_change"),
+            ..Netif::default()
+        };
         Some(Arc::<Self>::new_cyclic(|this| {
             let this = this.clone();
+            let provider = sys::NetifProvider::new(move || {
+                if let Some(this) = this.upgrade() {
+                    if let Some(netif) = this.pick_netif() {
+                        this.cached_netif.store(Arc::new(netif));
+                        this.change_token.fetch_add(1, Release);
+                    }
+                }
+            });
             Self {
                 selection,
                 prefer,
-                cached_netif: ArcSwap::new(Arc::new(netif)),
-                _monitor: sys::ChangeMonitor::new(move || {
-                    if let Some(this) = this.upgrade() {
-                        if let Some(netif) = pick_netif(&this.selection, &this.prefer) {
-                            this.cached_netif.store(Arc::new(netif));
-                            this.change_token.fetch_add(1, Release);
-                        }
-                    }
-                }),
+                cached_netif: ArcSwap::new(Arc::new(dummy_netif)),
+                provider,
                 change_token: AtomicU8::new(0),
             }
         }))
@@ -67,18 +71,18 @@ impl NetifSelector {
         let guard = self.cached_netif.load();
         callback(&guard)
     }
-}
 
-fn pick_netif(selection: &SelectionMode, prefer: &FamilyPreference) -> Option<Netif> {
-    let mut netif = match selection {
-        SelectionMode::Auto => sys::select_best(),
-        SelectionMode::Manual(name) => sys::select(name.as_str()),
-        SelectionMode::Virtual(netif) => Some(netif.clone()),
-    }?;
-    match (prefer, &mut netif.ipv4_addr, &mut netif.ipv6_addr) {
-        (FamilyPreference::PreferIpv4, Some(_), v6) => *v6 = None,
-        (FamilyPreference::PreferIpv6, v4, Some(_)) => *v4 = None,
-        _ => {}
+    fn pick_netif(&self) -> Option<Netif> {
+        let mut netif = match &self.selection {
+            SelectionMode::Auto => self.provider.select_best(),
+            SelectionMode::Manual(name) => self.provider.select(name.as_str()),
+            SelectionMode::Virtual(netif) => Some(netif.clone()),
+        }?;
+        match (self.prefer, &mut netif.ipv4_addr, &mut netif.ipv6_addr) {
+            (FamilyPreference::PreferIpv4, Some(_), v6) => *v6 = None,
+            (FamilyPreference::PreferIpv6, v4, Some(_)) => *v4 = None,
+            _ => {}
+        }
+        Some(netif)
     }
-    Some(netif)
 }

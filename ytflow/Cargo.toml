@@ -36,20 +36,19 @@ base64 = "0.13"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
 crypto2 = { version = "0.1", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
-# UWP build is only supported since OpenSSL 3.0
-openssl = { version = "^0.10.38", features = ["vendored"] }
-openssl-sys = "=0.9.71"
 tokio-openssl = "0.6"
 
 # Data
 serde = { version = "1", features = ["derive"] }
 refinery = { version = "0.7", features = ["rusqlite"] }
 refinery-core = "*"
-rusqlite = { version = "*", features = ["chrono", "winsqlite3"] }
-libsqlite3-sys = "*"
 ciborium = "0.2"
 
 [target.'cfg(windows)'.dependencies]
+# UWP build is only supported since OpenSSL 3.0
+openssl = { version = "^0.10.38", features = ["vendored"] }
+openssl-sys = "=0.9.71"
+rusqlite = { version = "*", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.28", features = [
     "Foundation",
     "Networking_Connectivity",
@@ -60,6 +59,14 @@ windows = { version = "0.28", features = [
     "Win32_Foundation",
 ] }
 widestring = "0.5"
+
+[target.'cfg(not(windows))'.dependencies]
+openssl = "0.10"
+rusqlite = { version = "*", features = ["chrono"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+rtnetlink = "0.8"
+netlink-packet-route = "*"
 
 [dependencies.smoltcp]
 version = "0.8"

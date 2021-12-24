@@ -159,7 +159,9 @@ pub struct ChangeMonitor {
 }
 
 impl ChangeMonitor {
-    pub fn new<C: Fn() + 'static>(callback: C) -> ChangeMonitor {
+    pub fn new<C: Fn() + Clone + 'static>(callback: C) -> ChangeMonitor {
+        let cb_cloned = callback.clone();
+        tokio::spawn(async move { cb_cloned() });
         let event_token = NetworkInformation::NetworkStatusChanged(
             NetworkStatusChangedEventHandler::new(move |_sender| Ok(callback())),
         )
