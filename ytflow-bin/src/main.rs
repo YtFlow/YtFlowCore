@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -58,7 +59,7 @@ fn init_log(args: &ArgMatches) {
         .level(level);
     #[cfg(not(debug_assertions))]
     if !is_verbose() {
-        let dispatch = dispatch.filter(|meta| meta.target() == "ytflow_core");
+        let dispatch = dispatch.filter(|meta| meta.target().starts_with("ytflow_core"));
     }
     dispatch
         .chain(std::io::stdout())
@@ -69,8 +70,12 @@ fn init_log(args: &ArgMatches) {
 fn try_main(args: &ArgMatches) -> Result<()> {
     let db = args
         .value_of_os("db-path")
+        .map(AsRef::<Path>::as_ref)
+        .map(Path::canonicalize)
+        .transpose()
+        .with_context(|| "Failed to load database path")?
         .map(|path| {
-            info!("Connecting to database: {:?}", path);
+            info!("Connecting to database: {}", path.display());
             ytflow::data::Database::open(path)
         })
         .transpose()
