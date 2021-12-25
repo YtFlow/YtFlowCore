@@ -16,18 +16,18 @@ CREATE TABLE `yt_plugins` (
     `plugin_version` INT(4) NOT NULL DEFAULT '0',
     `param` TEXT NOT NULL,
     `updated_at` INT NOT NULL DEFAULT (strftime('%s','now')),
-    UNIQUE KEY (`profile_id`, `name`)
+    UNIQUE (`profile_id`, `name`)
 );
 
 CREATE TABLE `yt_profile_entry_plugin` (
     `profile_id` INTEGER NOT NULL REFERENCES `profile`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
     `plugin_id` INTEGER NOT NULL REFERENCES `plugin`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-    PRIMARY KEY (`profile_id`,`plugin_id`),
+    PRIMARY KEY (`profile_id`,`plugin_id`)
 );
 
 CREATE TRIGGER [yt_plugins_updated]
 AFTER UPDATE ON `yt_plugins`
 FOR EACH ROW
 BEGIN
-UPDATE `yt_plugins_updated` SET `updated_at` = (strftime('&s', 'now')) WHERE `id` = old.`id`
+UPDATE `yt_plugins_updated` SET `updated_at` = (strftime('&s', 'now')) WHERE `id` = old.`id`;
 END

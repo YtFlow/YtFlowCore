@@ -1,0 +1,19 @@
+[package]
+name = "ytflow-bin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "ytflow-core"
+path = "src/main.rs"
+
+[dependencies]
+ytflow = { path = "../ytflow" }
+clap = { version = "3.0.0-rc.8", features = ["cargo"] }
+anyhow = "1"
+fern = { version = "0.6", features = ["colored"] }
+log = "0.4"
+chrono = "0.4"
+ctrlc = "3"

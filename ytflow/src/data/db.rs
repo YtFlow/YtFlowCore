@@ -65,4 +65,12 @@ impl Database {
     pub fn connect(&self) -> DataResult<Connection> {
         connect(self.path.as_path())
     }
+
+    pub fn connect_temp() -> DataResult<Connection> {
+        setup_temp();
+        let mut db = Connection::open_in_memory()?;
+        db.pragma_update(None, "foreign_keys", &"ON")?;
+        embedded_migrations::migrations::runner().run(&mut db)?;
+        Ok(db)
+    }
 }

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "ytflow",
+    "ytflow-bin",
     "ytflow-ffi",
     "ytflow-uwp-plugin",
 ]

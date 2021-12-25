@@ -230,7 +230,10 @@ impl StreamOutboundFactory for Socks5Outbound {
 
 async fn send_response(lower: &mut dyn Stream, data: &[u8]) -> FlowResult<()> {
     use futures::future::poll_fn;
-    let len = data.len().try_into().unwrap();
+    let len = match data.len().try_into() {
+        Ok(len) => len,
+        Err(_) => return Ok(()),
+    };
     let mut tx_buf = poll_fn(|cx| lower.poll_tx_buffer(cx, len)).await?;
     tx_buf.extend(data);
     lower.commit_tx_buffer(tx_buf)?;
