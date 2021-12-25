@@ -22,7 +22,7 @@ fn get_args() -> ArgMatches {
                 .required(false)
         )
         .arg(arg!([PROFILE] "Specify the name of the profile to use"))
-        .arg(arg!(-l --"from-link" <LINK> "Generate a new profile using the provided share link as outbound, and save to the database").required(false))
+        // .arg(arg!(-l --"from-link" <LINK> "Generate a new profile using the provided share link as outbound, and save to the database").required(false))
         .arg(arg!(--"skip-grace" "Start immediately. Do not wait for 3 seconds before YtFlow starts running").required(false))
         .arg(arg!(-v --verbose "Turn on verbose logging").required(false))
         .get_matches()
