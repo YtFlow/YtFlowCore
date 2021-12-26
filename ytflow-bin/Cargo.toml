@@ -9,6 +9,10 @@ edition = "2021"
 name = "ytflow-core"
 path = "src/main.rs"
 
+[[bin]]
+name = "ytflow-edit"
+path = "src/edit.rs"
+
 [dependencies]
 ytflow = { path = "../ytflow" }
 clap = { version = "3.0.0-rc.8", features = ["cargo"] }
@@ -17,3 +21,6 @@ fern = { version = "0.6", features = ["colored"] }
 log = "0.4"
 chrono = "0.4"
 ctrlc = "3"
+
+tui = { version = "0.16", default-features = false, features = ['crossterm'] }
+crossterm = "*"

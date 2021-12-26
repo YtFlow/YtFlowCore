@@ -73,17 +73,16 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         .map(AsRef::<Path>::as_ref)
         .map(Path::canonicalize)
         .transpose()
-        .with_context(|| "Failed to load database path")?
+        .context("Failed to load database path")?
         .map(|path| {
             info!("Connecting to database: {}", path.display());
             ytflow::data::Database::open(path)
         })
         .transpose()
-        .with_context(|| "Failed to open database")?;
+        .context("Failed to open database")?;
 
     let conn = if let Some(db) = &db {
-        db.connect()
-            .with_context(|| "Failed to connect to database")?
+        db.connect().context("Failed to connect to database")?
     } else {
         info!("Connecting to database: in-memory");
         ytflow::data::Database::connect_temp().expect("Could not open in-memory database")
@@ -93,7 +92,7 @@ fn try_main(args: &ArgMatches) -> Result<()> {
     info!("Selected Profile: {}", profile_name);
 
     let all_profiles = ytflow::data::Profile::query_all(&conn)
-        .with_context(|| "Failed to load all Profiles from database")?;
+        .context("Failed to load all Profiles from database")?;
     let profile = all_profiles
         .iter()
         .find(|p| p.name == profile_name)
@@ -111,9 +110,9 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         })?;
 
     let all_plugins = ytflow::data::Plugin::query_all_by_profile(profile.id, &conn)
-        .with_context(|| "Failed to load all plugins for selected Profile from database")?;
+        .context("Failed to load all plugins for selected Profile from database")?;
     let entry_plugins = ytflow::data::Plugin::query_entry_by_profile(profile.id, &conn)
-        .with_context(|| "Failed to load entry plugins for selected Profile from database")?;
+        .context("Failed to load entry plugins for selected Profile from database")?;
     let (factory, load_errors) =
         ytflow::config::ProfilePluginFactory::parse_profile(entry_plugins.iter(), &all_plugins);
     if !load_errors.is_empty() {
@@ -129,7 +128,7 @@ fn try_main(args: &ArgMatches) -> Result<()> {
     let runtime = ytflow::tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .with_context(|| "Error initializing Tokio runtime")?;
+        .context("Error initializing Tokio runtime")?;
     let runtime_enter_guard = runtime.enter();
 
     if args.is_present("skip-grace") {
