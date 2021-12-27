@@ -24,8 +24,7 @@ pub struct VpnTunFactory<'a> {
 impl<'de> VpnTunFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
-        let config: Self =
-            parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
+        let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             factory: config,
             requires: vec![],

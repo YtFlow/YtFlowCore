@@ -78,15 +78,15 @@ pub(super) fn create_factory_from_plugin(
     use plugin::*;
     match &*plugin.plugin {
         "vpn-tun" => box_result(VpnTunFactory::parse(plugin)),
-        "shadowsocks" => box_result(ShadowsocksFactory::parse(plugin)),
+        "shadowsocks-client" => box_result(ShadowsocksFactory::parse(plugin)),
         "dns-server" => box_result(DnsServerFactory::parse(plugin)),
         "host-resolver" => box_result(HostResolverFactory::parse(plugin)),
-        "http-proxy" => box_result(HttpProxyFactory::parse(plugin)),
+        "http-proxy-client" => box_result(HttpProxyFactory::parse(plugin)),
         "ip-stack" => box_result(IpStackFactory::parse(plugin)),
         "netif" => box_result(NetifFactory::parse(plugin)),
         "resolve-dest" => box_result(ResolveDestFactory::parse(plugin)),
         "socket" => box_result(SocketFactory::parse(plugin)),
-        "tls" => box_result(TlsFactory::parse(plugin)),
+        "tls-client" => box_result(TlsFactory::parse(plugin)),
         "fake-ip" => box_result(FakeIpFactory::parse(plugin)),
         "forward" => box_result(ForwardFactory::parse(plugin)),
         "redirect" => box_result(RedirectFactory::parse(plugin)),

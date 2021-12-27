@@ -33,6 +33,11 @@ impl<T> Default for Id<T> {
         Self(u32::default(), PhantomData)
     }
 }
+impl<T> Id<T> {
+    pub const fn new(id: u32) -> Self {
+        Self(id, PhantomData)
+    }
+}
 
 pub use db::Connection;
 pub use db::Database;

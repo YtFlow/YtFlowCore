@@ -4,6 +4,7 @@ use futures::{future::poll_fn, ready};
 
 use super::*;
 
+#[derive(Debug)]
 pub enum StreamReader {
     PollSizeHint(Buffer, usize),
     PollBuffer(usize),
@@ -23,7 +24,7 @@ impl StreamReader {
                 // FIXME: is 1024 a good threshold?
                 if remaining < 1024 {
                     buf.drain(..new_offset);
-                    *offset = remaining;
+                    *offset = 0;
                 } else {
                     *offset = new_offset;
                 }

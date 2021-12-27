@@ -136,14 +136,14 @@ pub extern "C" fn ytflow_plugin_create(
     desc: *const c_char,
     plugin: *const c_char,
     plugin_version: u16,
-    param: *const c_char,
+    param: *const u8,
+    param_len: usize,
     conn: *const Connection,
 ) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
         let desc = unsafe { CStr::from_ptr(desc) };
         let plugin = unsafe { CStr::from_ptr(plugin) };
-        let param = unsafe { CStr::from_ptr(param) };
         let conn = unsafe { &*conn };
         Plugin::create(
             profile_id.into(),
@@ -151,7 +151,7 @@ pub extern "C" fn ytflow_plugin_create(
             desc.to_string_lossy().into_owned(),
             plugin.to_string_lossy().into_owned(),
             plugin_version,
-            param.to_string_lossy().into_owned(),
+            unsafe { std::slice::from_raw_parts(param, param_len).to_vec() },
             conn,
         )
         .map(|id| (id as _, 0))
@@ -166,14 +166,14 @@ pub extern "C" fn ytflow_plugin_update(
     desc: *const c_char,
     plugin: *const c_char,
     plugin_version: u16,
-    param: *const c_char,
+    param: *const u8,
+    param_len: usize,
     conn: *const Connection,
 ) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
         let desc = unsafe { CStr::from_ptr(desc) };
         let plugin = unsafe { CStr::from_ptr(plugin) };
-        let param = unsafe { CStr::from_ptr(param) };
         let conn = unsafe { &*conn };
         Plugin::update(
             plugin_id.into(),
@@ -182,7 +182,7 @@ pub extern "C" fn ytflow_plugin_update(
             desc.to_string_lossy().into_owned(),
             plugin.to_string_lossy().into_owned(),
             plugin_version,
-            param.to_string_lossy().into_owned(),
+            unsafe { std::slice::from_raw_parts(param, param_len).to_vec() },
             conn,
         )
         .map(|()| (null_mut(), 0))
@@ -194,5 +194,29 @@ pub extern "C" fn ytflow_plugin_delete(plugin_id: u32, conn: *const Connection) 
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Plugin::delete(plugin_id.into(), conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_plugin_set_as_entry(
+    plugin_id: u32,
+    profile_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        Plugin::set_as_entry(profile_id.into(), plugin_id.into(), conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_plugin_unset_as_entry(
+    plugin_id: u32,
+    profile_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        Plugin::unset_as_entry(profile_id.into(), plugin_id.into(), conn).map(|()| (null_mut(), 0))
     }))
 }

@@ -40,9 +40,10 @@ tokio-openssl = "0.6"
 
 # Data
 serde = { version = "1", features = ["derive"] }
+serde_bytes = "0.11"
 refinery = { version = "0.7", features = ["rusqlite"] }
 refinery-core = "*"
-ciborium = "0.2"
+cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
 
 [target.'cfg(windows)'.dependencies]
 # UWP build is only supported since OpenSSL 3.0

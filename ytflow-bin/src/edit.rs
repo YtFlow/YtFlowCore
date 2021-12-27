@@ -5,7 +5,7 @@ use clap::{app_from_crate, arg, ArgMatches};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -15,6 +15,7 @@ use tui::{
     Terminal,
 };
 
+mod gen;
 use ytflow::data::{Connection, Database, Profile, ProfileId};
 
 const BG: Color = Color::Black;
@@ -29,16 +30,11 @@ const fn bg_rev(focus: bool) -> Color {
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = get_args();
-    let conn = match get_db_conn(&args) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("{}", e);
-            std::process::exit(1);
-        }
-    };
-    run_tui(conn);
+    let conn = get_db_conn(&args)?;
+    run_tui(conn)?;
+    Ok(())
 }
 
 fn get_args() -> ArgMatches {
@@ -54,12 +50,11 @@ fn get_db_conn(args: &ArgMatches) -> Result<Connection> {
     Ok(conn)
 }
 
-fn run_tui(conn: Connection) {
-    enable_raw_mode().unwrap();
+fn run_tui(conn: Connection) -> Result<()> {
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture).unwrap();
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend).expect("Cannot create terminal");
+    let mut terminal = Terminal::new(backend).context("Could not create terminal")?;
     terminal.clear().unwrap();
     terminal.hide_cursor().unwrap();
     let mut ctx = AppContext {
@@ -68,7 +63,6 @@ fn run_tui(conn: Connection) {
     };
     let res = run_main_loop(&mut ctx);
     let mut terminal = ctx.term;
-    disable_raw_mode().unwrap();
     execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,
@@ -76,9 +70,7 @@ fn run_tui(conn: Connection) {
     )
     .unwrap();
     terminal.show_cursor().unwrap();
-    if let Err(e) = res {
-        eprintln!("{}", e);
-    }
+    res
 }
 
 struct AppContext {
@@ -88,6 +80,7 @@ struct AppContext {
 
 enum NavChoice {
     MainView,
+    NewProfileView,
     ProfileView(ProfileId),
     Back,
 }
@@ -97,6 +90,7 @@ fn run_main_loop(ctx: &mut AppContext) -> Result<()> {
     loop {
         let next_nav_choice = match nav_choices.last() {
             Some(NavChoice::MainView) => run_main_view(ctx)?,
+            Some(NavChoice::NewProfileView) => run_new_profile_view(ctx)?,
             Some(NavChoice::ProfileView(_)) => todo!(),
             Some(NavChoice::Back) => {
                 nav_choices.pop(); // Pop "Back" out
@@ -111,23 +105,25 @@ fn run_main_loop(ctx: &mut AppContext) -> Result<()> {
 
 fn run_main_view(ctx: &mut AppContext) -> Result<NavChoice> {
     let profiles = Profile::query_all(&ctx.conn).context("Could not query all profiles")?;
-    let size = ctx.term.size()?;
-    let vchunks = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
-        .split(size);
-    let status_bar_chunk = vchunks[1];
-    let main_chunk = vchunks[0];
-    let hchunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(30), Constraint::Max(u16::MAX)].as_ref())
-        .split(main_chunk);
-    let right_chunk = hchunks[1];
-    let left_chunk = hchunks[0];
     let mut focus_left = true;
     let mut category_state = ListState::default();
+    let mut profile_state = ListState::default();
     category_state.select(Some(0));
+
     loop {
+        let size = ctx.term.size()?;
+        let vchunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0), Constraint::Length(1)].as_ref())
+            .split(size);
+        let status_bar_chunk = vchunks[1];
+        let main_chunk = vchunks[0];
+        let hchunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Length(30), Constraint::Max(u16::MAX)].as_ref())
+            .split(main_chunk);
+        let right_chunk = hchunks[1];
+        let left_chunk = hchunks[0];
         let category_list = List::new([ListItem::new("Profiles"), ListItem::new("About")])
             .block(
                 Block::default()
@@ -170,7 +166,7 @@ https://github.com/YtFlow/YtFlowCore",
             Event::Key(KeyEvent { code, .. }) => match code {
                 KeyCode::Char('q') => break,
                 KeyCode::Char('c') if category_state.selected() == Some(0) => {
-                    return Ok(NavChoice::ProfileView(0.into()));
+                    return Ok(NavChoice::NewProfileView);
                 }
                 KeyCode::Down if focus_left => {
                     category_state.select(category_state.selected().map(|i| (i + 1) % 2));
@@ -196,4 +192,63 @@ https://github.com/YtFlow/YtFlowCore",
         };
     }
     Ok(NavChoice::Back)
+}
+
+fn run_new_profile_view(ctx: &mut AppContext) -> Result<NavChoice> {
+    let mut template_state = ListState::default();
+    template_state.select(Some(0));
+    loop {
+        let size = ctx.term.size()?;
+        let main_chunk = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(0)].as_ref())
+            .split(size)[0];
+        let template_list = List::new([
+            ListItem::new("SOCKS5 (9080) inbound + Shadowsocks outbound"),
+            ListItem::new("SOCKS5 (9080) inbound + Trojan (via TLS) outbound"),
+            ListItem::new("SOCKS5 (9080) inbound + HTTP (CONNECT) outbound"),
+        ])
+        .block(
+            Block::default()
+                .title("Choose a Template")
+                .borders(Borders::ALL),
+        )
+        .highlight_style(Style::default().bg(bg_rev(true)).fg(BG));
+        ctx.term.draw(|f| {
+            f.render_stateful_widget(template_list, main_chunk, &mut template_state);
+        })?;
+        match crossterm::event::read().unwrap() {
+            Event::Key(KeyEvent { code, .. }) => match code {
+                KeyCode::Char('q') | KeyCode::Esc => return Ok(NavChoice::Back),
+                KeyCode::Down => {
+                    template_state.select(template_state.selected().map(|i| (i + 1) % 3));
+                }
+                KeyCode::Up => {
+                    template_state.select(template_state.selected().map(|i| {
+                        if i == 0 {
+                            3
+                        } else {
+                            i - 1
+                        }
+                    }));
+                }
+                KeyCode::Enter => {
+                    let profile_id =
+                        gen::create_profile(&ctx.conn).context("Could not create profile")?;
+                    let selected = template_state.selected().unwrap_or_default();
+                    match selected {
+                        0 => {
+                            let plugins = gen::generate_shadowsocks_plugins();
+                            gen::save_plugins(plugins, profile_id, &ctx.conn)
+                                .context("Failed to save plugins")?;
+                        }
+                        _ => {}
+                    }
+                    return Ok(NavChoice::Back);
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+    }
 }

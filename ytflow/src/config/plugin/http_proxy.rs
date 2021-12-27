@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_bytes::Bytes;
 
 use crate::config::factory::*;
 use crate::config::*;
@@ -7,16 +8,15 @@ use crate::plugin::null::Null;
 
 #[derive(Deserialize)]
 pub struct HttpProxyFactory<'a> {
-    user: &'a [u8],
-    pass: &'a [u8],
+    user: &'a Bytes,
+    pass: &'a Bytes,
     tcp_next: &'a str,
 }
 
 impl<'de> HttpProxyFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
-        let config: Self =
-            parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
+        let config: Self = parse_param(name, param)?;
         let tcp_next = config.tcp_next;
         Ok(ParsedPlugin {
             factory: config,
@@ -46,7 +46,9 @@ impl<'de> Factory for HttpProxyFactory<'de> {
                     }
                 };
             http_proxy::HttpProxyOutboundFactory::new(
-                Some((self.user, self.pass)).filter(|(u, p)| !u.is_empty() && !p.is_empty()),
+                Some((self.user, self.pass))
+                    .filter(|(u, p)| !u.is_empty() && !p.is_empty())
+                    .map(|(u, p)| (&**u, &**p)),
                 tcp_next,
             )
         });

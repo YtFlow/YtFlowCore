@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_bytes::Bytes;
 
 use crate::config::factory::*;
 use crate::config::*;
@@ -7,7 +8,7 @@ use crate::plugin::trojan;
 
 #[derive(Clone, Deserialize)]
 pub struct TrojanFactory<'a> {
-    pass: &'a [u8],
+    password: &'a Bytes,
     tcp_next: &'a str,
     udp_next: &'a str,
 }
@@ -15,8 +16,7 @@ pub struct TrojanFactory<'a> {
 impl<'de> TrojanFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
-        let config: Self =
-            parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
+        let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             factory: config.clone(),
             requires: vec![
@@ -57,7 +57,7 @@ impl<'de> Factory for TrojanFactory<'de> {
                         Arc::downgrade(&(Arc::new(Null) as _))
                     }
                 };
-            trojan::TrojanStreamOutboundFactory::new(self.pass, tcp_next)
+            trojan::TrojanStreamOutboundFactory::new(self.password, tcp_next)
         });
         set.fully_constructed
             .stream_outbounds

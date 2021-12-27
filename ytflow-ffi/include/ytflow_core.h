@@ -29,7 +29,10 @@ struct FfiResult {
 
 extern "C" {
 
-FfiResult ytflow_plugin_verify(const char *plugin, uint16_t plugin_version, const char *param);
+FfiResult ytflow_plugin_verify(const char *plugin,
+                               uint16_t plugin_version,
+                               const uint8_t *param,
+                               uintptr_t param_len);
 
 #if defined(_WIN32)
 FfiResult ytflow_db_new_win32(const uint16_t *path, uintptr_t len);
@@ -65,7 +68,8 @@ FfiResult ytflow_plugin_create(uint32_t profile_id,
                                const char *desc,
                                const char *plugin,
                                uint16_t plugin_version,
-                               const char *param,
+                               const uint8_t *param,
+                               uintptr_t param_len,
                                const Connection *conn);
 
 FfiResult ytflow_plugin_update(uint32_t plugin_id,
@@ -74,10 +78,19 @@ FfiResult ytflow_plugin_update(uint32_t plugin_id,
                                const char *desc,
                                const char *plugin,
                                uint16_t plugin_version,
-                               const char *param,
+                               const uint8_t *param,
+                               uintptr_t param_len,
                                const Connection *conn);
 
 FfiResult ytflow_plugin_delete(uint32_t plugin_id, const Connection *conn);
+
+FfiResult ytflow_plugin_set_as_entry(uint32_t plugin_id,
+                                     uint32_t profile_id,
+                                     const Connection *conn);
+
+FfiResult ytflow_plugin_unset_as_entry(uint32_t plugin_id,
+                                       uint32_t profile_id,
+                                       const Connection *conn);
 
 void ytflow_result_free(FfiResult *result);
 

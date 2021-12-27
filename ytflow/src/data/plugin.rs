@@ -13,7 +13,7 @@ pub struct Plugin {
     pub desc: String,
     pub plugin: String,
     pub plugin_version: u16,
-    pub param: String,
+    pub param: Vec<u8>,
     pub updated_at: NaiveDateTime,
 }
 
@@ -66,7 +66,7 @@ impl Plugin {
         desc: String,
         plugin: String,
         plugin_version: u16,
-        param: String,
+        param: Vec<u8>,
         conn: &super::Connection,
     ) -> DataResult<u32> {
         conn.execute(
@@ -75,6 +75,28 @@ impl Plugin {
         )?;
         Ok(conn.last_insert_rowid() as _)
     }
+    pub fn set_as_entry(
+        profile_id: super::ProfileId,
+        plugin_id: PluginId,
+        conn: &super::Connection,
+    ) -> DataResult<()> {
+        conn.execute(
+            "INSERT INTO `yt_profile_entry_plugin` (`profile_id`, `plugin_id`) VALUES (?, ?)",
+            params![profile_id.0, plugin_id.0],
+        )?;
+        Ok(())
+    }
+    pub fn unset_as_entry(
+        profile_id: super::ProfileId,
+        plugin_id: PluginId,
+        conn: &super::Connection,
+    ) -> DataResult<()> {
+        conn.execute(
+            "DELETE `yt_profile_entry_plugin` WHERE `profile_id` = ? AND `plugin_id` = ?",
+            params![profile_id.0, plugin_id.0],
+        )?;
+        Ok(())
+    }
     pub fn update(
         id: u32,
         profile_id: super::ProfileId,
@@ -82,7 +104,7 @@ impl Plugin {
         desc: String,
         plugin: String,
         plugin_version: u16,
-        param: String,
+        param: Vec<u8>,
         conn: &super::Connection,
     ) -> DataResult<()> {
         conn.execute(

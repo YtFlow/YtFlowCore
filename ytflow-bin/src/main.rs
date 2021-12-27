@@ -5,13 +5,10 @@ use anyhow::{Context, Result};
 use clap::{app_from_crate, arg, ArgMatches};
 use log::{error, info, warn};
 
-fn main() {
+fn main() -> Result<()> {
     let args = get_args();
     init_log(&args);
-    if let Err(e) = try_main(&args) {
-        error!("{:?}", e);
-        std::process::exit(1);
-    }
+    try_main(&args)
 }
 
 fn get_args() -> ArgMatches {
@@ -131,12 +128,11 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         .context("Error initializing Tokio runtime")?;
     let runtime_enter_guard = runtime.enter();
 
-    if args.is_present("skip-grace") {
-        info!("Starting YtFlow...");
-    } else {
+    if !args.is_present("skip-grace") {
         info!("Starting YtFlow in 3 seconds...");
         std::thread::sleep(Duration::from_secs(3));
     }
+    info!("Starting YtFlow...");
 
     let (plugin_set, load_errors) = factory.load_all(runtime.handle());
     if !load_errors.is_empty() {
@@ -148,6 +144,7 @@ fn try_main(args: &ArgMatches) -> Result<()> {
     for load_error in load_errors {
         error!("{}", load_error);
     }
+    info!("Plugins loaded");
 
     let (ctrlc_tx, ctrlc_rx) = std::sync::mpsc::channel();
     ctrlc::set_handler(move || {

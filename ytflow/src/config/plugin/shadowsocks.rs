@@ -1,3 +1,5 @@
+use serde_bytes::Bytes;
+
 use crate::config::factory::*;
 use crate::config::*;
 use crate::plugin::null::Null;
@@ -16,8 +18,8 @@ impl<'de> ShadowsocksFactory<'de> {
         let Plugin { param, name, .. } = plugin;
         #[derive(Deserialize)]
         struct ShadowsocksConfig<'a> {
-            method: &'a [u8],
-            password: &'a [u8],
+            method: &'a Bytes,
+            password: &'a Bytes,
             tcp_next: &'a str,
             udp_next: &'a str,
         }
@@ -26,8 +28,8 @@ impl<'de> ShadowsocksFactory<'de> {
             password,
             tcp_next,
             udp_next,
-        } = parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
-        let cipher = match method {
+        } = parse_param(name, param)?;
+        let cipher = match &**method {
             b"none" | b"plain" => SupportedCipher::None,
             b"rc4" => SupportedCipher::Rc4,
             b"rc4-md5" => SupportedCipher::Rc4Md5,

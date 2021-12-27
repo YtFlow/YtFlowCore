@@ -23,8 +23,7 @@ pub struct SimpleDispatcherFactory<'a> {
 impl<'de> SimpleDispatcherFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
-        let config: Self =
-            parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
+        let config: Self = parse_param(name, param)?;
         let mut requires = Vec::with_capacity(config.rules.len() + 2);
         requires.push(Descriptor {
             descriptor: config.fallback_tcp,

@@ -60,7 +60,9 @@ async fn serve_handshake(
         let auth_method_found = reader
             .read_exact(stream, nauth as usize, |buf| buf.iter().any(|&a| a == 0x02))
             .await?;
-        if !auth_method_found {
+        if auth_method_found {
+            send_response(stream, &[0x05, 0]).await?;
+        } else {
             send_response(stream, &[0x05, 0xff]).await?;
             return Err(FlowError::UnexpectedData);
         }
@@ -94,7 +96,9 @@ async fn serve_handshake(
         let auth_method_found = reader
             .read_exact(stream, nauth as usize, |buf| buf.iter().any(|&a| a == 0))
             .await?;
-        if !auth_method_found {
+        if auth_method_found {
+            send_response(stream, &[0x05, 0]).await?;
+        } else {
             send_response(stream, &[0x05, 0xff]).await?;
             return Err(FlowError::UnexpectedData);
         }
@@ -127,7 +131,7 @@ async fn serve_handshake(
         Ok((_, len)) => len,
     };
     let dest = reader
-        .read_exact(stream, req_len, |buf| parse_dest(buf))
+        .read_exact(stream, req_len, |buf| parse_dest(&buf[3..]))
         .await?
         .ok_or(FlowError::UnexpectedData)?;
     send_response(stream, &[0x05, 0, 0, 0x01, 0, 0, 0, 0, 0, 0]).await?;

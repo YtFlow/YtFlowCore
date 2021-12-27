@@ -101,7 +101,7 @@ impl From<DataError> for FfiResult {
 impl From<ConfigError> for FfiResult {
     fn from(c: ConfigError) -> Self {
         match c {
-            ConfigError::ParseParam(p) => Self::e1(0x0800_2001, p),
+            ConfigError::ParseParam(p, inner) => Self::e2(0x0800_2001, p, inner.to_string()),
             ConfigError::InvalidParam { plugin, field } => {
                 Self::e2(0x0800_2002, plugin, field.to_string())
             }

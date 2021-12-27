@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_bytes::Bytes;
 
 use crate::config::factory::*;
 use crate::config::*;
@@ -6,8 +7,10 @@ use crate::plugin::{null::Null, reject::RejectHandler, socks5};
 
 #[derive(Clone, Deserialize)]
 struct Socks5Info<'a> {
-    user: &'a [u8],
-    pass: &'a [u8],
+    #[serde(borrow)]
+    user: &'a Bytes,
+    #[serde(borrow)]
+    pass: &'a Bytes,
 }
 
 #[derive(Deserialize)]
@@ -31,8 +34,7 @@ pub struct Socks5ClientFactory<'a> {
 impl<'de> Socks5ServerFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
-        let config: Self =
-            parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
+        let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             requires: vec![
                 Descriptor {
@@ -63,8 +65,7 @@ impl<'de> Socks5ServerFactory<'de> {
 impl<'de> Socks5ClientFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
-        let config: Self =
-            parse_param(param).ok_or_else(|| ConfigError::ParseParam(name.to_string()))?;
+        let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             requires: vec![
                 Descriptor {
@@ -105,7 +106,10 @@ impl<'de> Factory for Socks5ServerFactory<'de> {
                         Arc::downgrade(&(Arc::new(RejectHandler) as _))
                     }
                 };
-            socks5::Socks5Handler::new(self.socks5.as_ref().map(|s| (s.user, s.pass)), tcp_next)
+            socks5::Socks5Handler::new(
+                self.socks5.as_ref().map(|s| (&**s.user, &**s.pass)),
+                tcp_next,
+            )
         });
         set.fully_constructed
             .stream_handlers
@@ -127,7 +131,10 @@ impl<'de> Factory for Socks5ClientFactory<'de> {
                         Arc::downgrade(&(Arc::new(Null) as _))
                     }
                 };
-            socks5::Socks5Outbound::new(self.socks5.as_ref().map(|s| (s.user, s.pass)), tcp_next)
+            socks5::Socks5Outbound::new(
+                self.socks5.as_ref().map(|s| (&**s.user, &**s.pass)),
+                tcp_next,
+            )
         });
         set.fully_constructed
             .stream_outbounds

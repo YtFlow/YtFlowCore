@@ -21,6 +21,11 @@ fern = { version = "0.6", features = ["colored"] }
 log = "0.4"
 chrono = "0.4"
 ctrlc = "3"
+cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
+ciborium = "0.2"
+nanoid = "0.4"
+serde_bytes = "0.11"
 
 tui = { version = "0.16", default-features = false, features = ['crossterm'] }
-crossterm = "*"
+# tui 0.16.0 still uses crossterm 0.20, which crashes on Windows Terminal
+crossterm = "^0.22"

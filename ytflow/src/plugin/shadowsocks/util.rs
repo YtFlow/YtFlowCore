@@ -29,24 +29,24 @@ pub fn parse_dest(w: &[u8]) -> Option<DestinationAddr> {
     }
     let dest_type = w[0];
     let (dest_addr, port_offset) = match dest_type {
-        0x01 => {
+        0x01 if w.len() >= 7 => {
             let mut ipv4 = [0u8; 4];
             ipv4.copy_from_slice(&w[1..5]);
             (Destination::Ip(IpAddr::V4(ipv4.into())), 5)
         }
-        0x04 => {
+        0x04 if w.len() >= 19 => {
             let mut ipv6 = [0u8; 16];
             ipv6.copy_from_slice(&w[1..17]);
             (Destination::Ip(IpAddr::V6(ipv6.into())), 17)
         }
-        0x03 => {
+        0x03 if w.len() >= w[1] as usize + 4 => {
             let domain_end = w[1] as usize + 2;
             let domain = String::from_utf8_lossy(&w[2..domain_end]).to_string();
             (Destination::from_domain_name(domain).ok()?, domain_end)
         }
         _ => return None,
     };
-    let port = u16::from_be_bytes([w[2 + port_offset], w[2 + port_offset + 1]]);
+    let port = u16::from_be_bytes([w[port_offset], w[port_offset + 1]]);
     Some(DestinationAddr {
         dest: dest_addr,
         port,
