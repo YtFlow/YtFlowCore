@@ -92,7 +92,7 @@ impl Plugin {
         conn: &super::Connection,
     ) -> DataResult<()> {
         conn.execute(
-            "DELETE `yt_profile_entry_plugin` WHERE `profile_id` = ? AND `plugin_id` = ?",
+            "DELETE FROM `yt_profile_entry_plugin` WHERE `profile_id` = ? AND `plugin_id` = ?",
             params![profile_id.0, plugin_id.0],
         )?;
         Ok(())

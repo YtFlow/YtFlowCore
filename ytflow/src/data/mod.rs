@@ -9,7 +9,7 @@ use serde::Serialize;
 
 #[derive(Debug, Serialize)]
 #[serde(transparent)]
-pub struct Id<T>(u32, PhantomData<T>);
+pub struct Id<T>(pub u32, PhantomData<T>);
 
 impl<T> Clone for Id<T> {
     fn clone(&self) -> Id<T> {

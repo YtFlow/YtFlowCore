@@ -1,6 +1,7 @@
 use chrono::naive::MIN_DATETIME;
 use ciborium::cbor;
 
+pub mod defaults;
 use ytflow::data::{Connection, DataResult, Id, Plugin, PluginId, ProfileId};
 
 #[derive(Debug)]
