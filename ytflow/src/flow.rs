@@ -1,4 +1,4 @@
-mod compact;
+mod compat;
 mod context;
 mod datagram;
 mod error;
@@ -9,7 +9,7 @@ mod resolver;
 mod stream;
 mod tun;
 
-pub use compact::*;
+pub use compat::*;
 pub use context::*;
 pub use datagram::*;
 pub use error::*;

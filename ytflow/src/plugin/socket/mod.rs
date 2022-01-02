@@ -31,7 +31,7 @@ pub fn listen_tcp(next: Weak<dyn StreamHandler>, addr: impl ToSocketAddrs + Send
                     };
                     let remote_peer = stream.local_addr()?.into();
                     next.on_stream(
-                        Box::new(CompactFlow::new(stream, 4096)),
+                        Box::new(CompatFlow::new(stream, 4096)),
                         Box::new(FlowContext {
                             local_peer: connector,
                             remote_peer,
@@ -143,7 +143,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         if initial_data.len() > 0 {
             tcp_stream.write_all(initial_data).await?;
         }
-        Ok(Box::new(CompactFlow::new(tcp_stream, 4096)))
+        Ok(Box::new(CompatFlow::new(tcp_stream, 4096)))
     }
 }
 

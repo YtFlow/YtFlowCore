@@ -120,7 +120,7 @@ impl StreamForwardHandler {
         let initial_data = timeout(tokio::time::Duration::from_millis(100), async {
             let size = crate::get_request_size_boxed!(lower)?;
             initial_uplink_state = ForwardState::PollingTxBuf(size);
-            let buf = vec![0; size.with_min_content(1500)];
+            let buf = Vec::with_capacity(size.with_min_content(1500));
             lower.as_mut().commit_rx_buffer(buf).map_err(|(_, e)| e)?;
             let initial_data = crate::get_rx_buffer_boxed!(lower).map_err(|(_, e)| e);
             initial_uplink_state = ForwardState::AwatingSizeHint;

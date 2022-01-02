@@ -8,12 +8,12 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 use super::{Buffer, FlowError, FlowResult, SizeHint, Stream, StreamReader};
 
-pub struct CompactStream {
+pub struct CompatStream {
     pub inner: Box<dyn Stream>,
     pub reader: StreamReader,
 }
 
-pub struct CompactFlow<S> {
+pub struct CompatFlow<S> {
     inner: S,
     rx_buf: Option<Buffer>,
     tx_buf: Option<(Buffer, usize)>,
@@ -31,7 +31,7 @@ fn convert_error(err: FlowError) -> io::Error {
     }
 }
 
-impl<S: AsyncRead + AsyncWrite + Send + 'static> CompactFlow<S> {
+impl<S: AsyncRead + AsyncWrite + Send + 'static> CompatFlow<S> {
     pub fn new(inner: S, tx_buf_size: usize) -> Self {
         Self {
             inner,
@@ -41,7 +41,7 @@ impl<S: AsyncRead + AsyncWrite + Send + 'static> CompactFlow<S> {
     }
 }
 
-impl AsyncRead for CompactStream {
+impl AsyncRead for CompatStream {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -66,7 +66,7 @@ impl AsyncRead for CompactStream {
     }
 }
 
-impl AsyncWrite for CompactStream {
+impl AsyncWrite for CompatStream {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -96,7 +96,7 @@ impl AsyncWrite for CompactStream {
     }
 }
 
-impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for CompactFlow<S> {
+impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for CompatFlow<S> {
     // Read
     fn poll_request_size(&mut self, _cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
         Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }))
@@ -153,7 +153,7 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for Compa
         let Self { tx_buf, inner, .. } = self;
         let (tx_buf, offset) = tx_buf
             .as_mut()
-            .expect("Polling CompactFlow without previous buffer committed");
+            .expect("Polling CompatFlow without previous buffer committed");
         while *offset < tx_buf.len() {
             let written = ready!(Pin::new(&mut *inner).poll_write(cx, &tx_buf[*offset..]))?;
             *offset += written;
