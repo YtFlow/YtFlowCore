@@ -177,7 +177,7 @@ async fn perform_handshake(
     write_dest(&mut req, &context);
     send_response(&mut *stream, &req).await?;
     let granted = reader
-        .read_exact(&mut *stream, 2, |buf| buf != &[0x05, 0])
+        .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0])
         .await?;
     if granted {
         let remaining = reader
