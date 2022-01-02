@@ -5,7 +5,7 @@ use clap::{app_from_crate, arg, ArgMatches};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent},
     execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use tui::{
     backend::CrosstermBackend,
@@ -57,6 +57,7 @@ fn run_tui(conn: Connection) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).context("Could not create terminal")?;
     terminal.clear().unwrap();
+    enable_raw_mode().unwrap();
     terminal.hide_cursor().unwrap();
     let mut ctx = AppContext {
         term: terminal,
@@ -71,6 +72,7 @@ fn run_tui(conn: Connection) -> Result<()> {
     )
     .unwrap();
     terminal.show_cursor().unwrap();
+    disable_raw_mode().unwrap();
     res
 }
 
