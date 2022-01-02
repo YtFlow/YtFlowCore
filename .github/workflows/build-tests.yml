@@ -1,0 +1,41 @@
+name: Run Build and Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-bin:
+
+    strategy:
+      matrix:
+        os: ["windows-latest", "ubuntu-latest"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+
+  build-uwp:
+  
+    runs-on: windows-latest
+    env:
+      UWP_TARGET_TRIPLET: x86_64-uwp-windows-msvc
+    
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build --verbose -p ytflow-uwp-plugin -Z build-std=std,panic_abort --target $env:UWP_TARGET_TRIPLET
+    - name: Run tests
+      run: |
+        cargo test --verbose -p ytflow -Z build-std=std,panic_abort --target $env:UWP_TARGET_TRIPLET
+        cargo test --verbose -p ytflow-uwp-plugin -Z build-std=std,panic_abort --target $env:UWP_TARGET_TRIPLET
