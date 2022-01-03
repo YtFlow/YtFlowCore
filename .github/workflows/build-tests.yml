@@ -2,7 +2,7 @@ name: Run Build and Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, ci-scratch ]
   pull_request:
     branches: [ main ]
 
@@ -20,22 +20,32 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Prepare toolchain
+      run: rustup show
+    - uses: Swatinem/rust-cache@v1
+
     - name: Build
-      run: cargo build --verbose
+      run: cargo build
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
 
   build-uwp:
   
     runs-on: windows-latest
     env:
-      UWP_TARGET_TRIPLET: x86_64-uwp-windows-msvc
+      UWP_TARGET_TRIPLET: thumbv7a-uwp-windows-msvc
+      BUILD_STD_ARGS: build-std=std,panic_abort
     
     steps:
     - uses: actions/checkout@v2
+    - name: Prepare toolchain
+      run: rustup show
+    - uses: Swatinem/rust-cache@v1
+
     - name: Build
-      run: cargo build --verbose -p ytflow-uwp-plugin -Z build-std=std,panic_abort --target $env:UWP_TARGET_TRIPLET
+      run: cargo build -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
     - name: Run tests
       run: |
-        cargo test --verbose -p ytflow -Z build-std=std,panic_abort --target $env:UWP_TARGET_TRIPLET
-        cargo test --verbose -p ytflow-uwp-plugin -Z build-std=std,panic_abort --target $env:UWP_TARGET_TRIPLET
+        cargo test -p ytflow -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
+        cargo test -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
+      if: false # Until windows-rs fixes UWP targets

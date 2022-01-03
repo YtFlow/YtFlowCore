@@ -1,9 +1,12 @@
 use std::rc::Rc;
-use windows as Windows;
+use windows::core::HRESULT;
 use windows::core::{implement, Result, RuntimeType};
-use windows::Foundation::Collections::*;
-use windows::Networking::HostName;
-use windows::Win32::Foundation::E_BOUNDS;
+
+use crate::bindings::Windows;
+use crate::bindings::Windows::Foundation::Collections::*;
+use crate::bindings::Windows::Networking::HostName;
+
+const E_BOUNDS: HRESULT = HRESULT(0x8000000B);
 
 #[implement(
     Windows::Foundation::Collections::IVectorView<Windows::Networking::HostName>,

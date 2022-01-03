@@ -1,4 +1,6 @@
 namespace = "ytflow_core"
+pragma_once = true
+after_includes = "namespace ytflow_core { struct Connection; }"
 
 [parse]
 parse_deps = true

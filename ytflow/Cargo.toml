@@ -50,16 +50,11 @@ cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
 openssl = { version = "^0.10.38", features = ["vendored"] }
 openssl-sys = "=0.9.71"
 rusqlite = { version = "*", features = ["chrono", "winsqlite3"] }
-windows = { version = "0.28", features = [
-    "Foundation",
-    "Networking_Connectivity",
-    "Storage",
-    "Win32_NetworkManagement_IpHelper",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_Networking_WinSock",
-    "Win32_Foundation",
-] }
-widestring = "0.5"
+windows = { version = "0.28", features = ["alloc", "std"] }
+ipconfig = { git = "https://github.com/YtFlow/ipconfig.git", default-features = false, branch = "feat/uwp" }
+
+[target.'cfg(windows)'.build-dependencies]
+windows = { version = "0.28", features = ["alloc", "std", "build"] }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = "0.10"

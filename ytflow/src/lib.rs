@@ -7,6 +7,11 @@
 #![feature(vec_spare_capacity)]
 #![feature(ptr_metadata)]
 
+#[cfg(windows)]
+mod bindings {
+    windows::core::include_bindings!();
+}
+
 pub mod config;
 pub mod data;
 pub mod ffi;

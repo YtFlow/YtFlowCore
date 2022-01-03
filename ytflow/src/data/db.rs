@@ -11,7 +11,7 @@ use super::*;
 
 #[cfg(target_vendor = "uwp")]
 fn setup_temp() {
-    use windows::Storage::ApplicationData;
+    use crate::bindings::Windows::Storage::ApplicationData;
 
     use std::sync::Once;
     static SETUP_TEMP_ONCE: Once = Once::new();

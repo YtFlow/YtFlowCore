@@ -4,8 +4,8 @@ use flume::{Receiver, Sender, TrySendError};
 
 use ytflow::flow::*;
 
-use windows::Networking::Vpn::{VpnChannel, VpnPacketBuffer};
-use windows::Storage::Streams::Buffer as NativeBuffer;
+use crate::bindings::Windows::Networking::Vpn::{VpnChannel, VpnPacketBuffer};
+use crate::bindings::Windows::Storage::Streams::Buffer as NativeBuffer;
 
 unsafe fn token_to_native_buffer(token: TunBufferToken) -> (VpnPacketBuffer, NativeBuffer) {
     let ([vpn_buffer_ptr, buffer_ptr], _) = token.into_parts();
