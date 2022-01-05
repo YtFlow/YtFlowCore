@@ -1,14 +1,14 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::factory::*;
 use crate::config::*;
 use crate::plugin::netif;
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct NetifFactory {
-    family_preference: netif::FamilyPreference,
+    pub family_preference: netif::FamilyPreference,
     #[serde(flatten)]
-    selection: netif::SelectionMode,
+    pub selection: netif::SelectionMode,
 }
 
 impl NetifFactory {

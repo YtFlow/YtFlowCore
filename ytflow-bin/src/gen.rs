@@ -2,7 +2,10 @@ use chrono::naive::MIN_DATETIME;
 use ciborium::cbor;
 
 pub mod defaults;
-use ytflow::data::{Connection, DataResult, Id, Plugin, PluginId, ProfileId};
+use ytflow::{
+    data::{Connection, DataResult, Id, Plugin, PluginId, ProfileId},
+    flow::{Destination, DestinationAddr},
+};
 
 #[derive(Debug)]
 pub struct GeneratedPlugin {
@@ -21,7 +24,7 @@ fn serialize_cbor(val: ciborium::value::Value) -> Vec<u8> {
 fn generate_common_plugins(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     let reject = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: prefix.to_string() + "_reject",
+        name: prefix.to_string() + "-reject",
         desc: String::from("Reject any incoming requests"),
         plugin: String::from("reject"),
         plugin_version: 0,
@@ -30,7 +33,7 @@ fn generate_common_plugins(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     };
     let null = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: prefix.to_string() + "_null",
+        name: prefix.to_string() + "-null",
         desc: String::from("Return an error for any incoming requests"),
         plugin: String::from("null"),
         plugin_version: 0,
@@ -54,7 +57,7 @@ fn generate_socks5_forward(
 ) {
     let listener = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_listener"),
+        name: String::from(prefix.to_string() + "-listener"),
         desc: String::from("Listen for incoming SOCKS5 connections"),
         plugin: String::from("socket-listener"),
         plugin_version: 0,
@@ -62,8 +65,8 @@ fn generate_socks5_forward(
             cbor!({
                 "tcp_listen" => ["127.0.0.1:9080"],
                 "udp_listen" => [],
-                "tcp_next" => prefix.to_string() + "_socks5.tcp",
-                "udp_next" => prefix.to_string() + "_reject.udp",
+                "tcp_next" => prefix.to_string() + "-socks5.tcp",
+                "udp_next" => prefix.to_string() + "-reject.udp",
             })
             .expect("Cannot generate SOCKS5 listener params"),
         ),
@@ -71,14 +74,14 @@ fn generate_socks5_forward(
     };
     let socks5 = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_socks5"),
+        name: String::from(prefix.to_string() + "-socks5"),
         desc: String::from("SOCKS5 server"),
         plugin: String::from("socks5-server"),
         plugin_version: 0,
         param: serialize_cbor(
             cbor!({
-                "tcp_next" => prefix.to_string() + "_forward.tcp",
-                "udp_next" => prefix.to_string() + "_reject.udp",
+                "tcp_next" => prefix.to_string() + "-forward.tcp",
+                "udp_next" => prefix.to_string() + "-reject.udp",
             })
             .expect("Cannot generate SOCKS5 params"),
         ),
@@ -86,14 +89,14 @@ fn generate_socks5_forward(
     };
     let forward = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_forward"),
+        name: String::from(prefix.to_string() + "-forward"),
         desc: String::from("Main forwarder"),
         plugin: String::from("forward"),
         plugin_version: 0,
         param: serialize_cbor(
             cbor!({
                 "tcp_next" => tcp_next_plugin + ".tcp",
-                "udp_next" => prefix.to_string() + "_null.udp",
+                "udp_next" => prefix.to_string() + "-null.udp",
             })
             .expect("Cannot generate SOCKS5 forwarder params"),
         ),
@@ -116,7 +119,7 @@ fn generate_socks5_forward(
 fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     let sys_resolver = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_sys_resolver"),
+        name: String::from(prefix.to_string() + "-sys-resolver"),
         desc: String::from("System resolver"),
         plugin: String::from("system-resolver"),
         plugin_version: 0,
@@ -130,7 +133,7 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     };
     let netif = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_netif"),
+        name: String::from(prefix.to_string() + "-netif"),
         desc: String::from("Dummy network interface"),
         plugin: String::from("netif"),
         plugin_version: 0,
@@ -151,14 +154,14 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     };
     let socket = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_socket"),
+        name: String::from(prefix.to_string() + "-socket"),
         desc: String::from("Socket outbound"),
         plugin: String::from("socket"),
         plugin_version: 0,
         param: serialize_cbor(
             cbor!({
-                "resolver" => prefix.to_string() + "_sys_resolver.resolver",
-                "netif" => prefix.to_string() + "_netif.netif"
+                "resolver" => prefix.to_string() + "-sys-resolver.resolver",
+                "netif" => prefix.to_string() + "-netif.netif"
             })
             .expect("Cannot generate socket params"),
         ),
@@ -187,7 +190,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
 
     let ss = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_ss"),
+        name: String::from(prefix.to_string() + "-ss"),
         desc: String::from("Shadowsocks Client"),
         plugin: String::from("shadowsocks-client"),
         plugin_version: 0,
@@ -195,8 +198,8 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
             cbor!({
                 "method" => serde_bytes::Bytes::new(&b"aes-256-gcm"[..]),
                 "password" => serde_bytes::Bytes::new(&b"password"[..]),
-                "tcp_next" => prefix.to_string() + "_redir.tcp",
-                "udp_next" => prefix.to_string() + "_null.udp",
+                "tcp_next" => prefix.to_string() + "-redir.tcp",
+                "udp_next" => prefix.to_string() + "-null.udp",
             })
             .expect("Cannot generate Shadowsocks params"),
         ),
@@ -204,20 +207,17 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
     };
     let redir = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "_redir"),
+        name: String::from(prefix.to_string() + "-redir"),
         desc: String::from("Redirect to Shadowsocks server"),
         plugin: String::from("redirect"),
         plugin_version: 0,
         param: serialize_cbor(
             cbor!({
-                "dest" => {
-                    "dest" => {
-                        "type" => "DomainName",
-                        "dest" => "example.com"
-                    },
-                    "port" => 8388
+                "dest" => DestinationAddr {
+                    dest: Destination::DomainName("example.com".into()),
+                    port: 8388,
                 },
-                "tcp_next" => prefix.to_string() + "_socket",
+                "tcp_next" => prefix.to_string() + "-socket",
             })
             .expect("Cannot generate Shadowsocks redir params"),
         ),
@@ -232,7 +232,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
         is_entry: false,
     });
 
-    generate_socks5_forward(prefix, prefix.to_string() + "_ss", &mut plugins);
+    generate_socks5_forward(prefix, prefix.to_string() + "-ss", &mut plugins);
     plugins
 }
 

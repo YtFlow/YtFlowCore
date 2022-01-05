@@ -12,7 +12,7 @@ use tui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap},
     Terminal,
 };
 
@@ -855,7 +855,7 @@ fn run_plugin_type_view(
                 .highlight_style(Style::default().fg(BG).bg(FG));
             f.render_stateful_widget(left_list, left_chunk, &mut type_state);
 
-            let right_panel = Paragraph::new(type_descs[type_state.selected().unwrap()]);
+            let right_panel = Paragraph::new(type_descs[type_state.selected().unwrap()]).wrap(Wrap { trim: false });
             f.render_widget(right_panel, right_chunk);
         })?;
 
@@ -908,6 +908,16 @@ fn run_plugin_type_view(
             Event::Key(KeyEvent { code, .. }) => match code {
                 KeyCode::Char('q') | KeyCode::Esc => break,
                 KeyCode::Enter => select_confirm = true,
+                KeyCode::Down => {
+                    let selected = type_state.selected().unwrap();
+                    type_state.select(Some((selected + 1) % type_names.len()));
+                }
+                KeyCode::Up => {
+                    let selected = type_state.selected().unwrap();
+                    type_state.select(Some(
+                        selected.checked_sub(1).unwrap_or(type_names.len() - 1),
+                    ));
+                }
                 _ => (),
             },
             _ => {}

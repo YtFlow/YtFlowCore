@@ -8,9 +8,9 @@ use std::sync::{
 };
 
 use arc_swap::ArcSwap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "netif")]
 pub enum SelectionMode {
     Auto,
@@ -18,14 +18,14 @@ pub enum SelectionMode {
     Virtual(Netif),
 }
 
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum FamilyPreference {
     NoPreference,
     PreferIpv4,
     PreferIpv6,
 }
 
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Netif {
     pub name: String,
     pub ipv4_addr: Option<SocketAddrV4>,

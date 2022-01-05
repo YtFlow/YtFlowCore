@@ -22,6 +22,7 @@ chrono = "0.4"
 nanoid = "0.4"
 strum = "0.23"
 strum_macros = "0.23"
+cidr = { version = "0.2", features = ["serde"] }
 
 # CLI
 clap = { version = "3.0.0-rc.8", features = ["cargo"] }

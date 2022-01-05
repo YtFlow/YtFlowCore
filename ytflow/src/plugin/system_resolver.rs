@@ -4,20 +4,17 @@ use async_trait::async_trait;
 use lru::LruCache;
 use parking_lot::{const_mutex, Mutex};
 use tokio::net::lookup_host;
-use tokio::sync::Semaphore;
 
 use crate::flow::*;
 
 pub struct SystemResolver {
-    concurrency_limit: Semaphore,
     cache_v4: Mutex<LruCache<Ipv4Addr, String>>,
     cache_v6: Mutex<LruCache<Ipv6Addr, String>>,
 }
 
 impl SystemResolver {
-    pub fn new(concurrency_limit: usize) -> Self {
+    pub fn new() -> Self {
         Self {
-            concurrency_limit: Semaphore::new(concurrency_limit),
             cache_v4: const_mutex(LruCache::new(128)),
             cache_v6: const_mutex(LruCache::new(128)),
         }
@@ -27,7 +24,6 @@ impl SystemResolver {
 #[async_trait]
 impl Resolver for SystemResolver {
     async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
-        let _permit = self.concurrency_limit.acquire().await.unwrap();
         let ips = lookup_host(domain.clone() + ":0").await?;
         let mut cache = self.cache_v4.lock();
         Ok(ips
@@ -39,7 +35,6 @@ impl Resolver for SystemResolver {
             .collect())
     }
     async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
-        let _permit = self.concurrency_limit.acquire().await.unwrap();
         let ips = lookup_host(domain.clone() + ":0").await?;
         let mut cache = self.cache_v6.lock();
         Ok(ips

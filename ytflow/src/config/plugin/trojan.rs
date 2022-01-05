@@ -9,8 +9,7 @@ use crate::plugin::trojan;
 #[derive(Clone, Deserialize)]
 pub struct TrojanFactory<'a> {
     password: &'a Bytes,
-    tcp_next: &'a str,
-    udp_next: &'a str,
+    tls_next: &'a str,
 }
 
 impl<'de> TrojanFactory<'de> {
@@ -19,16 +18,10 @@ impl<'de> TrojanFactory<'de> {
         let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             factory: config.clone(),
-            requires: vec![
-                Descriptor {
-                    descriptor: config.tcp_next,
-                    r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
-                },
-                Descriptor {
-                    descriptor: config.udp_next,
-                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
-                },
-            ],
+            requires: vec![Descriptor {
+                descriptor: config.tls_next,
+                r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
+            }],
             provides: vec![
                 Descriptor {
                     descriptor: name.to_string() + ".tcp",
@@ -49,15 +42,15 @@ impl<'de> Factory for TrojanFactory<'de> {
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
-            let tcp_next =
-                match set.get_or_create_stream_outbound(plugin_name.clone(), self.tcp_next) {
+            let tls_next =
+                match set.get_or_create_stream_outbound(plugin_name.clone(), self.tls_next) {
                     Ok(t) => t,
                     Err(e) => {
                         set.errors.push(e);
                         Arc::downgrade(&(Arc::new(Null) as _))
                     }
                 };
-            trojan::TrojanStreamOutboundFactory::new(self.password, tcp_next)
+            trojan::TrojanStreamOutboundFactory::new(self.password, tls_next)
         });
         set.fully_constructed
             .stream_outbounds

@@ -1,8 +1,8 @@
 use std::net::{IpAddr, SocketAddr};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "dest")]
 pub enum Destination {
     DomainName(String),
@@ -18,7 +18,7 @@ impl ToString for Destination {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DestinationAddr {
     pub dest: Destination,
     pub port: u16,
