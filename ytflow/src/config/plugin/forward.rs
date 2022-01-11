@@ -7,7 +7,7 @@ use crate::plugin::null::Null;
 
 #[derive(Clone, Deserialize)]
 pub struct ForwardFactory<'a> {
-    #[serde(default = 100)]
+    #[serde(default = "100")]
     request_timeout: u64,
     tcp_next: &'a str,
     udp_next: &'a str,
