@@ -7,6 +7,8 @@ use crate::plugin::null::Null;
 
 #[derive(Clone, Deserialize)]
 pub struct ForwardFactory<'a> {
+    #[serde(default = 100)]
+    request_timeout: u64,
     tcp_next: &'a str,
     udp_next: &'a str,
 }
@@ -54,7 +56,10 @@ impl<'de> Factory for ForwardFactory<'de> {
                         Arc::downgrade(&(Arc::new(Null)))
                     }
                 };
-            forward::StreamForwardHandler { outbound: tcp_next }
+            forward::StreamForwardHandler {
+                outbound: tcp_next,
+                request_timeout: self.request_timeout,
+            }
         });
         let udp_factory = Arc::new_cyclic(|weak| {
             set.datagram_handlers

@@ -103,6 +103,7 @@ impl<'l, 'r> Future for StreamForward<'l, 'r> {
 
 #[derive(Clone)]
 pub struct StreamForwardHandler {
+    pub request_timeout: u64,
     pub outbound: Weak<dyn StreamOutboundFactory>,
 }
 
@@ -114,21 +115,26 @@ impl StreamForwardHandler {
     async fn handle_stream(
         outbound_factory: Arc<dyn StreamOutboundFactory>,
         mut lower: Box<dyn Stream>,
+        request_timeout: u64,
         context: Box<FlowContext>,
     ) -> FlowResult<()> {
         let mut initial_uplink_state = ForwardState::AwatingSizeHint;
-        let initial_data = timeout(tokio::time::Duration::from_millis(100), async {
-            let size = crate::get_request_size_boxed!(lower)?;
-            initial_uplink_state = ForwardState::PollingTxBuf(size);
-            let buf = Vec::with_capacity(size.with_min_content(1500));
-            lower.as_mut().commit_rx_buffer(buf).map_err(|(_, e)| e)?;
-            let initial_data = crate::get_rx_buffer_boxed!(lower).map_err(|(_, e)| e);
-            initial_uplink_state = ForwardState::AwatingSizeHint;
-            initial_data
-        })
-        .await
-        .ok()
-        .transpose()?;
+        let initial_data = if request_timeout == 0 {
+            None
+        } else {
+            timeout(tokio::time::Duration::from_millis(request_timeout), async {
+                let size = crate::get_request_size_boxed!(lower)?;
+                initial_uplink_state = ForwardState::PollingTxBuf(size);
+                let buf = Vec::with_capacity(size.with_min_content(1500));
+                lower.as_mut().commit_rx_buffer(buf).map_err(|(_, e)| e)?;
+                let initial_data = crate::get_rx_buffer_boxed!(lower).map_err(|(_, e)| e);
+                initial_uplink_state = ForwardState::AwatingSizeHint;
+                initial_data
+            })
+            .await
+            .ok()
+            .transpose()?
+        };
 
         // TODO: outbound handshake timeout
         let initial_data_ref = initial_data.as_deref().unwrap_or(&[]);
@@ -184,7 +190,12 @@ impl StreamForwardHandler {
 impl StreamHandler for StreamForwardHandler {
     fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
         if let Some(outbound) = self.outbound.upgrade() {
-            tokio::spawn(Self::handle_stream(outbound, lower, context));
+            tokio::spawn(Self::handle_stream(
+                outbound,
+                lower,
+                self.request_timeout,
+                context,
+            ));
         }
     }
 }
