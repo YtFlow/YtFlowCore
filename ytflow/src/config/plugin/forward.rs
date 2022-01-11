@@ -5,9 +5,13 @@ use crate::config::*;
 use crate::plugin::forward;
 use crate::plugin::null::Null;
 
+fn default_request_timeout() -> u64 {
+    100
+}
+
 #[derive(Clone, Deserialize)]
 pub struct ForwardFactory<'a> {
-    #[serde(default = "100")]
+    #[serde(default = "default_request_timeout")]
     request_timeout: u64,
     tcp_next: &'a str,
     udp_next: &'a str,
