@@ -78,7 +78,8 @@ impl AsyncWrite for CompatStream {
         };
         let inner = self.inner.as_mut();
         let mut tx_buf = ready!(inner.poll_tx_buffer(cx, len)).map_err(convert_error)?;
-        tx_buf.copy_from_slice(buf);
+        tx_buf.extend_from_slice(buf);
+        inner.commit_tx_buffer(tx_buf).map_err(convert_error)?;
         Poll::Ready(Ok(len.get()))
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
@@ -158,6 +159,7 @@ impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for Compa
             let written = ready!(Pin::new(&mut *inner).poll_write(cx, &tx_buf[*offset..]))?;
             *offset += written;
         }
+        ready!(Pin::new(&mut *inner).poll_flush(cx))?;
         Poll::Ready(Ok(()))
     }
 
