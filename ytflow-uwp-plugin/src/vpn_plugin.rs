@@ -30,7 +30,7 @@ static APP_SETTINGS: SyncOnceCell<ApplicationDataContainer> = SyncOnceCell::new(
 
 /// Safety: user must ensure the output slice does not outlive the buffer instance.
 pub(crate) unsafe fn query_slice_from_ibuffer_mut(buf: &mut Buffer) -> &'static mut [u8] {
-    let len = buf.Length().unwrap() as _;
+    let len = buf.Capacity().unwrap() as _;
     let byte_access: IBufferByteAccess = buf.cast().unwrap();
     #[allow(unused_unsafe)]
     unsafe {
@@ -88,8 +88,7 @@ fn connect_with_factory(
     let proxy: Result<Vec<_>> = factory
         .web_proxy
         .iter()
-        .copied()
-        .map(HostName::CreateHostName)
+        .map(|s| HostName::CreateHostName(&**s))
         .collect();
     let dnsinfo = VpnDomainNameInfo::CreateVpnDomainNameInfo(
         ".",
@@ -116,6 +115,7 @@ struct VpnPlugInInner {
     tx_buf_rx: Receiver<VpnPacketBuffer>,
     rx_buf_tx: Sender<Vec<u8>>,
     rt: ytflow::tokio::runtime::Runtime,
+    plugin_set: ytflow::config::PluginSet,
 }
 
 #[implement(Windows::Networking::Vpn::IVpnPlugIn)]
@@ -222,20 +222,15 @@ impl VpnPlugIn {
             Err(e) => return Err(format!("Cannot create tokio runtime: {}", e).into()),
         };
 
-        let tx_buf_rx_cell = Rc::new(RefCell::new(None));
-        let rx_buf_tx_cell = Rc::new(RefCell::new(None));
+        let vpn_items_cell = Rc::new(RefCell::new(None));
         ytflow::config::plugin::ON_VPNTUN.with(|cb| {
-            let tx_buf_rx_cell = tx_buf_rx_cell.clone();
-            let rx_buf_tx_cell = rx_buf_tx_cell.clone();
+            let vpn_items_cell = vpn_items_cell.clone();
             let channel = channel.clone();
             *cb.borrow_mut() = Some(Box::new(move |f| {
                 // TODO: bounded? capacity?
                 let (tx_buf_tx, tx_buf_rx) = bounded(16);
                 let (rx_buf_tx, rx_buf_rx) = bounded::<Vec<u8>>(16);
-                *tx_buf_rx_cell.borrow_mut() = Some(tx_buf_rx);
-                *rx_buf_tx_cell.borrow_mut() = Some(rx_buf_tx);
-
-                let _ = connect_with_factory(&transport, f, &channel);
+                *vpn_items_cell.borrow_mut() = Some((tx_buf_rx, rx_buf_tx, f.clone()));
 
                 Arc::new(super::tun_plugin::VpnTun {
                     tx: tx_buf_tx,
@@ -248,36 +243,42 @@ impl VpnPlugIn {
 
         let rt_handle = rt.handle();
         let (set, errors) = factory.load_all(&rt_handle);
-        let (tx_buf_rx, rx_buf_tx) = if let (Some(tx_buf_rx), Some(rx_buf_tx), []) = (
-            tx_buf_rx_cell.borrow_mut().take(),
-            rx_buf_tx_cell.borrow_mut().take(),
-            &*errors,
-        ) {
-            (tx_buf_rx, rx_buf_tx)
+        let mut error_str = if errors.is_empty() {
+            String::from("There must be exactly one vpn-tun entry plugin in a profile")
         } else {
-            let error_str = if errors.is_empty() {
-                String::from("There must be exactly one vpn-tun plugin in a profile")
-            } else {
-                let it = std::iter::once(String::from("Failed to instantiate plugins: "));
-                let it = it.chain(errors.iter().map(ToString::to_string));
-                it.collect::<Vec<_>>().join("\r\n")
-            };
-            {
-                let _enter_guard = rt_handle.enter();
-                drop(set);
-            }
-            rt.shutdown_background();
-            ytflow::config::plugin::ON_VPNTUN.with(|cb| drop(cb.borrow_mut().take()));
-            return Err(error_str.into());
+            let it = std::iter::once(String::from("Failed to instantiate plugins: "));
+            let it = it.chain(errors.iter().map(ToString::to_string));
+            it.collect::<Vec<_>>().join("\r\n")
         };
 
-        self.0 = Some(VpnPlugInInner {
-            tx_buf_rx,
-            rx_buf_tx,
-            rt,
-        });
-
-        Ok(())
+        loop {
+            if let (Some(vpn_items), []) = (vpn_items_cell.borrow_mut().take(), &*errors) {
+                let (tx_buf_rx, rx_buf_tx, vpn_tun_factory) = vpn_items;
+                match connect_with_factory(&transport, &vpn_tun_factory, &channel) {
+                    Ok(()) => {
+                        self.0 = Some(VpnPlugInInner {
+                            tx_buf_rx,
+                            rx_buf_tx,
+                            rt,
+                            plugin_set: set,
+                        });
+                        break Ok(());
+                    }
+                    Err(e) => {
+                        error_str += &format!("\r\nFailed to Connect VPN Tunnel: {}", e);
+                        continue;
+                    }
+                }
+            } else {
+                {
+                    let _enter_guard = rt_handle.enter();
+                    drop(set);
+                }
+                rt.shutdown_background();
+                ytflow::config::plugin::ON_VPNTUN.with(|cb| drop(cb.borrow_mut().take()));
+                break Err(error_str.into());
+            };
+        }
     }
 
     fn Connect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
@@ -298,6 +299,7 @@ impl VpnPlugIn {
             let _enter_guard = inner.rt.enter();
             drop(inner.rx_buf_tx);
             drop(inner.tx_buf_rx);
+            drop(inner.plugin_set);
         }
         Ok(())
     }
@@ -324,11 +326,12 @@ impl VpnPlugIn {
         for _ in 0..packet_count {
             let vpn_buffer = packets.RemoveAtBegin()?;
             let mut buffer = vpn_buffer.Buffer()?;
+            let len = buffer.Capacity().unwrap() as _;
             let slice = unsafe { query_slice_from_ibuffer_mut(&mut buffer) };
-            let mut buf = Vec::with_capacity(slice.len());
+            let mut buf = Vec::with_capacity(len);
             unsafe {
-                std::ptr::copy_nonoverlapping(slice.as_mut_ptr(), buf.as_mut_ptr(), slice.len());
-                buf.set_len(slice.len());
+                std::ptr::copy_nonoverlapping(slice.as_mut_ptr(), buf.as_mut_ptr(), len);
+                buf.set_len(len);
             }
             if let Err(_) = rx_buf_tx.send(buf) {
                 return Ok(());

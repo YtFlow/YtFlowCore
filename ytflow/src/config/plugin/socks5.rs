@@ -113,7 +113,7 @@ impl<'de> Factory for Socks5ServerFactory<'de> {
         });
         set.fully_constructed
             .stream_handlers
-            .insert(plugin_name, factory);
+            .insert(plugin_name + ".tcp", factory);
         Ok(())
     }
 }
@@ -138,7 +138,7 @@ impl<'de> Factory for Socks5ClientFactory<'de> {
         });
         set.fully_constructed
             .stream_outbounds
-            .insert(plugin_name, factory);
+            .insert(plugin_name + ".tcp", factory);
         Ok(())
     }
 }

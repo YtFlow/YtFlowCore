@@ -51,7 +51,7 @@ impl<'de> Factory for DnsServerFactory<'de> {
         }
         set.fully_constructed
             .datagram_handlers
-            .insert(plugin_name, factory);
+            .insert(plugin_name + ".udp", factory);
         Ok(())
     }
 }

@@ -31,13 +31,8 @@ pub(super) struct SocketEntryGuard<'s> {
 
 impl<'s> SocketEntryGuard<'s> {
     pub fn with_socket<R>(&mut self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
-        let TcpSocketEntry {
-            socket_handle,
-            stack,
-            ..
-        } = self.entry;
-        let mut guard = stack.lock();
-        let mut socket = guard.netif.get_socket::<TcpSocket<'static>>(*socket_handle);
+        let handle = self.entry.socket_handle;
+        let mut socket = self.guard.netif.get_socket::<TcpSocket<'static>>(handle);
         f(&mut socket)
     }
 

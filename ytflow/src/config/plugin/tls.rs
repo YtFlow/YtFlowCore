@@ -47,7 +47,7 @@ impl<'de> Factory for TlsFactory<'de> {
         });
         set.fully_constructed
             .stream_outbounds
-            .insert(plugin_name, factory);
+            .insert(plugin_name + ".tcp", factory);
         Ok(())
     }
 }

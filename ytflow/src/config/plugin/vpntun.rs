@@ -12,17 +12,18 @@ thread_local! {
 }
 
 #[derive(Clone, Deserialize)]
-pub struct VpnTunFactory<'a> {
+pub struct VpnTunFactory {
     pub ipv4: Option<Ipv4Addr>,
     pub ipv6: Option<Ipv6Addr>,
     pub ipv4_route: Vec<Ipv4Cidr>,
     pub ipv6_route: Vec<Ipv6Cidr>,
     pub dns: Vec<IpAddr>,
-    pub web_proxy: Option<&'a str>,
+    // Use String so that the struct can be 'static.
+    pub web_proxy: Option<String>,
 }
 
-impl<'de> VpnTunFactory<'de> {
-    pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
+impl VpnTunFactory {
+    pub(in super::super) fn parse(plugin: &Plugin) -> ConfigResult<ParsedPlugin<'_, Self>> {
         let Plugin { name, param, .. } = plugin;
         let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
@@ -35,15 +36,15 @@ impl<'de> VpnTunFactory<'de> {
         })
     }
 }
-impl<'de> Factory for VpnTunFactory<'de> {
+impl Factory for VpnTunFactory {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         let tun = (ON_VPNTUN.with(|cb| cb.borrow_mut().take())).ok_or_else(|| {
             ConfigError::TooManyPlugin {
-                plugin: plugin_name.clone(),
+                plugin: plugin_name.clone() + ".tun",
                 r#type: "vpn-tun",
             }
         })?(self);
-        set.fully_constructed.tun.insert(plugin_name, tun);
+        set.fully_constructed.tun.insert(plugin_name + ".tun", tun);
         Ok(())
     }
 }

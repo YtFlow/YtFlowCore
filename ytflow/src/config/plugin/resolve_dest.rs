@@ -60,16 +60,28 @@ impl<'de> ResolveDestFactory<'de> {
 fn create_tcp<
     T: StreamHandler + 'static,
     C: FnOnce(Weak<dyn StreamHandler>, Weak<dyn Resolver>) -> T,
+    A: FnOnce(&mut PartialPluginSet),
 >(
     resolver: &str,
-    tcp_next: &str,
+    tcp_next: Option<&str>,
     plugin_name: String,
     set: &mut PartialPluginSet,
-    callback: C,
+    create_val: C,
+    after_weak: A,
 ) {
+    let tcp_next = match tcp_next {
+        Some(tcp_next) => tcp_next,
+        None => {
+            after_weak(set);
+            return;
+        }
+    };
     let factory = Arc::new_cyclic(|weak| {
         set.stream_handlers
             .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
+
+        after_weak(set);
+
         let tcp_next = match set.get_or_create_stream_handler(plugin_name.clone(), tcp_next) {
             Ok(tcp_next) => tcp_next,
             Err(e) => {
@@ -84,26 +96,39 @@ fn create_tcp<
                 Arc::downgrade(&(Arc::new(Null) as _))
             }
         };
-        callback(tcp_next, resolver)
+        create_val(tcp_next, resolver)
     });
     set.fully_constructed
         .stream_handlers
-        .insert(plugin_name.clone() + ".tcp", factory as _);
+        .insert(plugin_name + ".tcp", factory as _);
 }
 
 fn create_udp<
     T: DatagramSessionHandler + 'static,
     C: FnOnce(Weak<dyn DatagramSessionHandler>, Weak<dyn Resolver>) -> T,
+    A: FnOnce(&mut PartialPluginSet),
 >(
     resolver: &str,
-    udp_next: &str,
+    udp_next: Option<&str>,
     plugin_name: String,
     set: &mut PartialPluginSet,
-    callback: C,
+    create_val: C,
+    after_weak: A,
 ) {
+    let udp_next = match udp_next {
+        Some(udp_next) => udp_next,
+        None => {
+            after_weak(set);
+            return;
+        }
+    };
+
     let factory = Arc::new_cyclic(|weak| {
         set.datagram_handlers
             .insert(plugin_name.clone() + ".udp", weak.clone() as _);
+
+        after_weak(set);
+
         let udp_next = match set.get_or_create_datagram_handler(plugin_name.clone(), udp_next) {
             Ok(udp_next) => udp_next,
             Err(e) => {
@@ -118,7 +143,7 @@ fn create_udp<
                 Arc::downgrade(&(Arc::new(Null) as _))
             }
         };
-        callback(udp_next, resolver)
+        create_val(udp_next, resolver)
     });
     set.fully_constructed
         .datagram_handlers
@@ -127,42 +152,44 @@ fn create_udp<
 
 impl<'de> Factory for ResolveDestFactory<'de> {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        if let (Some(tcp_next), false) = (self.tcp_next, self.reverse) {
+        if self.reverse {
             create_tcp(
                 self.resolver,
-                tcp_next,
-                plugin_name.clone(),
-                set,
-                |next, resolver| resolve_dest::StreamForwardResolver { resolver, next },
-            );
-        }
-        if let (Some(tcp_next), true) = (self.tcp_next, self.reverse) {
-            create_tcp(
-                self.resolver,
-                tcp_next,
+                self.tcp_next,
                 plugin_name.clone(),
                 set,
                 |next, resolver| resolve_dest::StreamReverseResolver { resolver, next },
+                |set| {
+                    create_udp(
+                        self.resolver,
+                        self.udp_next,
+                        plugin_name.clone(),
+                        set,
+                        |next, resolver| resolve_dest::DatagramReverseResolver { resolver, next },
+                        |_| {},
+                    );
+                },
             );
-        }
-        if let (Some(udp_next), false) = (self.udp_next, self.reverse) {
-            create_udp(
+        } else {
+            create_tcp(
                 self.resolver,
-                udp_next,
+                self.tcp_next,
                 plugin_name.clone(),
                 set,
-                |next, resolver| resolve_dest::DatagramForwardResolver { resolver, next },
+                |next, resolver| resolve_dest::StreamForwardResolver { resolver, next },
+                |set| {
+                    create_udp(
+                        self.resolver,
+                        self.udp_next,
+                        plugin_name.clone(),
+                        set,
+                        |next, resolver| resolve_dest::DatagramForwardResolver { resolver, next },
+                        |_| {},
+                    );
+                },
             );
         }
-        if let (Some(udp_next), true) = (self.udp_next, self.reverse) {
-            create_udp(
-                self.resolver,
-                udp_next,
-                plugin_name.clone(),
-                set,
-                |next, resolver| resolve_dest::DatagramReverseResolver { resolver, next },
-            );
-        }
+
         Ok(())
     }
 }

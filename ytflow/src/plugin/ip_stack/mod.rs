@@ -118,7 +118,7 @@ impl<'d> smoltcp::phy::TxToken for TxToken<'d> {
         if len > buf.data.len() {
             panic!("smoltcp cannot write a packet to a TUN interface with smaller MTU set.")
         }
-        let res = f(buf.data);
+        let res = f(&mut buf.data[..len]);
         self.1.send(self.0.take().unwrap(), len);
         res
     }
@@ -232,7 +232,6 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
     };
 }
 
-#[inline]
 fn process_tcp(
     stack: &IpStack,
     src_addr: IpAddr,
@@ -312,7 +311,6 @@ fn process_tcp(
     // Therefore, we don't have to poll the socket here.
 }
 
-#[inline]
 fn process_udp(
     stack: &IpStack,
     src_addr: IpAddr,

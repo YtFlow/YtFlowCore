@@ -87,14 +87,14 @@ impl<'a> PartialPluginSet<'a> {
                     initiator,
                     descriptor: descriptor.to_owned(),
                 }
-                .into())
+                .into());
             }
             None => {
                 return Err(ConfigError::NoPlugin {
                     initiator,
                     plugin: plugin_name,
                 }
-                .into())
+                .into());
             }
         };
         plugin.load(plugin_name, self)

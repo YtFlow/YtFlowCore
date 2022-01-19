@@ -10,78 +10,54 @@ use crate::plugin::redirect;
 pub struct RedirectFactory<'a> {
     dest: DestinationAddr,
 
-    tcp_next: Option<&'a str>,
-    udp_next: Option<&'a str>,
+    tcp_next: &'a str,
+    udp_next: &'a str,
 }
 
 impl<'de> RedirectFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
         let config: Self = parse_param(name, param)?;
-        if let (None, None) = (&config.tcp_next, &config.udp_next) {
-            return Err(ConfigError::InvalidParam {
-                plugin: name.to_string(),
-                field: "tcp or udp",
-            });
-        }
+
         Ok(ParsedPlugin {
-            factory: config.clone(),
-            requires: config
-                .tcp_next
-                .iter()
-                .map(|t| Descriptor {
-                    descriptor: *t,
+            requires: vec![
+                Descriptor {
+                    descriptor: &config.tcp_next,
                     r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
-                })
-                .chain(config.udp_next.iter().map(|u| Descriptor {
-                    descriptor: *u,
+                },
+                Descriptor {
+                    descriptor: &config.udp_next,
                     r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
-                }))
-                .collect(),
-            provides: config
-                .tcp_next
-                .iter()
-                .map(|_| Descriptor {
-                    descriptor: name.to_string() + ".tcp",
+                },
+            ],
+            provides: vec![
+                Descriptor {
+                    descriptor: name.clone() + ".tcp",
                     r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
-                })
-                .chain(config.udp_next.iter().map(|_| Descriptor {
-                    descriptor: name.to_string() + ".udp",
+                },
+                Descriptor {
+                    descriptor: name.clone() + ".udp",
                     r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
-                }))
-                .collect(),
+                },
+            ],
+            factory: config,
         })
     }
 }
 
 impl<'de> Factory for RedirectFactory<'de> {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        if let Some(tcp_next) = &self.tcp_next {
-            let factory = Arc::new_cyclic(|weak| {
-                set.stream_outbounds
-                    .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
-                let next = match set.get_or_create_stream_outbound(plugin_name.clone(), tcp_next) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        set.errors.push(e);
-                        Arc::downgrade(&(Arc::new(Null)))
-                    }
-                };
-                let dest = self.dest.clone();
-                redirect::StreamRedirectOutboundFactory {
-                    remote_peer: move || dest.clone(),
-                    next,
-                }
-            });
-            set.fully_constructed
-                .stream_outbounds
-                .insert(plugin_name.clone() + ".tcp", factory);
-        }
-        if let Some(udp_next) = &self.udp_next {
-            let factory = Arc::new_cyclic(|weak| {
+        let tcp_factory = Arc::new_cyclic(|tcp_weak| {
+            set.stream_outbounds
+                .insert(plugin_name.clone() + ".tcp", tcp_weak.clone() as _);
+
+            // Make sure all weak references are inserted into the set before loading any plugins
+            let udp_factory = Arc::new_cyclic(|udp_weak| {
                 set.datagram_outbounds
-                    .insert(plugin_name.clone() + ".udp", weak.clone() as _);
-                let next = match set.get_or_create_datagram_outbound(plugin_name.clone(), udp_next)
+                    .insert(plugin_name.clone() + ".udp", udp_weak.clone() as _);
+
+                let next = match set
+                    .get_or_create_datagram_outbound(plugin_name.clone(), &self.udp_next)
                 {
                     Ok(t) => t,
                     Err(e) => {
@@ -97,8 +73,25 @@ impl<'de> Factory for RedirectFactory<'de> {
             });
             set.fully_constructed
                 .datagram_outbounds
-                .insert(plugin_name.clone() + ".udp", factory);
-        }
+                .insert(plugin_name.clone() + ".udp", udp_factory);
+
+            let next = match set.get_or_create_stream_outbound(plugin_name.clone(), &self.tcp_next)
+            {
+                Ok(t) => t,
+                Err(e) => {
+                    set.errors.push(e);
+                    Arc::downgrade(&(Arc::new(Null)))
+                }
+            };
+            let dest = self.dest.clone();
+            redirect::StreamRedirectOutboundFactory {
+                remote_peer: move || dest.clone(),
+                next,
+            }
+        });
+        set.fully_constructed
+            .stream_outbounds
+            .insert(plugin_name + ".tcp", tcp_factory);
         Ok(())
     }
 }

@@ -54,7 +54,7 @@ impl<'de> Factory for TrojanFactory<'de> {
         });
         set.fully_constructed
             .stream_outbounds
-            .insert(plugin_name, factory);
+            .insert(plugin_name + ".tcp", factory);
         Ok(())
     }
 }

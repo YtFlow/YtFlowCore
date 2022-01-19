@@ -56,7 +56,9 @@ impl<'de> Factory for HostResolverFactory<'de> {
             host_resolver::HostResolver::new(udp)
         });
         set.errors.extend(errors);
-        set.fully_constructed.resolver.insert(plugin_name, factory);
+        set.fully_constructed
+            .resolver
+            .insert(plugin_name + ".resolver", factory);
         Ok(())
     }
 }
