@@ -18,12 +18,19 @@ pub struct SslStreamFactory {
 }
 
 impl SslStreamFactory {
-    pub fn new(next: Weak<dyn StreamOutboundFactory>, sni: Option<String>) -> Self {
+    pub fn new(
+        next: Weak<dyn StreamOutboundFactory>,
+        skip_cert_check: bool,
+        sni: Option<String>,
+    ) -> Self {
         // TODO: sni, alpn, ...
+        let mut builder = ssl::SslConnector::builder(ssl::SslMethod::tls())
+            .expect("Failed to create SSL Context builder");
+        if skip_cert_check {
+            builder.set_verify_callback(openssl::ssl::SslVerifyMode::NONE, |_, _| true);
+        }
         Self {
-            ctx: ssl::SslConnector::builder(ssl::SslMethod::tls())
-                .expect("Failed to create SSL Context builder")
-                .build(),
+            ctx: builder.build(),
             sni,
             next,
         }
@@ -63,7 +70,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         .expect("SslStream: Cannot set BIO");
         // Poll once.
         poll_fn(|cx| {
-            let p = Pin::new(&mut ssl_stream).poll_do_handshake(cx);
+            let p = Pin::new(&mut ssl_stream).poll_connect(cx);
             if p.is_pending() {
                 Poll::Ready(Ok(()))
             } else {
@@ -71,7 +78,8 @@ impl StreamOutboundFactory for SslStreamFactory {
             }
         })
         .await
-        .map_err(|_| {
+        .map_err(|e| {
+            crate::log::debug_log(format!("{}", e));
             // TODO: log error
             FlowError::UnexpectedData
         })?;
