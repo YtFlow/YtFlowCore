@@ -1,14 +1,18 @@
 use std::cell::RefCell;
+use std::ffi::OsString;
+use std::lazy::SyncOnceCell;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+use std::os::windows::ffi::OsStringExt;
 use std::rc::Rc;
 use std::slice::from_raw_parts_mut;
 use std::string::ToString;
 use std::sync::Arc;
 
 use crate::collections::SimpleHostNameVectorView;
+use crate::error::ConnectError;
 
 use flume::{bounded, Receiver, Sender, TryRecvError};
-use windows::core::{implement, Interface, Result};
+use windows::core::{implement, IInspectable, Interface, Result, HSTRING};
 
 use crate::bindings::Windows;
 use crate::bindings::Windows::Foundation::Collections::IVectorView;
@@ -19,7 +23,10 @@ use crate::bindings::Windows::Networking::Vpn::{
     VpnPacketBufferList, VpnRoute, VpnRouteAssignment,
 };
 use crate::bindings::Windows::Storage::Streams::Buffer;
+use crate::bindings::Windows::Storage::{ApplicationData, ApplicationDataContainer};
 use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
+
+static APP_SETTINGS: SyncOnceCell<ApplicationDataContainer> = SyncOnceCell::new();
 
 /// Safety: user must ensure the output slice does not outlive the buffer instance.
 pub(crate) unsafe fn query_slice_from_ibuffer_mut(buf: &mut Buffer) -> &'static mut [u8] {
@@ -117,14 +124,13 @@ pub struct VpnPlugIn(Option<VpnPlugInInner>);
 #[allow(non_snake_case)]
 impl VpnPlugIn {
     pub fn new() -> Self {
+        let _ = APP_SETTINGS.set(ApplicationData::Current().unwrap().LocalSettings().unwrap());
         Self(None)
     }
 
-    fn Connect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
-        let channel = channel.as_ref().unwrap();
-
+    fn connect_core(&mut self, channel: &VpnChannel) -> std::result::Result<(), ConnectError> {
         if self.0.is_some() {
-            return channel.TerminateConnection("A fresh reconnect is required");
+            return Err("A fresh reconnect is required".into());
         }
 
         let transport = DatagramSocket::new()?;
@@ -153,16 +159,24 @@ impl VpnPlugIn {
             .unwrap();
 
         // Load VPN configurations.
-        let db_path: &'static std::path::Path = todo!("Get DB path from localstorage");
-        let db = match ytflow::data::Database::open(db_path) {
+        let db_path: std::path::PathBuf = OsString::from_wide(
+            HSTRING::try_from(
+                APP_SETTINGS
+                    .get()
+                    .unwrap()
+                    .Values()?
+                    .Lookup("YTFLOW_DB_PATH")?,
+            )?
+            .as_wide(),
+        )
+        .into();
+        let db = match ytflow::data::Database::open(&db_path) {
             Ok(db) => db,
-            Err(e) => return channel.TerminateConnection(format!("Cannot open database: {}", e)),
+            Err(e) => return Err(format!("Cannot open database: {}", e).into()),
         };
         let conn = match db.connect() {
             Ok(conn) => conn,
-            Err(e) => {
-                return channel.TerminateConnection(format!("Cannot connect to database: {}", e))
-            }
+            Err(e) => return Err(format!("Cannot connect to database: {}", e).into()),
         };
 
         fn load_plugins(
@@ -181,13 +195,17 @@ impl VpnPlugIn {
             Ok(Ok((entry_plugins, all_plugins)))
         }
 
-        let profile_id: usize = todo!("Load profile id from localstorage");
-        let (entry_plugins, all_plugins) = match load_plugins(profile_id, &conn) {
+        let profile_id: u32 = APP_SETTINGS
+            .get()
+            .unwrap()
+            .Values()?
+            .Lookup("YTFLOW_PROFILE_ID")?
+            .try_into()
+            .unwrap_or(0);
+        let (entry_plugins, all_plugins) = match load_plugins(profile_id as _, &conn) {
             Ok(Ok(p)) => p,
-            Ok(Err(s)) => return channel.TerminateConnection(s),
-            Err(e) => {
-                return channel.TerminateConnection(format!("Failed to load plugins from: {}", e))
-            }
+            Ok(Err(s)) => return Err(s.into()),
+            Err(e) => return Err(format!("Failed to load plugins from: {}", e).into()),
         };
 
         let (factory, errors) =
@@ -196,14 +214,12 @@ impl VpnPlugIn {
             let it = std::iter::once(String::from("Failed to parse plugins: "));
             let it = it.chain(errors.iter().map(ToString::to_string));
             let strs: Vec<_> = it.collect();
-            return channel.TerminateConnection(strs.join("\r\n"));
+            return Err(strs.join("\r\n").into());
         }
 
         let rt = match ytflow::tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
-            Err(e) => {
-                return channel.TerminateConnection(format!("Cannot create tokio runtime: {}", e))
-            }
+            Err(e) => return Err(format!("Cannot create tokio runtime: {}", e).into()),
         };
 
         let tx_buf_rx_cell = Rc::new(RefCell::new(None));
@@ -252,7 +268,7 @@ impl VpnPlugIn {
             }
             rt.shutdown_background();
             ytflow::config::plugin::ON_VPNTUN.with(|cb| drop(cb.borrow_mut().take()));
-            return channel.TerminateConnection(error_str);
+            return Err(error_str.into());
         };
 
         self.0 = Some(VpnPlugInInner {
@@ -260,6 +276,20 @@ impl VpnPlugIn {
             rx_buf_tx,
             rt,
         });
+
+        Ok(())
+    }
+
+    fn Connect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
+        let channel = channel.as_ref().unwrap();
+        if let Err(crate::error::ConnectError(e)) = self.connect_core(channel) {
+            let err_msg = format!("{}", e);
+            APP_SETTINGS.get().unwrap().Values()?.Insert(
+                "YTFLOW_CORE_ERROR_LOAD",
+                IInspectable::try_from(HSTRING::from(&err_msg))?,
+            )?;
+            channel.TerminateConnection(err_msg)?;
+        }
         Ok(())
     }
     fn Disconnect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {

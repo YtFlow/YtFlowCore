@@ -8,3 +8,7 @@ members = [
 
 [patch.crates-io]
 mio = { git = "https://github.com/YtFlow/mio-noafd" }
+
+[profile.release]
+lto = true
+codegen-units = 1

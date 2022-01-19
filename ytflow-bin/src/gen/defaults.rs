@@ -1,7 +1,4 @@
-use std::net::{IpAddr, Ipv4Addr};
-
 use ciborium::{cbor, value::Value::Null};
-use cidr::{IpCidr, Ipv4Cidr, Ipv6Cidr};
 use serde_bytes::Bytes;
 use strum::{EnumMessage, EnumProperty};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty};
@@ -135,16 +132,18 @@ impl PluginType {
                     "udp_next" => name.clone() + "-reject.udp",
                 }),
                 PluginType::VpnTun => cbor!({
-                    "ipv4" => Ipv4Addr::new(192, 168, 3, 1),
+                    "ipv4" => [192, 168, 3, 1],
                     "ipv6" => Null,
-                    "ipv4_route" => [Ipv4Cidr::new([11, 17, 0, 0].into(), 16).unwrap()],
-                    "ipv6_route" => Vec::<Ipv6Cidr>::new(),
-                    "dns" => [IpAddr::V4([11, 16, 1, 1].into())],
+                    "ipv4_route" => [(16, [11, 17, 0, 0]), (24, [11, 16, 0, 0])],
+                    "ipv6_route" => Vec::<()>::new(),
+                    "dns" => [{
+                        "V4" => [11, 16, 1, 1],
+                    }],
                     "web_proxy" => Null,
                 }),
                 PluginType::HostResolver => cbor!({
-                    "udp" => ["8.8.8.8", "8.8.4.4"],
-                    "tcp" => ["8.8.8.8", "4.4.4.4"],
+                    "udp" => [name.clone() + "-redir-8888.udp"],
+                    "tcp" => [name.clone() + "-redir-8888.tcp"],
                 }),
                 PluginType::FakeIp => cbor!({
                     "prefix_v4" => [11u8, 17],
@@ -166,15 +165,18 @@ impl PluginType {
                 PluginType::ResolveDest => cbor!({
                     "resolver" => name.clone() + "-fake-ip.resolver",
                     "reverse" => true,
-                    "tcp_next" => name.clone() + "-forward.resolver",
+                    "tcp_next" => name.clone() + "-forward.tcp",
                 }),
                 PluginType::SimpleDispatcher => cbor!({
                     "rules" => [cbor!({
                         "src" => cbor!({
-                            "ip_ranges" => [IpCidr::new([11, 16, 1, 1].into(), 32).unwrap()],
-                            "port_ranges" => [53u8..=53],
+                            "ip_ranges" => [(0, [0, 0, 0, 0])],
+                            "port_ranges" => [0u16..=65535],
                         }).unwrap(),
-                        "dst" => (),
+                        "dst" => cbor!({
+                            "ip_ranges" => [(32, [11, 16, 1, 1])],
+                            "port_ranges" => [53u16..=53],
+                        }).unwrap(),
                         "is_udp" => true,
                         "next" => name.clone() + "-dns-server.udp",
                     }).unwrap()],
