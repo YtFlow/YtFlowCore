@@ -191,11 +191,11 @@ impl PluginType {
                     "method" => Bytes::new(b"aes-256-gcm"),
                     "password" => Bytes::new(b"password"),
                     "tcp_next" => name.clone() + "-redirect.tcp",
-                    "udp_next" => name.clone() + "-reject.tcp",
+                    "udp_next" => name.clone() + "-null.tcp",
                 }),
                 PluginType::Socks5Client => cbor!({
                     "tcp_next" => name.clone() + "-redirect.tcp",
-                    "udp_next" => name.clone() + "-reject.udp",
+                    "udp_next" => name.clone() + "-null.udp",
                     "user" => Bytes::new(b"remove_if_no_cred"),
                     "pass" => Bytes::new(b"remove_if_no_cred"),
                 }),

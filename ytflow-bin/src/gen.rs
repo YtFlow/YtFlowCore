@@ -218,6 +218,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
                     port: 8388,
                 },
                 "tcp_next" => prefix.to_string() + "-socket",
+                "udp_next" => prefix.to_string() + "-null.udp",
             })
             .expect("Cannot generate Shadowsocks redir params"),
         ),
