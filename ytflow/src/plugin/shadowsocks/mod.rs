@@ -143,9 +143,9 @@ where
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
-        let (next, tx_crypto) = {
+        let ((mut next, initial_res), tx_crypto) = {
             let (tx_buffer, tx_crypto) = self.get_req(&context, initial_data);
             (
                 outbound_factory
@@ -154,15 +154,24 @@ where
                 tx_crypto,
             )
         };
+        let mut reader = StreamReader::new(4096, &initial_res);
+        let rx_crypto = reader
+            .read_exact(&mut *next, C::IV_LEN, |buf| {
+                C::create_crypto(&self.key, (&*buf).try_into().unwrap())
+            })
+            .await?;
         // Must specify C explicitly due to https://github.com/rust-lang/rust/issues/83249
-        Ok(Box::new(stream::ShadowsocksStream::<C> {
-            reader: StreamReader::new(4096),
-            rx_buf: None,
-            rx_chunk_size: std::num::NonZeroUsize::new(4096).unwrap(),
-            lower: next,
-            tx_offset: 0,
-            rx_crypto: stream::RxCryptoState::ReadingIv { key: self.key },
-            tx_crypto,
-        }))
+        Ok((
+            (Box::new(stream::ShadowsocksStream::<C> {
+                reader,
+                rx_buf: None,
+                rx_chunk_size: std::num::NonZeroUsize::new(4096).unwrap(),
+                lower: next,
+                tx_offset: 0,
+                rx_crypto,
+                tx_crypto,
+            })),
+            Buffer::new(),
+        ))
     }
 }

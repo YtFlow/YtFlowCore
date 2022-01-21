@@ -1,5 +1,5 @@
-use std::convert::TryInto;
 use std::future::Future;
+use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
@@ -142,7 +142,7 @@ impl StreamForwardHandler {
             .create_outbound(context, initial_data_ref)
             .await;
         drop(initial_data);
-        let mut outbound = match outbound {
+        let (mut outbound, initial_res) = match outbound {
             Ok(outbound) => outbound,
             Err(e) => {
                 // TODO: log error
@@ -151,6 +151,11 @@ impl StreamForwardHandler {
                 return crate::close_tx_boxed!(lower).and_then(|()| Err(e))?;
             }
         };
+        if let Some(initial_res_len) = NonZeroUsize::try_from(initial_res.len()).ok() {
+            let mut buf = crate::get_tx_buffer_boxed!(lower, initial_res_len)?;
+            buf.extend_from_slice(&initial_res);
+            lower.as_mut().commit_tx_buffer(buf)?;
+        }
 
         let mut initial_downlink_state = ForwardState::AwatingSizeHint;
         if let ForwardState::PollingTxBuf(_) = initial_uplink_state {

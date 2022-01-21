@@ -90,5 +90,5 @@ pub trait StreamOutboundFactory: Send + Sync {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>>;
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)>;
 }

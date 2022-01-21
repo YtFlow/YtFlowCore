@@ -42,7 +42,7 @@ async fn serve_handshake(
     auth_req: Option<Arc<[u8]>>,
     stream: &mut dyn Stream,
 ) -> FlowResult<DestinationAddr> {
-    let mut reader = StreamReader::new(128);
+    let mut reader = StreamReader::new(128, &[]);
     let nauth = reader
         .read_exact(stream, 2, |buf| {
             let res = buf[1];
@@ -142,12 +142,12 @@ async fn perform_handshake(
     context: Box<FlowContext>,
     auth_req: &Option<Buffer>,
     stream_factory: Arc<dyn StreamOutboundFactory>,
-) -> FlowResult<Box<dyn Stream>> {
-    let mut reader = StreamReader::new(32);
-    let (mut stream, auth_accepted) = if let Some(auth_req) = auth_req {
-        let mut stream = stream_factory
+) -> FlowResult<(Box<dyn Stream>, Buffer)> {
+    let (mut stream, auth_accepted, mut reader) = if let Some(auth_req) = auth_req {
+        let (mut stream, initial_res) = stream_factory
             .create_outbound(context.clone(), &[0x05, 0x01, 0x02])
             .await?;
+        let mut reader = StreamReader::new(32, &initial_res);
         let auth_accepted = reader
             .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0x02])
             .await?;
@@ -158,15 +158,16 @@ async fn perform_handshake(
         let auth_accepted = reader
             .read_exact(&mut *stream, 2, |buf| buf == &[0x01, 0])
             .await?;
-        (stream, auth_accepted)
+        (stream, auth_accepted, reader)
     } else {
-        let mut stream = stream_factory
+        let (mut stream, initial_res) = stream_factory
             .create_outbound(context.clone(), &[0x05, 0x01, 0])
             .await?;
+        let mut reader = StreamReader::new(32, &initial_res);
         let auth_accepted = reader
             .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0])
             .await?;
-        (stream, auth_accepted)
+        (stream, auth_accepted, reader)
     };
     if !auth_accepted {
         return Err(FlowError::UnexpectedData);
@@ -191,7 +192,7 @@ async fn perform_handshake(
             })
             .await??;
         reader.read_exact(&mut *stream, remaining, |_| {}).await?;
-        Ok(stream)
+        Ok((stream, reader.into_initial_res().unwrap_or_default()))
     } else {
         Err(FlowError::UnexpectedData)
     }
@@ -221,14 +222,14 @@ impl StreamOutboundFactory for Socks5Outbound {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return Err(FlowError::UnexpectedData),
         };
-        let mut stream = perform_handshake(context, &self.auth_req, next).await?;
+        let (mut stream, initial_res) = perform_handshake(context, &self.auth_req, next).await?;
         send_response(&mut *stream, initial_data).await?;
-        Ok(stream)
+        Ok((stream, initial_res))
     }
 }
 

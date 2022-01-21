@@ -43,7 +43,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let Self { ctx, sni, next } = self;
         let outbound_factory = next.upgrade().ok_or(FlowError::NoOutbound)?;
 
@@ -61,7 +61,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         let mut ssl_stream = tokio_openssl::SslStream::new(
             ssl,
             CompatStream {
-                reader: StreamReader::new(4096),
+                reader: StreamReader::new(4096, &[]),
                 inner: Box::new(InitialDataExtractStream {
                     data: initial_data_container.clone(),
                 }),
@@ -86,11 +86,11 @@ impl StreamOutboundFactory for SslStreamFactory {
         {
             let initial_data_container = initial_data_container;
             let initial_data = initial_data_container.lock().take().unwrap_or_default();
-            let lower = outbound_factory
+            let (lower, initial_res) = outbound_factory
                 .create_outbound(context, &initial_data)
                 .await?;
             *ssl_stream.get_mut() = CompatStream {
-                reader: StreamReader::new(4096),
+                reader: StreamReader::new(4096, &initial_res),
                 inner: lower,
             };
         }
@@ -105,6 +105,6 @@ impl StreamOutboundFactory for SslStreamFactory {
 
         Pin::new(&mut ssl_stream).write(initial_data).await?;
 
-        Ok(Box::new(CompatFlow::new(ssl_stream, 4096)))
+        Ok((Box::new(CompatFlow::new(ssl_stream, 4096)), Buffer::new()))
     }
 }

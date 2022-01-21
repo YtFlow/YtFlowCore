@@ -61,7 +61,7 @@ impl<R: PeerProvider> StreamOutboundFactory for StreamRedirectOutboundFactory<R>
         &self,
         mut context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = match self.next.upgrade() {
             Some(n) => n,
             None => return Err(FlowError::NoOutbound),

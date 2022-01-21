@@ -12,7 +12,7 @@ impl StreamOutboundFactory for Null {
         &self,
         _context: Box<FlowContext>,
         _initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         Err(FlowError::NoOutbound)
     }
 }

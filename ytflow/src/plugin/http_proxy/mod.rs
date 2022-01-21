@@ -1,8 +1,6 @@
 pub(crate) mod util;
 
-use std::convert::TryInto;
 use std::io::Write;
-
 use std::sync::Weak;
 
 use async_trait::async_trait;
@@ -66,11 +64,12 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
-        let mut lower = {
-            let mut req =
-                Vec::with_capacity(REQ_BEFORE_ADDR.len() + 261 + self.req_after_addr.len());
+        let (mut lower, initial_res) = {
+            let mut req = Vec::with_capacity(
+                REQ_BEFORE_ADDR.len() + 261 + self.req_after_addr.len() + initial_data.len(),
+            );
             req.extend_from_slice(REQ_BEFORE_ADDR);
             match &context.remote_peer.dest {
                 Destination::DomainName(domain) => req.extend_from_slice(domain.as_bytes()),
@@ -81,10 +80,11 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             let port_len = util::format_u16(context.remote_peer.port, &mut port_buf);
             req.extend_from_slice(&port_buf[..port_len]);
             req.extend_from_slice(&self.req_after_addr[..]);
+            req.extend_from_slice(initial_data);
             outbound_factory.create_outbound(context, &req[..]).await?
         };
-        {
-            let mut reader = StreamReader::new(4096);
+        let initial_res = {
+            let mut reader = StreamReader::new(4096, &initial_res);
             let mut expected_header_size = 1;
             let mut code = None;
             while reader
@@ -106,12 +106,8 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             {}
             code.filter(|c| (200..=299).contains(c))
                 .ok_or(FlowError::UnexpectedData)?;
-        }
-        if let Some(initial_data_size) = initial_data.len().try_into().ok() {
-            let mut tx_buffer = crate::get_tx_buffer_boxed!(lower, initial_data_size)?;
-            tx_buffer.extend_from_slice(initial_data);
-            lower.as_mut().commit_tx_buffer(tx_buffer)?;
-        }
-        Ok(lower)
+            reader.into_initial_res().unwrap_or_default()
+        };
+        Ok((lower, initial_res))
     }
 }

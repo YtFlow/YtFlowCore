@@ -100,7 +100,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         &self,
         context: Box<FlowContext>,
         initial_data: &'_ [u8],
-    ) -> FlowResult<Box<dyn Stream>> {
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let port = context.remote_peer.port;
         let (bind_addr_v4, bind_addr_v6) = self
             .netif_selector
@@ -143,7 +143,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         if initial_data.len() > 0 {
             tcp_stream.write_all(initial_data).await?;
         }
-        Ok(Box::new(CompatFlow::new(tcp_stream, 4096)))
+        Ok((Box::new(CompatFlow::new(tcp_stream, 4096)), Buffer::new()))
     }
 }
 
