@@ -10,6 +10,8 @@ use std::sync::{
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 
+pub use resolver::NetifHostResolver;
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "netif")]
 pub enum SelectionMode {

@@ -18,21 +18,31 @@ impl NetifFactory {
         Ok(ParsedPlugin {
             factory: config,
             requires: vec![],
-            provides: vec![Descriptor {
-                descriptor: name.to_string() + ".netif",
-                r#type: AccessPointType::NETIF,
-            }],
+            provides: vec![
+                Descriptor {
+                    descriptor: name.to_string() + ".netif",
+                    r#type: AccessPointType::NETIF,
+                },
+                Descriptor {
+                    descriptor: name.to_string() + ".resolver",
+                    r#type: AccessPointType::RESOLVER,
+                },
+            ],
         })
     }
 }
 
 impl Factory for NetifFactory {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        set.fully_constructed.netif.insert(
-            plugin_name.clone() + ".netif",
-            netif::NetifSelector::new(self.selection.clone(), self.family_preference)
-                .ok_or_else(|| LoadError::NoUseableNetif(plugin_name))?,
+        let netif = netif::NetifSelector::new(self.selection.clone(), self.family_preference)
+            .ok_or_else(|| LoadError::NoUseableNetif(plugin_name.clone()))?;
+        set.fully_constructed.resolver.insert(
+            plugin_name.clone() + ".resolver",
+            Arc::new(netif::NetifHostResolver::new(netif.clone())),
         );
+        set.fully_constructed
+            .netif
+            .insert(plugin_name + ".netif", netif);
         Ok(())
     }
 }

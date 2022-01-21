@@ -6,9 +6,10 @@ use std::sync::{Arc, Weak};
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use super::NetifSelector;
+use super::{FamilyPreference, NetifSelector};
 use crate::flow::*;
 use crate::plugin::host_resolver::HostResolver;
+use crate::plugin::null::Null;
 
 #[allow(dead_code)]
 pub struct NetifHostResolver {
@@ -18,28 +19,34 @@ pub struct NetifHostResolver {
         Vec<Arc<dyn DatagramSessionFactory>>,
     )>,
     selector: Arc<NetifSelector>,
-    tcp_next: Weak<dyn StreamOutboundFactory>,
-    udp_next: Weak<dyn DatagramSessionFactory>,
+    tcp_next: Arc<dyn StreamOutboundFactory>,
+    udp_next: Arc<dyn DatagramSessionFactory>,
     change_token: AtomicU8,
+    _socket_resolver: Arc<Null>,
 }
 
 impl NetifHostResolver {
-    #[allow(dead_code)]
-    pub fn new(
-        selector: Arc<NetifSelector>,
-        tcp_next: Weak<dyn StreamOutboundFactory>,
-        udp_next: Weak<dyn DatagramSessionFactory>,
-    ) -> Self {
+    pub fn new(selector: Arc<NetifSelector>) -> Self {
         let token = selector.change_token.load(Acquire);
         let servers = selector.read(|netif| netif.dns_servers.clone());
-        let inner = RwLock::new(create_host_resolver(udp_next.clone(), servers));
+
+        let socket_resolver = Arc::new(Null);
+        let socket_factory = Arc::new(crate::plugin::socket::SocketOutboundFactory {
+            resolver: Arc::downgrade(&(socket_resolver.clone() as _)),
+            netif_selector: selector.clone(),
+        });
+        let inner = RwLock::new(create_host_resolver(
+            Arc::downgrade(&(socket_factory.clone() as _)),
+            servers,
+        ));
 
         Self {
             inner,
             selector,
-            tcp_next,
-            udp_next,
+            tcp_next: socket_factory.clone(),
+            udp_next: socket_factory,
             change_token: AtomicU8::new(token),
+            _socket_resolver: socket_resolver,
         }
     }
     async fn ensure_up_to_date(&self) {
@@ -57,8 +64,22 @@ impl NetifHostResolver {
             return;
         }
 
-        let servers = self.selector.read(|netif| netif.dns_servers.clone());
-        *guard = create_host_resolver(self.udp_next.clone(), servers);
+        let servers = self.selector.read(|netif| match self.selector.prefer {
+            FamilyPreference::NoPreference => netif.dns_servers.clone(),
+            FamilyPreference::PreferIpv4 => netif
+                .dns_servers
+                .iter()
+                .filter(|d| d.is_ipv4())
+                .cloned()
+                .collect(),
+            FamilyPreference::PreferIpv6 => netif
+                .dns_servers
+                .iter()
+                .filter(|d| d.is_ipv6())
+                .cloned()
+                .collect(),
+        });
+        *guard = create_host_resolver(Arc::downgrade(&self.udp_next), servers);
 
         self.change_token.store(new_token, Relaxed);
     }
