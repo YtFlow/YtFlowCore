@@ -27,7 +27,7 @@ pub enum FamilyPreference {
     PreferIpv6,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Netif {
     pub name: String,
     pub ipv4_addr: Option<SocketAddrV4>,
@@ -53,7 +53,10 @@ impl NetifSelector {
             let this = this.clone();
             let provider = sys::NetifProvider::new(move || {
                 if let Some(this) = this.upgrade() {
-                    if let Some(netif) = this.pick_netif() {
+                    if let Some(netif) = this
+                        .pick_netif()
+                        .filter(|new| new != &**this.cached_netif.load())
+                    {
                         this.cached_netif.store(Arc::new(netif));
                         this.change_token.fetch_add(1, Release);
                     }

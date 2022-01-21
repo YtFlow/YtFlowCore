@@ -67,7 +67,10 @@ pub struct NetifProvider {
 impl NetifProvider {
     pub fn new<C: Fn() + Clone + Send + 'static>(callback: C) -> NetifProvider {
         let cb_cloned = callback.clone();
-        tokio::spawn(async move { cb_cloned() });
+        tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+            cb_cloned()
+        });
         let event_token = NetworkInformation::NetworkStatusChanged(
             NetworkStatusChangedEventHandler::new(move |_sender| Ok(callback())),
         )
