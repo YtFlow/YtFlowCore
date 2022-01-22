@@ -87,6 +87,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             let mut reader = StreamReader::new(4096, &initial_res);
             let mut expected_header_size = 1;
             let mut code = None;
+            let mut res_header_size = 0;
             while reader
                 .peek_at_least(&mut *lower, expected_header_size, |data| {
                     if data.len() > 1024 {
@@ -95,17 +96,21 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
                     expected_header_size = data.len() + 1;
                     let mut res_headers = [httparse::EMPTY_HEADER; 4];
                     let mut res = httparse::Response::new(&mut res_headers[..]);
-                    let ret = res
-                        .parse(&data)
-                        .map_err(|_| FlowError::UnexpectedData)?
-                        .is_partial();
-                    code = res.code;
-                    Ok(ret)
+                    let ret = res.parse(&data).map_err(|_| FlowError::UnexpectedData)?;
+                    Ok(match ret {
+                        httparse::Status::Partial => true,
+                        httparse::Status::Complete(len) => {
+                            res_header_size = len;
+                            code = res.code;
+                            false
+                        }
+                    })
                 })
                 .await??
             {}
             code.filter(|c| (200..=299).contains(c))
                 .ok_or(FlowError::UnexpectedData)?;
+            reader.advance(res_header_size);
             reader.into_initial_res().unwrap_or_default()
         };
         Ok((lower, initial_res))

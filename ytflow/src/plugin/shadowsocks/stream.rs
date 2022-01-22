@@ -8,6 +8,14 @@ use futures::ready;
 use super::crypto::*;
 use crate::flow::*;
 
+pub enum RxCryptoState<C: ShadowCrypto>
+where
+    [(); C::KEY_LEN]:,
+{
+    ReadingIv { key: [u8; C::KEY_LEN] },
+    Ready(C),
+}
+
 pub struct ShadowsocksStream<C: ShadowCrypto>
 where
     [(); C::KEY_LEN]:,
@@ -15,7 +23,7 @@ where
     pub reader: StreamReader,
     pub rx_buf: Option<Vec<u8>>,
     pub rx_chunk_size: NonZeroUsize,
-    pub rx_crypto: C,
+    pub rx_crypto: RxCryptoState<C>,
     pub tx_crypto: C,
     pub tx_offset: usize,
     pub lower: Box<dyn Stream>,
@@ -36,19 +44,34 @@ where
             reader,
             ..
         } = &mut *self;
-
-        if C::PRE_CHUNK_OVERHEAD == 0 {
-            return Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }));
+        loop {
+            match crypto {
+                RxCryptoState::ReadingIv { key } => {
+                    let mut iv = [0; C::IV_LEN];
+                    ready!(
+                        reader.poll_read_exact(cx, lower.as_mut(), C::IV_LEN, |buf| iv
+                            .copy_from_slice(buf))
+                    )?;
+                    *crypto =
+                        RxCryptoState::Ready(C::create_crypto(key, (&iv).try_into().unwrap()));
+                }
+                RxCryptoState::Ready(_) if C::PRE_CHUNK_OVERHEAD == 0 => {
+                    return Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }));
+                }
+                RxCryptoState::Ready(crypto) => {
+                    // Retrieve size of next chunk (AEAD only)
+                    let size = ready!(reader.poll_read_exact(
+                        cx,
+                        lower.as_mut(),
+                        C::PRE_CHUNK_OVERHEAD,
+                        |buf| crypto.decrypt_size(buf.try_into().unwrap())
+                    ))?
+                    .ok_or(FlowError::UnexpectedData)?;
+                    *rx_chunk_size = size;
+                    return Poll::Ready(Ok(SizeHint::AtLeast(size.get() + C::POST_CHUNK_OVERHEAD)));
+                }
+            }
         }
-
-        // Retrieve size of next chunk (AEAD only)
-        let size =
-            ready!(reader
-                .poll_read_exact(cx, lower.as_mut(), C::PRE_CHUNK_OVERHEAD, |buf| crypto
-                    .decrypt_size(buf.try_into().unwrap())))?
-            .ok_or(FlowError::UnexpectedData)?;
-        *rx_chunk_size = size;
-        Poll::Ready(Ok(SizeHint::AtLeast(size.get() + C::POST_CHUNK_OVERHEAD)))
     }
 
     fn commit_rx_buffer(&mut self, buffer: Buffer) -> Result<(), (Buffer, FlowError)> {
@@ -68,6 +91,10 @@ where
             reader,
             ..
         } = &mut *self;
+        let crypto = match crypto {
+            RxCryptoState::ReadingIv { .. } => panic!("Polling rx buffer when IV not ready"),
+            RxCryptoState::Ready(c) => c,
+        };
         let rx_buf = match rx_buf_opt.as_mut() {
             Some(buf) => buf,
             None => panic!("Polling rx buffer without committing"),
