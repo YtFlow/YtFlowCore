@@ -3,13 +3,13 @@ mod udp;
 
 use std::collections::BTreeMap;
 use std::io;
+use std::net::ToSocketAddrs;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 use flume::{bounded, SendError};
 use tokio::io::AsyncWriteExt;
-use tokio::net::ToSocketAddrs;
 
 use crate::flow::*;
 use crate::plugin::netif::NetifSelector;
@@ -19,9 +19,15 @@ pub struct SocketOutboundFactory {
     pub netif_selector: Arc<NetifSelector>,
 }
 
-pub fn listen_tcp(next: Weak<dyn StreamHandler>, addr: impl ToSocketAddrs + Send + 'static) {
+pub fn listen_tcp(
+    next: Weak<dyn StreamHandler>,
+    addr: impl ToSocketAddrs + Send + 'static,
+) -> io::Result<()> {
+    let listener = std::net::TcpListener::bind(addr)?;
+    listener.set_nonblocking(true)?;
     tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::bind(addr).await?;
+        let listener = tokio::net::TcpListener::from_std(listener)
+            .expect("Calling listen_tcp when runtime is not set");
         loop {
             match listener.accept().await {
                 Ok((stream, connector)) => {
@@ -44,16 +50,22 @@ pub fn listen_tcp(next: Weak<dyn StreamHandler>, addr: impl ToSocketAddrs + Send
             }
         }
     });
+    Ok(())
 }
 
 pub fn listen_udp(
     next: Weak<dyn DatagramSessionHandler>,
     addr: impl ToSocketAddrs + Send + 'static,
-) {
+) -> io::Result<()> {
     let mut session_map = BTreeMap::new();
     let null_resolver: Arc<dyn Resolver> = Arc::new(crate::plugin::null::Null);
+    let listener = std::net::UdpSocket::bind(addr)?;
+    listener.set_nonblocking(true)?;
     tokio::spawn(async move {
-        let listener = Arc::new(tokio::net::UdpSocket::bind(addr).await?);
+        let listener = Arc::new(
+            tokio::net::UdpSocket::from_std(listener)
+                .expect("Calling listen_udp when runtime is not set"),
+        );
         let listen_addr: DestinationAddr = listener.local_addr()?.into();
         let mut buf = [0u8; 4096];
         loop {
@@ -93,6 +105,7 @@ pub fn listen_udp(
             }
         }
     });
+    Ok(())
 }
 
 #[async_trait]

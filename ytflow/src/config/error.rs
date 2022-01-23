@@ -47,6 +47,11 @@ pub enum LoadError {
         initiator: String,
         descriptor: String,
     },
+    #[error(r#"a system error occurs while loading plugin {plugin:}: {error:}"#)]
+    Io {
+        plugin: String,
+        error: std::io::Error,
+    },
 }
 
 pub type ConfigResult<T> = Result<T, ConfigError>;

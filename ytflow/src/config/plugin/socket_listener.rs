@@ -48,18 +48,28 @@ impl<'de> Factory for SocketListenerFactory<'de> {
                     Arc::downgrade(&(Arc::new(RejectHandler) as _))
                 });
             for tcp_listen in &self.tcp_listen {
-                socket::listen_tcp(tcp_next.clone(), (*tcp_listen).to_owned());
+                if let Err(e) = socket::listen_tcp(tcp_next.clone(), (*tcp_listen).to_owned()) {
+                    set.errors.push(LoadError::Io {
+                        plugin: plugin_name.clone(),
+                        error: e,
+                    });
+                }
             }
         }
         if !self.udp_listen.is_empty() {
             let udp_next = set
-                .get_or_create_datagram_handler(plugin_name, self.udp_next)
+                .get_or_create_datagram_handler(plugin_name.clone(), self.udp_next)
                 .unwrap_or_else(|e| {
                     set.errors.push(e);
                     Arc::downgrade(&(Arc::new(RejectHandler) as _))
                 });
             for udp_listen in &self.udp_listen {
-                socket::listen_udp(udp_next.clone(), (*udp_listen).to_owned());
+                if let Err(e) = socket::listen_udp(udp_next.clone(), (*udp_listen).to_owned()) {
+                    set.errors.push(LoadError::Io {
+                        plugin: plugin_name.clone(),
+                        error: e,
+                    });
+                }
             }
         }
         Ok(())
