@@ -70,14 +70,14 @@ pub struct SimpleDatagramDispatcher {
 }
 
 impl StreamHandler for SimpleStreamDispatcher {
-    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, initial_data: Buffer, context: Box<FlowContext>) {
         let handler = self
             .rules
             .iter()
             .find_map(|r| r.matches(&context))
             .unwrap_or_else(|| self.fallback.clone());
         if let Some(handler) = handler.upgrade() {
-            handler.on_stream(lower, context)
+            handler.on_stream(lower, initial_data, context)
         }
     }
 }

@@ -116,10 +116,13 @@ impl StreamForwardHandler {
         outbound_factory: Arc<dyn StreamOutboundFactory>,
         mut lower: Box<dyn Stream>,
         request_timeout: u64,
+        initial_data: Vec<u8>,
         context: Box<FlowContext>,
     ) -> FlowResult<()> {
         let mut initial_uplink_state = ForwardState::AwatingSizeHint;
-        let initial_data = if request_timeout == 0 {
+        let initial_data = if initial_data.len() > 0 {
+            Some(initial_data)
+        } else if request_timeout == 0 {
             None
         } else {
             timeout(tokio::time::Duration::from_millis(request_timeout), async {
@@ -193,12 +196,13 @@ impl StreamForwardHandler {
 }
 
 impl StreamHandler for StreamForwardHandler {
-    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, initial_data: Buffer, context: Box<FlowContext>) {
         if let Some(outbound) = self.outbound.upgrade() {
             tokio::spawn(Self::handle_stream(
                 outbound,
                 lower,
                 self.request_timeout,
+                initial_data,
                 context,
             ));
         }

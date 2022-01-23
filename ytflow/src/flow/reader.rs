@@ -11,13 +11,15 @@ pub enum StreamReader {
 }
 
 impl StreamReader {
-    pub fn new(capacity: usize, initial_data: &[u8]) -> Self {
-        let mut buf = Vec::with_capacity(capacity);
-        buf.extend_from_slice(initial_data);
-        StreamReader::PollSizeHint(buf, 0)
+    pub fn new(capacity: usize, mut initial_data: Vec<u8>) -> Self {
+        if let Some(delta) = capacity.checked_sub(initial_data.capacity()) {
+            let additional = delta + initial_data.spare_capacity_mut().len();
+            initial_data.reserve(additional);
+        }
+        StreamReader::PollSizeHint(initial_data, 0)
     }
 
-    pub fn into_initial_res(self) -> Option<Vec<u8>> {
+    pub fn into_buffer(self) -> Option<Vec<u8>> {
         match self {
             StreamReader::PollSizeHint(mut buf, offset) => {
                 buf.drain(..offset);

@@ -32,7 +32,7 @@ impl NetifHostResolver {
 
         let socket_resolver = Arc::new(Null);
         let socket_factory = Arc::new(crate::plugin::socket::SocketOutboundFactory {
-            resolver: Arc::downgrade(&(socket_resolver.clone() as _)),
+            resolver: Arc::downgrade(&socket_resolver) as _,
             netif_selector: selector.clone(),
         });
         let inner = RwLock::new(create_host_resolver(

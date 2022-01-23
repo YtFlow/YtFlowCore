@@ -196,7 +196,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
         plugin_version: 0,
         param: serialize_cbor(
             cbor!({
-                "method" => serde_bytes::Bytes::new(&b"aes-256-gcm"[..]),
+                "method" => "aes-256-gcm",
                 "password" => serde_bytes::Bytes::new(&b"password"[..]),
                 "tcp_next" => prefix.to_string() + "-redir.tcp",
                 "udp_next" => prefix.to_string() + "-null.udp",

@@ -16,6 +16,8 @@ futures = { version = "0.3", default-features = false, features = ["std", "async
 thiserror = "1"
 pin-project-lite = "0.2"
 chrono = { version = "*", features = ["serde"] }
+memchr = "2"
+rand = "0.8"
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
@@ -34,7 +36,7 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "net", "io
 httparse = "1"
 base64 = "0.13"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
-crypto2 = { version = "0.1", default-features = false, features = ["std"] }
+crypto2 = { git = "https://github.com/shadowsocks/crypto2.git", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
 tokio-openssl = "0.6"
 

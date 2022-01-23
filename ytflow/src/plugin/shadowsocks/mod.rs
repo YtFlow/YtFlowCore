@@ -157,7 +157,7 @@ where
         // Must specify C explicitly due to https://github.com/rust-lang/rust/issues/83249
         Ok((
             Box::new(stream::ShadowsocksStream::<C> {
-                reader: StreamReader::new(4096, &initial_res),
+                reader: StreamReader::new(4096, initial_res),
                 rx_buf: None,
                 rx_chunk_size: std::num::NonZeroUsize::new(4096).unwrap(),
                 lower: next,

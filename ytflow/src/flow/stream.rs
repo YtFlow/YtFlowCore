@@ -81,7 +81,7 @@ macro_rules! close_tx_boxed {
 }
 
 pub trait StreamHandler: Send + Sync {
-    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>);
+    fn on_stream(&self, lower: Box<dyn Stream>, initial_data: Buffer, context: Box<FlowContext>);
 }
 
 #[async_trait]

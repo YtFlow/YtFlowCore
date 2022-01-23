@@ -299,7 +299,7 @@ fn process_tcp(
                     tx_buf: Some((Vec::with_capacity(4 * 1024), 0)),
                 };
                 if stream.handshake().await.is_ok() {
-                    next.on_stream(Box::new(stream) as _, Box::new(ctx));
+                    next.on_stream(Box::new(stream) as _, Buffer::new(), Box::new(ctx));
                 }
             }
         });

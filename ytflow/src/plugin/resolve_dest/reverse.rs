@@ -1,7 +1,6 @@
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
 
-use async_trait::async_trait;
 use futures::{future::BoxFuture, ready};
 
 use crate::flow::*;
@@ -42,14 +41,15 @@ fn handle_context(
     });
 }
 
-#[async_trait]
 impl StreamHandler for StreamReverseResolver {
-    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, initial_data: Buffer, context: Box<FlowContext>) {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return,
         };
-        handle_context(&self.resolver, context, move |c| next.on_stream(lower, c));
+        handle_context(&self.resolver, context, move |c| {
+            next.on_stream(lower, initial_data, c)
+        });
     }
 }
 

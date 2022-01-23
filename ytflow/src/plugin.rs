@@ -7,6 +7,7 @@ pub mod http_proxy;
 pub mod ip_stack;
 pub mod netif;
 pub mod null;
+pub mod obfs;
 pub mod redirect;
 pub mod reject;
 pub mod resolve_dest;

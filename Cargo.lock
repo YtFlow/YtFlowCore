@@ -266,9 +266,11 @@ dependencies = [
 
 [[package]]
 name = "crypto2"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a161713d9e77a76b166714fc1efd2a7d0a6830e8be57eb727b215076fb62e7a4"
+version = "0.2.0"
+source = "git+https://github.com/shadowsocks/crypto2.git#4e983d4228152f8b8d6ed0d75e6b37627eec6a8e"
+dependencies = [
+ "cfg-if 1.0.0",
+]
 
 [[package]]
 name = "ctrlc"
@@ -1752,11 +1754,13 @@ dependencies = [
  "ipconfig",
  "libc",
  "lru",
+ "memchr",
  "netlink-packet-route",
  "openssl",
  "openssl-sys",
  "parking_lot",
  "pin-project-lite",
+ "rand",
  "refinery",
  "refinery-core",
  "rtnetlink",

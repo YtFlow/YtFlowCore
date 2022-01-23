@@ -61,7 +61,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         let mut ssl_stream = tokio_openssl::SslStream::new(
             ssl,
             CompatStream {
-                reader: StreamReader::new(4096, &[]),
+                reader: StreamReader::new(4096, Buffer::new()),
                 inner: Box::new(InitialDataExtractStream {
                     data: initial_data_container.clone(),
                 }),
@@ -90,7 +90,7 @@ impl StreamOutboundFactory for SslStreamFactory {
                 .create_outbound(context, &initial_data)
                 .await?;
             *ssl_stream.get_mut() = CompatStream {
-                reader: StreamReader::new(4096, &initial_res),
+                reader: StreamReader::new(4096, initial_res),
                 inner: lower,
             };
         }

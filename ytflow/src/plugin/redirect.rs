@@ -45,13 +45,18 @@ pub struct DatagramSessionRedirectFactory<R: PeerProvider> {
 }
 
 impl<R: PeerProvider> StreamHandler for StreamRedirectHandler<R> {
-    fn on_stream(&self, lower: Box<dyn Stream>, mut context: Box<FlowContext>) {
+    fn on_stream(
+        &self,
+        lower: Box<dyn Stream>,
+        initial_data: Buffer,
+        mut context: Box<FlowContext>,
+    ) {
         let next = match self.next.upgrade() {
             Some(n) => n,
             None => return,
         };
         context.remote_peer = self.remote_peer.get_peer();
-        next.on_stream(lower, context);
+        next.on_stream(lower, initial_data, context);
     }
 }
 

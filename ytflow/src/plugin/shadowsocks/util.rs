@@ -8,8 +8,9 @@ pub fn write_dest(w: &mut Vec<u8>, context: &FlowContext) {
     match &context.remote_peer.dest {
         Destination::DomainName(domain) => {
             w.push(0x03);
+            let domain = domain.trim_end_matches('.').as_bytes();
             w.push(domain.len() as u8);
-            w.extend_from_slice(domain.as_bytes());
+            w.extend_from_slice(domain);
         }
         Destination::Ip(IpAddr::V4(ipv4)) => {
             w.push(0x01);

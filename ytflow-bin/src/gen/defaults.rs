@@ -61,6 +61,11 @@ pub enum PluginType {
     #[strum(props(prefix = "socks5-server"), detailed_message = "SOCKS5 server.")]
     Socks5Server,
     #[strum(
+        props(prefix = "http-obfs-server"),
+        detailed_message = "simple-obfs HTTP server."
+    )]
+    HttpObfsServer,
+    #[strum(
         props(prefix = "resolve-dest"),
         detailed_message = "Resolve domain names in flow destinations from/to IP addresses."
     )]
@@ -94,6 +99,11 @@ pub enum PluginType {
         detailed_message = "Trojan client. Note that TLS is not included. You will likely need to connect this plugin to a TLS plugin."
     )]
     TrojanClient,
+    #[strum(
+        props(prefix = "http-obfs-client"),
+        detailed_message = "simple-obfs HTTP client."
+    )]
+    HttpObfsClient,
     #[strum(
         props(prefix = "redirect"),
         detailed_message = "Change the destination of connections or datagrams."
@@ -162,6 +172,9 @@ impl PluginType {
                     "user" => Bytes::new(b"remove_if_no_cred"),
                     "pass" => Bytes::new(b"remove_if_no_cred"),
                 }),
+                PluginType::HttpObfsServer => cbor!({
+                    "next" => name.clone() + "-forward.tcp",
+                }),
                 PluginType::ResolveDest => cbor!({
                     "resolver" => name.clone() + "-fake-ip.resolver",
                     "reverse" => true,
@@ -188,10 +201,10 @@ impl PluginType {
                     "udp_next" => name.clone() + "-socket.udp",
                 }),
                 PluginType::ShadowsocksClient => cbor!({
-                    "method" => Bytes::new(b"aes-256-gcm"),
+                    "method" => "aes-256-gcm",
                     "password" => Bytes::new(b"password"),
                     "tcp_next" => name.clone() + "-redirect.tcp",
-                    "udp_next" => name.clone() + "-null.tcp",
+                    "udp_next" => name.clone() + "-null.udp",
                 }),
                 PluginType::Socks5Client => cbor!({
                     "tcp_next" => name.clone() + "-redirect.tcp",
@@ -211,6 +224,11 @@ impl PluginType {
                 PluginType::TrojanClient => cbor!({
                     "password" => Bytes::new(b"password"),
                     "tls_next" => name.clone() + "-tls.tcp",
+                }),
+                PluginType::HttpObfsClient => cbor!({
+                    "host" => "windowsupdate.microsoft.com",
+                    "path" => "/",
+                    "next" => name.clone() + "-redirect.tcp",
                 }),
                 PluginType::Redirect => cbor!({
                     "dest" => DestinationAddr {

@@ -3,7 +3,7 @@ use crate::flow::*;
 pub struct RejectHandler;
 
 impl StreamHandler for RejectHandler {
-    fn on_stream(&self, lower: Box<dyn Stream>, _context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, _initial_data: Buffer, _context: Box<FlowContext>) {
         drop(lower);
     }
 }

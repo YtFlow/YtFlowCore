@@ -41,8 +41,9 @@ fn get_cred_req(cred: (&[u8], &[u8])) -> Vec<u8> {
 async fn serve_handshake(
     auth_req: Option<Arc<[u8]>>,
     stream: &mut dyn Stream,
-) -> FlowResult<DestinationAddr> {
-    let mut reader = StreamReader::new(128, &[]);
+    initial_data: Buffer,
+) -> FlowResult<(DestinationAddr, Vec<u8>)> {
+    let mut reader = StreamReader::new(128, initial_data);
     let nauth = reader
         .read_exact(stream, 2, |buf| {
             let res = buf[1];
@@ -135,7 +136,7 @@ async fn serve_handshake(
         .await?
         .ok_or(FlowError::UnexpectedData)?;
     send_response(stream, &[0x05, 0, 0, 0x01, 0, 0, 0, 0, 0, 0]).await?;
-    Ok(dest)
+    Ok((dest, reader.into_buffer().unwrap_or_default()))
 }
 
 async fn perform_handshake(
@@ -147,7 +148,7 @@ async fn perform_handshake(
         let (mut stream, initial_res) = stream_factory
             .create_outbound(context.clone(), &[0x05, 0x01, 0x02])
             .await?;
-        let mut reader = StreamReader::new(32, &initial_res);
+        let mut reader = StreamReader::new(32, initial_res);
         let auth_accepted = reader
             .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0x02])
             .await?;
@@ -163,7 +164,7 @@ async fn perform_handshake(
         let (mut stream, initial_res) = stream_factory
             .create_outbound(context.clone(), &[0x05, 0x01, 0])
             .await?;
-        let mut reader = StreamReader::new(32, &initial_res);
+        let mut reader = StreamReader::new(32, initial_res);
         let auth_accepted = reader
             .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0])
             .await?;
@@ -192,26 +193,32 @@ async fn perform_handshake(
             })
             .await??;
         reader.read_exact(&mut *stream, remaining, |_| {}).await?;
-        Ok((stream, reader.into_initial_res().unwrap_or_default()))
+        Ok((stream, reader.into_buffer().unwrap_or_default()))
     } else {
         Err(FlowError::UnexpectedData)
     }
 }
 
 impl StreamHandler for Socks5Handler {
-    fn on_stream(&self, mut lower: Box<dyn Stream>, mut context: Box<FlowContext>) {
+    fn on_stream(
+        &self,
+        mut lower: Box<dyn Stream>,
+        initial_data: Buffer,
+        mut context: Box<FlowContext>,
+    ) {
         let next = match self.next.upgrade() {
             Some(next) => next,
             None => return,
         };
         let auth_req = self.auth_req.clone();
         tokio::spawn(async move {
-            let dest = match serve_handshake(auth_req, &mut *lower).await {
-                Ok(dest) => dest,
-                Err(_) => return,
-            };
+            let (dest, initial_data) =
+                match serve_handshake(auth_req, &mut *lower, initial_data).await {
+                    Ok(dest) => dest,
+                    Err(_) => return,
+                };
             context.remote_peer = dest;
-            next.on_stream(lower, context)
+            next.on_stream(lower, initial_data, context)
         });
     }
 }

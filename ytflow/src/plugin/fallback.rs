@@ -67,7 +67,7 @@ pub struct FallbackHandler {
 }
 
 impl StreamHandler for FallbackHandler {
-    fn on_stream(&self, lower: Box<dyn Stream>, context: Box<FlowContext>) {
+    fn on_stream(&self, lower: Box<dyn Stream>, initial_data: Buffer, context: Box<FlowContext>) {
         let fallback = self.fallback.clone();
         let context_clone = context.clone();
         let next = match self.next.upgrade() {
@@ -80,10 +80,11 @@ impl StreamHandler for FallbackHandler {
                 lower: ManuallyDrop::new(lower),
                 on_fallback: ManuallyDrop::new(move |lower| {
                     if let Some(fallback) = fallback.upgrade() {
-                        fallback.on_stream(lower, context)
+                        fallback.on_stream(lower, Buffer::new(), context)
                     }
                 }),
             }),
+            initial_data,
             context_clone,
         );
     }

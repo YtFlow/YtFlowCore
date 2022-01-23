@@ -72,7 +72,10 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             );
             req.extend_from_slice(REQ_BEFORE_ADDR);
             match &context.remote_peer.dest {
-                Destination::DomainName(domain) => req.extend_from_slice(domain.as_bytes()),
+                Destination::DomainName(domain) => {
+                    let domain = domain.trim_end_matches('.').as_bytes();
+                    req.extend_from_slice(domain)
+                }
                 Destination::Ip(ip) => write!(&mut req, "{}", ip).unwrap(),
             };
             req.push(b':');
@@ -84,7 +87,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             outbound_factory.create_outbound(context, &req[..]).await?
         };
         let initial_res = {
-            let mut reader = StreamReader::new(4096, &initial_res);
+            let mut reader = StreamReader::new(4096, initial_res);
             let mut expected_header_size = 1;
             let mut code = None;
             let mut res_header_size = 0;
@@ -111,7 +114,7 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             code.filter(|c| (200..=299).contains(c))
                 .ok_or(FlowError::UnexpectedData)?;
             reader.advance(res_header_size);
-            reader.into_initial_res().unwrap_or_default()
+            reader.into_buffer().unwrap_or_default()
         };
         Ok((lower, initial_res))
     }

@@ -32,6 +32,7 @@ pub fn listen_tcp(next: Weak<dyn StreamHandler>, addr: impl ToSocketAddrs + Send
                     let remote_peer = stream.local_addr()?.into();
                     next.on_stream(
                         Box::new(CompatFlow::new(stream, 4096)),
+                        Buffer::new(),
                         Box::new(FlowContext {
                             local_peer: connector,
                             remote_peer,
