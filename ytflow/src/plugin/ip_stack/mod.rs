@@ -9,7 +9,7 @@ use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Weak};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use flume::{bounded, Sender, TrySendError};
 use parking_lot::{const_fair_mutex, FairMutex, FairMutexGuard};
@@ -397,7 +397,7 @@ fn schedule_repoll(
 
             tokio::spawn(schedule_repoll(
                 stack_cloned,
-                poll_at + delay.into(),
+                poll_at + Duration::from(delay),
                 most_recent_scheduled_poll,
             ));
         }

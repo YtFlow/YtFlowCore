@@ -25,7 +25,7 @@ strum_macros = "0.23"
 cidr = { version = "0.2", features = ["serde"] }
 
 # CLI
-clap = { version = "3.0.0-rc.8", features = ["cargo"] }
+clap = { version = "3", features = ["cargo"] }
 ctrlc = "3"
 edit = "0.1"
 
@@ -37,7 +37,7 @@ serde_json = { version = "1", features = ["alloc"] }
 base64 = "0.13"
 
 # TUI
-tui = { version = "0.16", default-features = false, features = ['crossterm'] }
+tui = { version = "0.17", default-features = false, features = ['crossterm'] }
 # tui 0.16.0 still uses crossterm 0.20, which crashes on Windows Terminal
-crossterm = "^0.22"
+crossterm = "0.22"
 tui-input = "0.1"

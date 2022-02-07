@@ -55,7 +55,7 @@ impl<'s> SocketEntryGuard<'s> {
 
             tokio::spawn(schedule_repoll(
                 stack.clone(),
-                now + delay.into(),
+                now + Duration::from(delay),
                 Arc::clone(most_recent_scheduled_poll),
             ));
         }

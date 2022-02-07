@@ -17,6 +17,8 @@ pub struct VpnTunFactory {
     pub ipv6: Option<Ipv6Addr>,
     pub ipv4_route: Vec<Ipv4Cidr>,
     pub ipv6_route: Vec<Ipv6Cidr>,
+    #[serde(serialize_with = "crate::plugin::netif::serialize_ipaddrs")]
+    #[serde(deserialize_with = "crate::plugin::netif::deserialize_ipaddrs")]
     pub dns: Vec<IpAddr>,
     // Use String so that the struct can be 'static.
     pub web_proxy: Option<String>,

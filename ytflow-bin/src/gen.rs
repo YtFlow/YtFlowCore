@@ -214,7 +214,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
         param: serialize_cbor(
             cbor!({
                 "dest" => DestinationAddr {
-                    dest: Destination::DomainName("example.com".into()),
+                    dest: Destination::DomainName("example.com.".into()),
                     port: 8388,
                 },
                 "tcp_next" => prefix.to_string() + "-socket",

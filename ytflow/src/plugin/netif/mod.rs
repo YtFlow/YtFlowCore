@@ -8,7 +8,7 @@ use std::sync::{
 };
 
 use arc_swap::ArcSwap;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 pub use resolver::NetifHostResolver;
 
@@ -32,6 +32,8 @@ pub struct Netif {
     pub name: String,
     pub ipv4_addr: Option<SocketAddrV4>,
     pub ipv6_addr: Option<SocketAddrV6>,
+    #[serde(serialize_with = "serialize_ipaddrs")]
+    #[serde(deserialize_with = "deserialize_ipaddrs")]
     pub dns_servers: Vec<IpAddr>,
 }
 
@@ -90,4 +92,25 @@ impl NetifSelector {
         }
         Some(netif)
     }
+}
+
+pub(crate) fn serialize_ipaddrs<S>(ipaddrs: &Vec<IpAddr>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.collect_seq(ipaddrs.into_iter().map(|ip| ip.to_string()))
+}
+
+pub(crate) fn deserialize_ipaddrs<'de, D>(deserializer: D) -> Result<Vec<IpAddr>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let ipaddrs: Vec<String> = Deserialize::deserialize(deserializer)?;
+    ipaddrs
+        .into_iter()
+        .map(|ip| {
+            ip.parse()
+                .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(&ip), &"IP address"))
+        })
+        .collect()
 }

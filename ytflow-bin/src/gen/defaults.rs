@@ -146,9 +146,7 @@ impl PluginType {
                     "ipv6" => Null,
                     "ipv4_route" => [(16, [11, 17, 0, 0]), (24, [11, 16, 0, 0])],
                     "ipv6_route" => Vec::<()>::new(),
-                    "dns" => [{
-                        "V4" => [11, 16, 1, 1],
-                    }],
+                    "dns" => ["11.16.1.1"],
                     "web_proxy" => Null,
                 }),
                 PluginType::HostResolver => cbor!({
@@ -232,7 +230,7 @@ impl PluginType {
                 }),
                 PluginType::Redirect => cbor!({
                     "dest" => DestinationAddr {
-                        dest: Destination::DomainName("my.proxy.server.com".into()),
+                        dest: Destination::DomainName("my.proxy.server.com.".into()),
                         port: 8388,
                     },
                     "tcp_next" => name.clone() + "-socket",
