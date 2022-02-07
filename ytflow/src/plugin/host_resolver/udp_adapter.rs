@@ -108,7 +108,7 @@ impl UdpSocket for FlowDatagramSocket {
                                 local_peer: target,
                                 // 让下一层 redirect，这里直接摆烂
                                 remote_peer: DestinationAddr {
-                                    dest: Destination::Ip((*addrv4.ip()).into()),
+                                    host: HostName::Ip((*addrv4.ip()).into()),
                                     port: 53,
                                 },
                             }))
@@ -143,7 +143,7 @@ impl UdpSocket for FlowDatagramSocket {
         ready!(session.as_mut().poll_send_ready(cx));
         session.as_mut().send_to(
             DestinationAddr {
-                dest: Destination::Ip(target.ip()),
+                host: HostName::Ip(target.ip()),
                 port: target.port(),
             },
             buf.to_vec(),

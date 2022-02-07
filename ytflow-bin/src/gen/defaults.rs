@@ -7,7 +7,7 @@ use super::{serialize_cbor, DUMMY_PLUGIN_ID, MIN_DATETIME};
 use ytflow::{
     config::plugin::NetifFactory,
     data::Plugin,
-    flow::{Destination, DestinationAddr},
+    flow::{DestinationAddr, HostName},
     plugin::netif::{FamilyPreference, SelectionMode},
 };
 
@@ -230,7 +230,7 @@ impl PluginType {
                 }),
                 PluginType::Redirect => cbor!({
                     "dest" => DestinationAddr {
-                        dest: Destination::DomainName("my.proxy.server.com.".into()),
+                        host: HostName::DomainName("my.proxy.server.com.".into()),
                         port: 8388,
                     },
                     "tcp_next" => name.clone() + "-socket",

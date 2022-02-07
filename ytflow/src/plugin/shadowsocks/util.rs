@@ -2,21 +2,21 @@ use std::net::IpAddr;
 
 use crypto2::hash::Md5;
 
-use crate::flow::{Destination, DestinationAddr, FlowContext};
+use crate::flow::{DestinationAddr, FlowContext, HostName};
 
 pub fn write_dest(w: &mut Vec<u8>, context: &FlowContext) {
-    match &context.remote_peer.dest {
-        Destination::DomainName(domain) => {
+    match &context.remote_peer.host {
+        HostName::DomainName(domain) => {
             w.push(0x03);
             let domain = domain.trim_end_matches('.').as_bytes();
             w.push(domain.len() as u8);
             w.extend_from_slice(domain);
         }
-        Destination::Ip(IpAddr::V4(ipv4)) => {
+        HostName::Ip(IpAddr::V4(ipv4)) => {
             w.push(0x01);
             w.extend_from_slice(&ipv4.octets()[..]);
         }
-        Destination::Ip(IpAddr::V6(ipv6)) => {
+        HostName::Ip(IpAddr::V6(ipv6)) => {
             w.push(0x04);
             w.extend_from_slice(&ipv6.octets());
         }
@@ -33,23 +33,23 @@ pub fn parse_dest(w: &[u8]) -> Option<DestinationAddr> {
         0x01 if w.len() >= 7 => {
             let mut ipv4 = [0u8; 4];
             ipv4.copy_from_slice(&w[1..5]);
-            (Destination::Ip(IpAddr::V4(ipv4.into())), 5)
+            (HostName::Ip(IpAddr::V4(ipv4.into())), 5)
         }
         0x04 if w.len() >= 19 => {
             let mut ipv6 = [0u8; 16];
             ipv6.copy_from_slice(&w[1..17]);
-            (Destination::Ip(IpAddr::V6(ipv6.into())), 17)
+            (HostName::Ip(IpAddr::V6(ipv6.into())), 17)
         }
         0x03 if w.len() >= w[1] as usize + 4 => {
             let domain_end = w[1] as usize + 2;
             let domain = String::from_utf8_lossy(&w[2..domain_end]).to_string();
-            (Destination::from_domain_name(domain).ok()?, domain_end)
+            (HostName::from_domain_name(domain).ok()?, domain_end)
         }
         _ => return None,
     };
     let port = u16::from_be_bytes([w[port_offset], w[port_offset + 1]]);
     Some(DestinationAddr {
-        dest: dest_addr,
+        host: dest_addr,
         port,
     })
 }

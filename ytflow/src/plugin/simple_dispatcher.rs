@@ -47,9 +47,9 @@ impl<N: Clone> Rule<N> {
             if !port_ranges.iter().any(|r| r.contains(&port)) {
                 return None;
             }
-            match &context.remote_peer.dest {
-                Destination::Ip(ip) if !ip_ranges.iter().any(|r| r.contains(ip)) => return None,
-                Destination::DomainName(_) => return None,
+            match &context.remote_peer.host {
+                HostName::Ip(ip) if !ip_ranges.iter().any(|r| r.contains(ip)) => return None,
+                HostName::DomainName(_) => return None,
                 _ => Some(self.next.clone()),
             }
         }

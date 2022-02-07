@@ -281,7 +281,7 @@ fn process_tcp(
         let ctx = FlowContext {
             local_peer: SocketAddr::new(src_addr, src_port).into(),
             remote_peer: DestinationAddr {
-                dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
+                host: HostName::Ip(smoltcp_addr_to_std(dst_addr.into())),
                 port: dst_port,
             },
         };
@@ -348,7 +348,7 @@ fn process_udp(
                     Box::new(FlowContext {
                         local_peer: SocketAddr::new(src_addr, src_port),
                         remote_peer: DestinationAddr {
-                            dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
+                            host: HostName::Ip(smoltcp_addr_to_std(dst_addr.into())),
                             port: dst_port,
                         },
                     }),
@@ -359,7 +359,7 @@ fn process_udp(
     };
     if let Err(TrySendError::Disconnected(_)) = tx.try_send((
         DestinationAddr {
-            dest: Destination::Ip(smoltcp_addr_to_std(dst_addr.into())),
+            host: HostName::Ip(smoltcp_addr_to_std(dst_addr.into())),
             port: dst_port,
         },
         payload.to_vec(),

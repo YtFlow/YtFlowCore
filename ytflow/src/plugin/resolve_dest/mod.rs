@@ -31,12 +31,12 @@ async fn try_resolve_forward(
             .map(Into::into)
     } {
         Some(ip) => DestinationAddr {
-            dest: Destination::Ip(ip),
+            host: HostName::Ip(ip),
             port,
         },
 
         None => DestinationAddr {
-            dest: Destination::DomainName(domain),
+            host: HostName::DomainName(domain),
             port,
         },
     }
@@ -49,11 +49,11 @@ async fn try_resolve_reverse(
 ) -> DestinationAddr {
     match resolver.resolve_reverse(ip).await {
         Ok(domain) => DestinationAddr {
-            dest: Destination::DomainName(domain),
+            host: HostName::DomainName(domain),
             port,
         },
         Err(_) => DestinationAddr {
-            dest: Destination::Ip(ip),
+            host: HostName::Ip(ip),
             port,
         },
     }

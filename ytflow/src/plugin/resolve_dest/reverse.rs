@@ -20,8 +20,8 @@ fn handle_context(
     mut context: Box<FlowContext>,
     on_context: impl FnOnce(Box<FlowContext>) + Send + 'static,
 ) {
-    let ip = match &context.remote_peer.dest {
-        Destination::Ip(ip) => *ip,
+    let ip = match &context.remote_peer.host {
+        HostName::Ip(ip) => *ip,
         _ => return on_context(context),
     };
     let resolver = match resolver.upgrade() {
@@ -29,12 +29,12 @@ fn handle_context(
         None => return,
     };
     tokio::spawn(async move {
-        context.remote_peer.dest = match resolver.resolve_reverse(ip).await {
+        context.remote_peer.host = match resolver.resolve_reverse(ip).await {
             Ok(domain) => {
                 crate::log::debug_log(format!("Reverse request: {}", domain));
-                Destination::DomainName(domain)
+                HostName::DomainName(domain)
             }
-            Err(_) => Destination::Ip(ip),
+            Err(_) => HostName::Ip(ip),
         };
         on_context(context);
         FlowResult::Ok(())
@@ -103,9 +103,9 @@ impl DatagramSession for DatagramReverseSession {
             Some(ret) => ret,
             None => return Poll::Ready(None),
         };
-        let ip = match &dest.dest {
-            Destination::DomainName(_) => return Poll::Ready(Some((dest, buf))),
-            Destination::Ip(ip) => *ip,
+        let ip = match &dest.host {
+            HostName::DomainName(_) => return Poll::Ready(Some((dest, buf))),
+            HostName::Ip(ip) => *ip,
         };
         let port = dest.port;
         let resolver = self.resolver.clone();
@@ -130,14 +130,14 @@ impl DatagramSession for DatagramReverseSession {
     }
 
     fn send_to(&mut self, remote_peer: DestinationAddr, buf: Buffer) {
-        let DestinationAddr { dest, port } = remote_peer;
+        let DestinationAddr { host: dest, port } = remote_peer;
         let domain = match dest {
-            Destination::DomainName(domain) => domain,
+            HostName::DomainName(domain) => domain,
             dest => {
                 return self
                     .lower
                     .as_mut()
-                    .send_to(DestinationAddr { dest, port }, buf)
+                    .send_to(DestinationAddr { host: dest, port }, buf)
             }
         };
         let resolver = self.resolver.clone();

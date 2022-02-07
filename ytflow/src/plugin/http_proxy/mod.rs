@@ -71,12 +71,12 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
                 REQ_BEFORE_ADDR.len() + 261 + self.req_after_addr.len() + initial_data.len(),
             );
             req.extend_from_slice(REQ_BEFORE_ADDR);
-            match &context.remote_peer.dest {
-                Destination::DomainName(domain) => {
+            match &context.remote_peer.host {
+                HostName::DomainName(domain) => {
                     let domain = domain.trim_end_matches('.').as_bytes();
                     req.extend_from_slice(domain)
                 }
-                Destination::Ip(ip) => write!(&mut req, "{}", ip).unwrap(),
+                HostName::Ip(ip) => write!(&mut req, "{}", ip).unwrap(),
             };
             req.push(b':');
             let mut port_buf = [0u8; 5];

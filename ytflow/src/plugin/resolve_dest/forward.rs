@@ -20,8 +20,8 @@ fn handle_context(
     mut context: Box<FlowContext>,
     on_context: impl FnOnce(Box<FlowContext>) + Send + 'static,
 ) {
-    let domain = match &mut context.remote_peer.dest {
-        Destination::DomainName(domain) => std::mem::replace(domain, String::new()),
+    let domain = match &mut context.remote_peer.host {
+        HostName::DomainName(domain) => std::mem::replace(domain, String::new()),
         _ => return on_context(context),
     };
     let resolver = match resolver.upgrade() {
@@ -105,7 +105,7 @@ impl DatagramSession for DatagramForwardSession {
         };
         let (domain, port) = match dest {
             DestinationAddr {
-                dest: Destination::DomainName(domain),
+                host: HostName::DomainName(domain),
                 port,
             } => (domain, port),
             dest => return Poll::Ready(Some((dest, buf))),
@@ -138,7 +138,7 @@ impl DatagramSession for DatagramForwardSession {
     fn send_to(&mut self, remote_peer: DestinationAddr, buf: Buffer) {
         let (ip, port) = match remote_peer {
             DestinationAddr {
-                dest: Destination::Ip(ip),
+                host: HostName::Ip(ip),
                 port,
             } => (ip, port),
             dest => return self.lower.as_mut().send_to(dest, buf),

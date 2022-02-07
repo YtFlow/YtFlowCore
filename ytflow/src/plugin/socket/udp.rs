@@ -52,14 +52,14 @@ impl MultiplexedDatagramSession for UdpSocket {
     }
     fn send_to(&mut self, dst: DestinationAddr, buf: Buffer) {
         let port = dst.port;
-        match dst.dest {
-            Destination::Ip(ip) => {
+        match dst.host {
+            HostName::Ip(ip) => {
                 let addr = SocketAddr::new(ip, port);
                 if self.socket.try_send_to(&buf, addr).is_err() {
                     self.tx_buf = Some((ResolvingAddr::Ready(addr), buf));
                 }
             }
-            Destination::DomainName(domain) => {
+            HostName::DomainName(domain) => {
                 let resolver = self.resolver.clone();
                 let is_v6 = self.socket.local_addr().unwrap().is_ipv6();
                 self.tx_buf = Some((

@@ -24,8 +24,8 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
             // Ignore oversized packet
             None => return,
         };
-        let _from_ip = match &src.dest {
-            Destination::Ip(ip) => ip,
+        let _from_ip = match &src.host {
+            HostName::Ip(ip) => ip,
             // TODO: print diagnostic message: Cannot send datagram to unresolved destination
             _ => return,
         };
@@ -37,8 +37,8 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
             Some(b) => b,
             None => return,
         };
-        match (&self.local_endpoint, &src.dest) {
-            (IpAddress::Ipv4(dst_v4), Destination::Ip(IpAddr::V4(src_ip))) => {
+        match (&self.local_endpoint, &src.host) {
+            (IpAddress::Ipv4(dst_v4), HostName::Ip(IpAddr::V4(src_ip))) => {
                 let src_ip: Ipv4Address = src_ip.clone().into();
                 let _ = ip_buf.consume(
                     smoltcp::time::Instant::from_micros_const(0),

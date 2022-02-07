@@ -119,28 +119,28 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         let (bind_addr_v4, bind_addr_v6) = self
             .netif_selector
             .read(|netif| (netif.ipv4_addr, netif.ipv6_addr));
-        let mut tcp_stream = match (context.remote_peer.dest.clone(), bind_addr_v4, bind_addr_v6) {
-            (Destination::Ip(IpAddr::V4(ip)), _, _) if ip.is_loopback() => {
+        let mut tcp_stream = match (context.remote_peer.host.clone(), bind_addr_v4, bind_addr_v6) {
+            (HostName::Ip(IpAddr::V4(ip)), _, _) if ip.is_loopback() => {
                 tcp::dial_v4(
                     SocketAddrV4::new(ip, port),
                     SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0),
                 )
                 .await?
             }
-            (Destination::Ip(IpAddr::V6(ip)), _, _) if ip.is_loopback() => {
+            (HostName::Ip(IpAddr::V6(ip)), _, _) if ip.is_loopback() => {
                 tcp::dial_v6(
                     SocketAddrV6::new(ip, port, 0, 0),
                     SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0),
                 )
                 .await?
             }
-            (Destination::Ip(IpAddr::V4(ip)), Some(bind_addr), _) => {
+            (HostName::Ip(IpAddr::V4(ip)), Some(bind_addr), _) => {
                 tcp::dial_v4(SocketAddrV4::new(ip, port), bind_addr).await?
             }
-            (Destination::Ip(IpAddr::V6(ip)), _, Some(bind_addr)) => {
+            (HostName::Ip(IpAddr::V6(ip)), _, Some(bind_addr)) => {
                 tcp::dial_v6(SocketAddrV6::new(ip, port, 0, 0), bind_addr).await?
             }
-            (Destination::DomainName(domain), Some(bind_addr), _) => {
+            (HostName::DomainName(domain), Some(bind_addr), _) => {
                 let resolver = match self.resolver.upgrade() {
                     Some(r) => r,
                     None => return Err(FlowError::NoOutbound),
@@ -167,16 +167,16 @@ impl DatagramSessionFactory for SocketOutboundFactory {
         let (bind_addr_v4, bind_addr_v6) = self
             .netif_selector
             .read(|netif| (netif.ipv4_addr, netif.ipv6_addr));
-        let socket = match (context.remote_peer.dest.clone(), bind_addr_v4, bind_addr_v6) {
-            (Destination::Ip(IpAddr::V4(ip)), _, _) if ip.is_loopback() => {
+        let socket = match (context.remote_peer.host.clone(), bind_addr_v4, bind_addr_v6) {
+            (HostName::Ip(IpAddr::V4(ip)), _, _) if ip.is_loopback() => {
                 udp::dial_v4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0)).await?
             }
-            (Destination::Ip(IpAddr::V6(ip)), _, _) if ip.is_loopback() => {
+            (HostName::Ip(IpAddr::V6(ip)), _, _) if ip.is_loopback() => {
                 udp::dial_v6(SocketAddrV6::new(Ipv6Addr::LOCALHOST, 0, 0, 0)).await?
             }
-            (Destination::Ip(IpAddr::V4(_)), Some(bind_addr), _) => udp::dial_v4(bind_addr).await?,
-            (Destination::Ip(IpAddr::V6(_)), _, Some(bind_addr)) => udp::dial_v6(bind_addr).await?,
-            (Destination::DomainName(domain), Some(bind_addr), _) => {
+            (HostName::Ip(IpAddr::V4(_)), Some(bind_addr), _) => udp::dial_v4(bind_addr).await?,
+            (HostName::Ip(IpAddr::V6(_)), _, Some(bind_addr)) => udp::dial_v6(bind_addr).await?,
+            (HostName::DomainName(domain), Some(bind_addr), _) => {
                 let resolver = match self.resolver.upgrade() {
                     Some(r) => r,
                     None => return Err(FlowError::NoOutbound),

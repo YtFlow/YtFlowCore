@@ -99,7 +99,7 @@ fn create_host_resolver(
 
     for server in servers {
         let remote_peer = DestinationAddr {
-            dest: Destination::Ip(server),
+            host: HostName::Ip(server),
             port: 53,
         };
         let factory = Arc::new(crate::plugin::redirect::DatagramSessionRedirectFactory {

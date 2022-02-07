@@ -4,31 +4,31 @@ use std::net::{IpAddr, SocketAddr};
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Clone)]
-pub enum Destination {
+pub enum HostName {
     DomainName(String),
     Ip(IpAddr),
 }
 
-impl ToString for Destination {
+impl ToString for HostName {
     fn to_string(&self) -> String {
         match self {
-            Destination::DomainName(s) => s.clone(),
-            Destination::Ip(ip) => ip.to_string(),
+            HostName::DomainName(s) => s.clone(),
+            HostName::Ip(ip) => ip.to_string(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DestinationAddr {
-    pub dest: Destination,
+    pub host: HostName,
     pub port: u16,
 }
 
-impl Destination {
+impl HostName {
     pub fn set_domain_name(&mut self, mut domain_name: String) -> Result<(), String> {
         use trust_dns_resolver::Name;
         domain_name.make_ascii_lowercase();
-        *self = Destination::DomainName(
+        *self = HostName::DomainName(
             Name::from_utf8(&domain_name)
                 .map_err(|_| domain_name)?
                 .to_ascii(),
@@ -36,7 +36,7 @@ impl Destination {
         Ok(())
     }
     pub fn from_domain_name(domain_name: String) -> Result<Self, String> {
-        let mut res = Destination::DomainName(String::new());
+        let mut res = HostName::DomainName(String::new());
         res.set_domain_name(domain_name)?;
         Ok(res)
     }
@@ -45,7 +45,7 @@ impl Destination {
 impl From<SocketAddr> for DestinationAddr {
     fn from(socket: SocketAddr) -> Self {
         Self {
-            dest: Destination::Ip(socket.ip()),
+            host: HostName::Ip(socket.ip()),
             port: socket.port(),
         }
     }
@@ -57,16 +57,16 @@ pub struct FlowContext {
     pub remote_peer: DestinationAddr,
 }
 
-impl<'de> Deserialize<'de> for Destination {
+impl<'de> Deserialize<'de> for HostName {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let s: Cow<str> = Deserialize::deserialize(deserializer)?;
         if let Ok(ip) = s.parse::<IpAddr>() {
-            return Ok(Destination::Ip(ip));
+            return Ok(HostName::Ip(ip));
         }
-        let mut ret = Destination::DomainName(String::new());
+        let mut ret = HostName::DomainName(String::new());
         ret.set_domain_name(s.into_owned()).map_err(|s| {
             de::Error::invalid_type(
                 de::Unexpected::Str(&s),
@@ -77,14 +77,14 @@ impl<'de> Deserialize<'de> for Destination {
     }
 }
 
-impl Serialize for Destination {
+impl Serialize for HostName {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         match self {
-            Destination::DomainName(s) => serializer.serialize_str(s),
-            Destination::Ip(ip) => serializer.serialize_str(&ip.to_string()),
+            HostName::DomainName(s) => serializer.serialize_str(s),
+            HostName::Ip(ip) => serializer.serialize_str(&ip.to_string()),
         }
     }
 }

@@ -51,7 +51,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         let ssl = if let Some(sni) = sni.as_ref() {
             ssl_config.into_ssl(sni)
         } else {
-            let host = context.remote_peer.dest.to_string();
+            let host = context.remote_peer.host.to_string();
             ssl_config.into_ssl(&host)
         }
         .expect("Cannot create SSL");
