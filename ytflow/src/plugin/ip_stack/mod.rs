@@ -139,7 +139,7 @@ pub fn run(
     tun: Arc<dyn Tun>,
     tcp_next: Weak<dyn StreamHandler>,
     udp_next: Weak<dyn DatagramSessionHandler>,
-) {
+) -> tokio::task::JoinHandle<()> {
     let netif = InterfaceBuilder::new(
         Device {
             tx: None,
@@ -175,7 +175,7 @@ pub fn run(
         while let Some(recv_buf) = tun.blocking_recv() {
             process_packet(&stack, recv_buf);
         }
-    });
+    })
 }
 
 fn process_packet(stack: &IpStack, packet: Buffer) {

@@ -48,11 +48,14 @@ impl<'de> Factory for SocketListenerFactory<'de> {
                     Arc::downgrade(&(Arc::new(RejectHandler) as _))
                 });
             for tcp_listen in &self.tcp_listen {
-                if let Err(e) = socket::listen_tcp(tcp_next.clone(), (*tcp_listen).to_owned()) {
-                    set.errors.push(LoadError::Io {
-                        plugin: plugin_name.clone(),
-                        error: e,
-                    });
+                match socket::listen_tcp(tcp_next.clone(), (*tcp_listen).to_owned()) {
+                    Ok(handle) => set.fully_constructed.long_running_tasks.push(handle),
+                    Err(e) => {
+                        set.errors.push(LoadError::Io {
+                            plugin: plugin_name.clone(),
+                            error: e,
+                        });
+                    }
                 }
             }
         }
@@ -64,11 +67,14 @@ impl<'de> Factory for SocketListenerFactory<'de> {
                     Arc::downgrade(&(Arc::new(RejectHandler) as _))
                 });
             for udp_listen in &self.udp_listen {
-                if let Err(e) = socket::listen_udp(udp_next.clone(), (*udp_listen).to_owned()) {
-                    set.errors.push(LoadError::Io {
-                        plugin: plugin_name.clone(),
-                        error: e,
-                    });
+                match socket::listen_udp(udp_next.clone(), (*udp_listen).to_owned()) {
+                    Ok(handle) => set.fully_constructed.long_running_tasks.push(handle),
+                    Err(e) => {
+                        set.errors.push(LoadError::Io {
+                            plugin: plugin_name.clone(),
+                            error: e,
+                        });
+                    }
                 }
             }
         }

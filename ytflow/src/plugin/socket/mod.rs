@@ -22,10 +22,10 @@ pub struct SocketOutboundFactory {
 pub fn listen_tcp(
     next: Weak<dyn StreamHandler>,
     addr: impl ToSocketAddrs + Send + 'static,
-) -> io::Result<()> {
+) -> io::Result<tokio::task::JoinHandle<()>> {
     let listener = std::net::TcpListener::bind(addr)?;
     listener.set_nonblocking(true)?;
-    tokio::spawn(async move {
+    Ok(tokio::spawn(async move {
         let listener = tokio::net::TcpListener::from_std(listener)
             .expect("Calling listen_tcp when runtime is not set");
         loop {
@@ -33,9 +33,14 @@ pub fn listen_tcp(
                 Ok((stream, connector)) => {
                     let next = match next.upgrade() {
                         Some(lower) => lower,
-                        None => break Ok(()),
+                        None => break,
                     };
-                    let remote_peer = stream.local_addr()?.into();
+                    let remote_peer = match stream.local_addr() {
+                        Ok(addr) => addr,
+                        // TODO: log error
+                        Err(_) => continue,
+                    }
+                    .into();
                     next.on_stream(
                         Box::new(CompatFlow::new(stream, 4096)),
                         Buffer::new(),
@@ -46,34 +51,38 @@ pub fn listen_tcp(
                     )
                 }
                 // TODO: log error
-                Err(e) => break Err(e),
+                Err(_) => break,
             }
         }
-    });
-    Ok(())
+    }))
 }
 
 pub fn listen_udp(
     next: Weak<dyn DatagramSessionHandler>,
     addr: impl ToSocketAddrs + Send + 'static,
-) -> io::Result<()> {
+) -> io::Result<tokio::task::JoinHandle<()>> {
     let mut session_map = BTreeMap::new();
     let null_resolver: Arc<dyn Resolver> = Arc::new(crate::plugin::null::Null);
     let listener = std::net::UdpSocket::bind(addr)?;
     listener.set_nonblocking(true)?;
-    tokio::spawn(async move {
+    Ok(tokio::spawn(async move {
         let listener = Arc::new(
             tokio::net::UdpSocket::from_std(listener)
                 .expect("Calling listen_udp when runtime is not set"),
         );
-        let listen_addr: DestinationAddr = listener.local_addr()?.into();
+        let listen_addr: DestinationAddr = match listener.local_addr() {
+            Ok(addr) => addr,
+            // TODO: log error
+            Err(_) => return,
+        }
+        .into();
         let mut buf = [0u8; 4096];
         loop {
             let (size, from) = match listener.recv_from(&mut buf).await {
                 Ok(r) => r,
                 Err(_) => {
                     // TODO: log error
-                    break io::Result::Ok(());
+                    break;
                 }
             };
             let tx = session_map.entry(from).or_insert_with(|| {
@@ -104,8 +113,7 @@ pub fn listen_udp(
                 session_map.remove(&from);
             }
         }
-    });
-    Ok(())
+    }))
 }
 
 #[async_trait]

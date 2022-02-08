@@ -8,6 +8,7 @@ use crate::plugin::netif::NetifSelector;
 
 pub struct PluginSet {
     pub(super) rt_handle: tokio::runtime::Handle,
+    pub(super) long_running_tasks: Vec<tokio::task::JoinHandle<()>>,
     pub(super) stream_handlers: ManuallyDrop<HashMap<String, Arc<dyn StreamHandler>>>,
     pub(super) stream_outbounds: ManuallyDrop<HashMap<String, Arc<dyn StreamOutboundFactory>>>,
     pub(super) datagram_handlers: ManuallyDrop<HashMap<String, Arc<dyn DatagramSessionHandler>>>,
@@ -155,6 +156,10 @@ impl Drop for PluginSet {
             let _resolver = ManuallyDrop::take(&mut self.resolver);
             let _tun = ManuallyDrop::take(&mut self.tun);
             let _netif = ManuallyDrop::take(&mut self.netif);
+
+            for handle in &self.long_running_tasks {
+                handle.abort()
+            }
         }
     }
 }

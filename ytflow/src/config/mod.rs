@@ -31,6 +31,7 @@ impl<'f> ProfilePluginFactory<'f> {
             self.0.into_iter().map(|(k, v)| (k, Some(v))).collect(),
             set::PluginSet {
                 rt_handle: rt_handle_cloned,
+                long_running_tasks: vec![],
                 stream_handlers: ManuallyDrop::new(HashMap::new()),
                 stream_outbounds: ManuallyDrop::new(HashMap::new()),
                 datagram_handlers: ManuallyDrop::new(HashMap::new()),
