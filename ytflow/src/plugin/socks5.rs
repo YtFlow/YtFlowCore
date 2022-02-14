@@ -1,6 +1,7 @@
 use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
+use futures::future::poll_fn;
 
 use crate::flow::*;
 use crate::plugin::shadowsocks::util::{parse_dest, write_dest};
@@ -235,19 +236,22 @@ impl StreamOutboundFactory for Socks5Outbound {
             None => return Err(FlowError::UnexpectedData),
         };
         let (mut stream, initial_res) = perform_handshake(context, &self.auth_req, next).await?;
-        send_response(&mut *stream, initial_data).await?;
+        send(&mut *stream, initial_data).await?;
         Ok((stream, initial_res))
     }
 }
 
-async fn send_response(lower: &mut dyn Stream, data: &[u8]) -> FlowResult<()> {
-    use futures::future::poll_fn;
+async fn send(lower: &mut dyn Stream, data: &[u8]) -> FlowResult<()> {
     let len = match data.len().try_into() {
         Ok(len) => len,
         Err(_) => return Ok(()),
     };
     let mut tx_buf = poll_fn(|cx| lower.poll_tx_buffer(cx, len)).await?;
     tx_buf.extend(data);
-    lower.commit_tx_buffer(tx_buf)?;
+    lower.commit_tx_buffer(tx_buf)
+}
+
+async fn send_response(lower: &mut dyn Stream, data: &[u8]) -> FlowResult<()> {
+    send(lower, data).await?;
     poll_fn(|cx| lower.poll_flush_tx(cx)).await
 }
