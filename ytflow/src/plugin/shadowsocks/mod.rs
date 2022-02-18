@@ -105,7 +105,7 @@ where
 {
     fn get_req(&self, context: &FlowContext, initial_data: &[u8]) -> (Vec<u8>, C) {
         let mut tx_handshake = Vec::with_capacity(259 + initial_data.len());
-        util::write_dest(&mut tx_handshake, context);
+        util::write_dest(&mut tx_handshake, &context.remote_peer);
         tx_handshake.extend_from_slice(initial_data);
 
         // TODO: Skip zero-fill tx_handshake part

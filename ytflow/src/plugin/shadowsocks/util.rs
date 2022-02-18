@@ -2,10 +2,10 @@ use std::net::IpAddr;
 
 use crypto2::hash::Md5;
 
-use crate::flow::{DestinationAddr, FlowContext, HostName};
+use crate::flow::{DestinationAddr, HostName};
 
-pub fn write_dest(w: &mut Vec<u8>, context: &FlowContext) {
-    match &context.remote_peer.host {
+pub fn write_dest(w: &mut Vec<u8>, remote_peer: &DestinationAddr) {
+    match &remote_peer.host {
         HostName::DomainName(domain) => {
             w.push(0x03);
             let domain = domain.trim_end_matches('.').as_bytes();
@@ -21,7 +21,7 @@ pub fn write_dest(w: &mut Vec<u8>, context: &FlowContext) {
             w.extend_from_slice(&ipv6.octets());
         }
     }
-    w.extend_from_slice(&context.remote_peer.port.to_be_bytes());
+    w.extend_from_slice(&remote_peer.port.to_be_bytes());
 }
 
 pub fn parse_dest(w: &[u8]) -> Option<DestinationAddr> {

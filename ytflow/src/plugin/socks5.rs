@@ -145,9 +145,10 @@ async fn perform_handshake(
     auth_req: &Option<Buffer>,
     stream_factory: Arc<dyn StreamOutboundFactory>,
 ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
+    let dest = context.remote_peer.clone();
     let (mut stream, auth_accepted, mut reader) = if let Some(auth_req) = auth_req {
         let (mut stream, initial_res) = stream_factory
-            .create_outbound(context.clone(), &[0x05, 0x01, 0x02])
+            .create_outbound(context, &[0x05, 0x01, 0x02])
             .await?;
         let mut reader = StreamReader::new(32, initial_res);
         let auth_accepted = reader
@@ -163,7 +164,7 @@ async fn perform_handshake(
         (stream, auth_accepted, reader)
     } else {
         let (mut stream, initial_res) = stream_factory
-            .create_outbound(context.clone(), &[0x05, 0x01, 0])
+            .create_outbound(context, &[0x05, 0x01, 0])
             .await?;
         let mut reader = StreamReader::new(32, initial_res);
         let auth_accepted = reader
@@ -177,7 +178,7 @@ async fn perform_handshake(
 
     let mut req = Vec::with_capacity(300);
     req.extend([0x05, 0x01, 0]);
-    write_dest(&mut req, &context);
+    write_dest(&mut req, &dest);
     send_response(&mut *stream, &req).await?;
     let granted = reader
         .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0])

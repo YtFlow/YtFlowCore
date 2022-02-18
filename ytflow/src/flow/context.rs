@@ -51,7 +51,7 @@ impl From<SocketAddr> for DestinationAddr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FlowContext {
     pub local_peer: SocketAddr,
     pub remote_peer: DestinationAddr,

@@ -42,7 +42,7 @@ impl StreamOutboundFactory for TrojanStreamOutboundFactory {
         let mut tx_handshake = Vec::with_capacity(320 + initial_data.len());
         tx_handshake.extend_from_slice(&self.password_hex);
         tx_handshake.extend_from_slice(b"\r\n\x01");
-        super::shadowsocks::util::write_dest(&mut tx_handshake, &context);
+        super::shadowsocks::util::write_dest(&mut tx_handshake, &context.remote_peer);
         tx_handshake.extend_from_slice(b"\r\n");
         tx_handshake.extend_from_slice(initial_data);
 
