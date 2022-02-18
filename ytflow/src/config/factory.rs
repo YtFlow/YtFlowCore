@@ -128,7 +128,7 @@ impl<'de> AccessPointResolver<'de> {
         let demands = self
             .demanding_aps
             .remove(&*desc.descriptor)
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
         errors.extend(
             demands
                 .into_iter()
@@ -142,8 +142,8 @@ impl<'de> AccessPointResolver<'de> {
         self.provided_aps.insert(desc.descriptor, desc.r#type);
     }
     fn insert_demand(&mut self, ap: &'de str, demand: Demand<'de>) -> ConfigResult<()> {
-        let plugin_name = ap.split(".").next().unwrap_or("");
-        let to_visit_entry = self.plugin_to_visit.entry(&plugin_name);
+        let plugin_name = ap.split('.').next().unwrap_or("");
+        let to_visit_entry = self.plugin_to_visit.entry(plugin_name);
         if let Entry::Vacant(e) = to_visit_entry {
             if let Some(&plugin) = self.all_plugins.get(&plugin_name) {
                 e.insert(Some(plugin));
@@ -219,7 +219,7 @@ pub(super) fn parse_plugins_recursively<'de>(
     entry_plugins: impl Iterator<Item = &'de Plugin>,
     all_plugins: &'de [Plugin],
 ) -> ParseResultCollection<'de> {
-    let all_plugins: HashMap<_, _> = all_plugins.into_iter().map(|p| (&*p.name, p)).collect();
+    let all_plugins: HashMap<_, _> = all_plugins.iter().map(|p| (&*p.name, p)).collect();
     let mut ret = ParseResultCollection::default();
 
     let mut resolver = AccessPointResolver {

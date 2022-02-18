@@ -6,9 +6,11 @@ use cidr::{Ipv4Cidr, Ipv6Cidr};
 use crate::config::factory::*;
 use crate::config::*;
 
+pub type TunFactory = Box<dyn FnOnce(&VpnTunFactory) -> Arc<dyn crate::flow::Tun>>;
+
 thread_local! {
     /// To be instantiated by a VPN entrypoint after parsing.
-    pub static ON_VPNTUN: RefCell<Option<Box<dyn FnOnce(&VpnTunFactory) -> Arc<dyn crate::flow::Tun>>>> = RefCell::new(None);
+    pub static ON_VPNTUN: RefCell<Option<TunFactory>> = RefCell::new(None);
 }
 
 #[derive(Clone, Deserialize)]

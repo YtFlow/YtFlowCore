@@ -33,7 +33,7 @@ impl<'s> SocketEntryGuard<'s> {
     pub fn with_socket<R>(&mut self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
         let handle = self.entry.socket_handle;
         let mut socket = self.guard.netif.get_socket::<TcpSocket<'static>>(handle);
-        f(&mut socket)
+        f(socket)
     }
 
     pub fn poll(&mut self) {
@@ -47,7 +47,7 @@ impl<'s> SocketEntryGuard<'s> {
         let _ = guard.netif.poll(now.into());
         if let Some(delay) = guard.netif.poll_delay(now.into()) {
             let scheduled_poll_milli = (smoltcp::time::Instant::from(now) + delay).total_millis();
-            if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed).into() {
+            if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed) {
                 return;
             }
             // TODO: CAS spin loop

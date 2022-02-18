@@ -40,7 +40,7 @@ impl<S: MultiplexedDatagramSession> MultiplexedDatagramSessionAdapter<S> {
     }
 
     fn close(&mut self) {
-        if let Some(_) = self.rx.take() {
+        if self.rx.take().is_some() {
             // Safety: rx is taken out exactly once.
             unsafe { drop(ManuallyDrop::take(&mut self.timer)) };
             self.inner.on_close();

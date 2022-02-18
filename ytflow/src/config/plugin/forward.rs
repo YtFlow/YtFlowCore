@@ -83,7 +83,7 @@ impl<'de> Factory for ForwardFactory<'de> {
             .insert(plugin_name.clone() + ".tcp", tcp_factory);
         set.fully_constructed
             .datagram_handlers
-            .insert(plugin_name.clone() + ".udp", udp_factory);
+            .insert(plugin_name + ".udp", udp_factory);
         Ok(())
     }
 }

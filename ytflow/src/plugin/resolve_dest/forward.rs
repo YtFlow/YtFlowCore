@@ -21,7 +21,7 @@ fn handle_context(
     on_context: impl FnOnce(Box<FlowContext>) + Send + 'static,
 ) {
     let domain = match &mut context.remote_peer.host {
-        HostName::DomainName(domain) => std::mem::replace(domain, String::new()),
+        HostName::DomainName(domain) => std::mem::take(domain),
         _ => return on_context(context),
     };
     let resolver = match resolver.upgrade() {

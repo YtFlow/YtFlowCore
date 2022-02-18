@@ -19,7 +19,7 @@ fn enum_adapters() -> Vec<(Netif, Rate)> {
         .into_iter()
         .map(|adapter| {
             let rate = if adapter.oper_status() != OperStatus::IfOperStatusUp
-                || adapter.gateways().len() == 0
+                || adapter.gateways().is_empty()
                 || adapter.physical_address().map_or(0, |a| a.len()) == 0
             {
                 Rate::NotRecommended
@@ -41,7 +41,7 @@ fn enum_adapters() -> Vec<(Netif, Rate)> {
                         }
                         _ => None,
                     }),
-                    dns_servers: adapter.dns_servers().into_iter().cloned().collect(),
+                    dns_servers: adapter.dns_servers().to_vec(),
                 },
                 rate,
             )
@@ -72,7 +72,10 @@ impl NetifProvider {
             cb_cloned()
         });
         let event_token = NetworkInformation::NetworkStatusChanged(
-            NetworkStatusChangedEventHandler::new(move |_sender| Ok(callback())),
+            NetworkStatusChangedEventHandler::new(move |_sender| {
+                callback();
+                Ok(())
+            }),
         )
         .unwrap();
         NetifProvider { event_token }

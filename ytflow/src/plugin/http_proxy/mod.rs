@@ -7,9 +7,9 @@ use async_trait::async_trait;
 
 use crate::flow::*;
 
-const REQ_BEFORE_ADDR: &'static [u8] = b"CONNECT ";
-const REQ_AFTER_ADDR_PART: &'static [u8] = b" HTTP/1.1";
-const BASIC_AUTH_HEADER: &'static [u8] = b"\r\nAuthorization: Basic ";
+const REQ_BEFORE_ADDR: &[u8] = b"CONNECT ";
+const REQ_AFTER_ADDR_PART: &[u8] = b" HTTP/1.1";
+const BASIC_AUTH_HEADER: &[u8] = b"\r\nAuthorization: Basic ";
 
 pub struct HttpProxyOutboundFactory {
     req_after_addr: Vec<u8>,
@@ -91,26 +91,28 @@ impl StreamOutboundFactory for HttpProxyOutboundFactory {
             let mut expected_header_size = 1;
             let mut code = None;
             let mut res_header_size = 0;
-            while reader
-                .peek_at_least(&mut *lower, expected_header_size, |data| {
-                    if data.len() > 1024 {
-                        return Err(FlowError::UnexpectedData);
+            let mut on_data = |data: &mut [u8]| {
+                if data.len() > 1024 {
+                    return Err(FlowError::UnexpectedData);
+                }
+                let mut res_headers = [httparse::EMPTY_HEADER; 4];
+                let mut res = httparse::Response::new(&mut res_headers[..]);
+                let ret = res.parse(data).map_err(|_| FlowError::UnexpectedData)?;
+                Ok(match ret {
+                    httparse::Status::Partial => Some(data.len()),
+                    httparse::Status::Complete(len) => {
+                        res_header_size = len;
+                        code = res.code;
+                        None
                     }
-                    expected_header_size = data.len() + 1;
-                    let mut res_headers = [httparse::EMPTY_HEADER; 4];
-                    let mut res = httparse::Response::new(&mut res_headers[..]);
-                    let ret = res.parse(&data).map_err(|_| FlowError::UnexpectedData)?;
-                    Ok(match ret {
-                        httparse::Status::Partial => true,
-                        httparse::Status::Complete(len) => {
-                            res_header_size = len;
-                            code = res.code;
-                            false
-                        }
-                    })
                 })
+            };
+            while let Some(read_len) = reader
+                .peek_at_least(&mut *lower, expected_header_size, &mut on_data)
                 .await??
-            {}
+            {
+                expected_header_size = read_len + 1;
+            }
             code.filter(|c| (200..=299).contains(c))
                 .ok_or(FlowError::UnexpectedData)?;
             reader.advance(res_header_size);

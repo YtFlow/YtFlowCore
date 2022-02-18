@@ -152,14 +152,14 @@ async fn perform_handshake(
             .await?;
         let mut reader = StreamReader::new(32, initial_res);
         let auth_accepted = reader
-            .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0x02])
+            .read_exact(&mut *stream, 2, |buf| buf == [0x05, 0x02])
             .await?;
         if !auth_accepted {
             return Err(FlowError::UnexpectedData);
         }
-        send_response(&mut *stream, &auth_req).await?;
+        send_response(&mut *stream, auth_req).await?;
         let auth_accepted = reader
-            .read_exact(&mut *stream, 2, |buf| buf == &[0x01, 0])
+            .read_exact(&mut *stream, 2, |buf| buf == [0x01, 0])
             .await?;
         (stream, auth_accepted, reader)
     } else {
@@ -168,7 +168,7 @@ async fn perform_handshake(
             .await?;
         let mut reader = StreamReader::new(32, initial_res);
         let auth_accepted = reader
-            .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0])
+            .read_exact(&mut *stream, 2, |buf| buf == [0x05, 0])
             .await?;
         (stream, auth_accepted, reader)
     };
@@ -181,7 +181,7 @@ async fn perform_handshake(
     write_dest(&mut req, &dest);
     send_response(&mut *stream, &req).await?;
     let granted = reader
-        .read_exact(&mut *stream, 2, |buf| buf == &[0x05, 0])
+        .read_exact(&mut *stream, 2, |buf| buf == [0x05, 0])
         .await?;
     if granted {
         let remaining = reader

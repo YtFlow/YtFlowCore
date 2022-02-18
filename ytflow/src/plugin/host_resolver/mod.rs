@@ -123,8 +123,8 @@ impl Resolver for HostResolver {
     }
     async fn resolve_reverse(&'_ self, ip: IpAddr) -> FlowResult<String> {
         if let Some(s) = match &ip {
-            IpAddr::V4(ip) => self.cache_v4.lock().get(ip).map(|s| s.clone()),
-            IpAddr::V6(ip) => self.cache_v6.lock().get(ip).map(|s| s.clone()),
+            IpAddr::V4(ip) => self.cache_v4.lock().get(ip).cloned(),
+            IpAddr::V6(ip) => self.cache_v6.lock().get(ip).cloned(),
         } {
             return Ok(s);
         }

@@ -39,7 +39,7 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
         };
         match (&self.local_endpoint, &src.host) {
             (IpAddress::Ipv4(dst_v4), HostName::Ip(IpAddr::V4(src_ip))) => {
-                let src_ip: Ipv4Address = src_ip.clone().into();
+                let src_ip: Ipv4Address = (*src_ip).into();
                 let _ = ip_buf.consume(
                     smoltcp::time::Instant::from_micros_const(0),
                     buf.len() + 48,
@@ -51,14 +51,14 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
                         ip_packet.set_dont_frag(true);
                         ip_packet.set_hop_limit(255);
                         ip_packet.set_protocol(IpProtocol::Udp);
-                        ip_packet.set_dst_addr(dst_v4.clone());
-                        ip_packet.set_src_addr(src_ip.clone());
+                        ip_packet.set_dst_addr(*dst_v4);
+                        ip_packet.set_src_addr(src_ip);
                         let mut udp_packet = UdpPacket::new_unchecked(ip_packet.payload_mut());
                         udp_packet.set_dst_port(self.local_port);
                         udp_packet.set_src_port(src.port);
                         udp_packet.set_len(8 + payload_len);
                         udp_packet.payload_mut()[..buf.len()].copy_from_slice(&buf);
-                        udp_packet.fill_checksum(&src_ip.into(), &dst_v4.clone().into());
+                        udp_packet.fill_checksum(&src_ip.into(), &(*dst_v4).into());
                         ip_packet.fill_checksum();
                         Ok(())
                     },
@@ -66,7 +66,7 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
             }
             (IpAddress::Ipv6(_dst_v6), _) => todo!(),
             // Ignore unmatched IP version
-            _ => return,
+            _ => {}
         }
     }
 }

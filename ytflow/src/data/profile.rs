@@ -22,14 +22,13 @@ fn map_from_row(row: &Row) -> Result<Profile, SqError> {
         id: super::Id(row.get(0)?, Default::default()),
         permanent_id: {
             let row_ref = row.get_ref(1)?;
-            row_ref
+            *row_ref
                 .as_blob()
                 .ok()
                 .and_then(|b| <&[u8; 16]>::try_from(b).ok())
                 .ok_or_else(|| {
                     SqError::InvalidColumnType(1, String::from("permanent_id"), row_ref.data_type())
                 })?
-                .clone()
         },
         name: row.get(2)?,
         locale: row.get(3)?,

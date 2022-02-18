@@ -22,11 +22,11 @@ impl<'de> RedirectFactory<'de> {
         Ok(ParsedPlugin {
             requires: vec![
                 Descriptor {
-                    descriptor: &config.tcp_next,
+                    descriptor: config.tcp_next,
                     r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
                 Descriptor {
-                    descriptor: &config.udp_next,
+                    descriptor: config.udp_next,
                     r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 },
             ],
@@ -56,15 +56,14 @@ impl<'de> Factory for RedirectFactory<'de> {
                 set.datagram_outbounds
                     .insert(plugin_name.clone() + ".udp", udp_weak.clone() as _);
 
-                let next = match set
-                    .get_or_create_datagram_outbound(plugin_name.clone(), &self.udp_next)
-                {
-                    Ok(t) => t,
-                    Err(e) => {
-                        set.errors.push(e);
-                        Arc::downgrade(&(Arc::new(Null)))
-                    }
-                };
+                let next =
+                    match set.get_or_create_datagram_outbound(plugin_name.clone(), self.udp_next) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            set.errors.push(e);
+                            Arc::downgrade(&(Arc::new(Null)))
+                        }
+                    };
                 let dest = self.dest.clone();
                 redirect::DatagramSessionRedirectFactory {
                     remote_peer: move || dest.clone(),
@@ -75,8 +74,7 @@ impl<'de> Factory for RedirectFactory<'de> {
                 .datagram_outbounds
                 .insert(plugin_name.clone() + ".udp", udp_factory);
 
-            let next = match set.get_or_create_stream_outbound(plugin_name.clone(), &self.tcp_next)
-            {
+            let next = match set.get_or_create_stream_outbound(plugin_name.clone(), self.tcp_next) {
                 Ok(t) => t,
                 Err(e) => {
                     set.errors.push(e);

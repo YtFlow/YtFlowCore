@@ -120,7 +120,7 @@ impl StreamForwardHandler {
         context: Box<FlowContext>,
     ) -> FlowResult<()> {
         let mut initial_uplink_state = ForwardState::AwatingSizeHint;
-        let initial_data = if initial_data.len() > 0 {
+        let initial_data = if !initial_data.is_empty() {
             Some(initial_data)
         } else if request_timeout == 0 {
             None
@@ -154,7 +154,7 @@ impl StreamForwardHandler {
                 return crate::close_tx_boxed!(lower).and_then(|()| Err(e))?;
             }
         };
-        if let Some(initial_res_len) = NonZeroUsize::try_from(initial_res.len()).ok() {
+        if let Ok(initial_res_len) = NonZeroUsize::try_from(initial_res.len()) {
             let mut buf = crate::get_tx_buffer_boxed!(lower, initial_res_len)?;
             buf.extend_from_slice(&initial_res);
             lower.as_mut().commit_tx_buffer(buf)?;

@@ -147,7 +147,7 @@ fn create_udp<
     });
     set.fully_constructed
         .datagram_handlers
-        .insert(plugin_name.clone() + ".udp", factory as _);
+        .insert(plugin_name + ".udp", factory as _);
 }
 
 impl<'de> Factory for ResolveDestFactory<'de> {

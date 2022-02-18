@@ -130,7 +130,7 @@ impl From<ConfigError> for FfiResult {
 
 impl FfiResult {
     pub fn catch_ptr_unwind(f: impl FnOnce() -> (*mut c_void, usize) + UnwindSafe) -> FfiResult {
-        match catch_unwind(move || f()) {
+        match catch_unwind(f) {
             Ok((ptr, metadata)) => Self::no_error(FfiResultPtrType(ptr, metadata)),
             Err(e) => e.into(),
         }
@@ -141,7 +141,7 @@ impl FfiResult {
     >(
         f: F,
     ) -> FfiResult {
-        match catch_unwind(move || f()) {
+        match catch_unwind(f) {
             Ok(Ok((ptr, metadata))) => Self::no_error(FfiResultPtrType(ptr, metadata)),
             Ok(Err(e)) => e.into(),
             Err(e) => e.into(),
@@ -150,14 +150,14 @@ impl FfiResult {
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_result_free(result: *mut FfiResult) {
+pub unsafe extern "C" fn ytflow_result_free(result: *mut FfiResult) {
     let result = unsafe { &mut *result };
     if result.code == 0 {
         return;
     }
     unsafe {
         for ptr in &mut result.data.err {
-            if *ptr != null_mut() {
+            if !ptr.is_null() {
                 drop(CString::from_raw(std::mem::replace(ptr, null_mut())));
             }
         }

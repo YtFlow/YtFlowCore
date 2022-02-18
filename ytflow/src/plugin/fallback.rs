@@ -70,7 +70,7 @@ impl StreamHandler for FallbackHandler {
     fn on_stream(&self, lower: Box<dyn Stream>, initial_data: Buffer, context: Box<FlowContext>) {
         let fallback = self.fallback.clone();
         let context_clone = Box::new(FlowContext {
-            local_peer: context.local_peer.clone(),
+            local_peer: context.local_peer,
             remote_peer: context.remote_peer.clone(),
         });
         let next = match self.next.upgrade() {

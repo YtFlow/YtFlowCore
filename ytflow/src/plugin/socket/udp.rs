@@ -46,7 +46,7 @@ impl MultiplexedDatagramSession for UdpSocket {
                 None => return Poll::Ready(()),
             }
         };
-        let _ = ready!(socket.poll_send_to(cx, &buf, addr));
+        let _ = ready!(socket.poll_send_to(cx, buf, addr));
         *tx_buf = None;
         Poll::Ready(())
     }

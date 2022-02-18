@@ -207,8 +207,8 @@ https://github.com/YtFlow/YtFlowCore",
                 continue 'main_loop;
             }
         }
-        match crossterm::event::read().unwrap() {
-            Event::Key(KeyEvent { code, .. }) => match code {
+        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+            match code {
                 KeyCode::Char('q') => break,
                 KeyCode::Char('c') if category_state.selected() == Some(0) => {
                     return Ok(NavChoice::NewProfileView);
@@ -277,8 +277,7 @@ https://github.com/YtFlow/YtFlowCore",
                     }
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         };
     }
     Ok(NavChoice::Back)
@@ -307,8 +306,8 @@ fn run_new_profile_view(ctx: &mut AppContext) -> Result<NavChoice> {
         ctx.term.draw(|f| {
             f.render_stateful_widget(template_list, main_chunk, &mut template_state);
         })?;
-        match crossterm::event::read().unwrap() {
-            Event::Key(KeyEvent { code, .. }) => match code {
+        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+            match code {
                 KeyCode::Char('q') | KeyCode::Esc => return Ok(NavChoice::Back),
                 KeyCode::Down => {
                     template_state.select(template_state.selected().map(|i| (i + 1) % 3));
@@ -337,8 +336,7 @@ fn run_new_profile_view(ctx: &mut AppContext) -> Result<NavChoice> {
                     return Ok(NavChoice::Back);
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         };
     }
 }
@@ -448,8 +446,8 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                 }
             }
         }
-        match crossterm::event::read().unwrap() {
-            Event::Key(KeyEvent { code, .. }) => match (code, plugin_state.selected()) {
+        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+            match (code, plugin_state.selected()) {
                 (KeyCode::Char('q') | KeyCode::Esc, _) => break,
                 (KeyCode::Char('c'), _) => {
                     return Ok(NavChoice::PluginTypeView(profile.id, None));
@@ -479,9 +477,9 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                 (KeyCode::Enter, Some(idx)) => {
                     use cbor4ii::core::Value as CborValue;
                     // Note: some editors will change line endings
-                    const CANCEL_SAFEWORD: &'static [u8] =
+                    const CANCEL_SAFEWORD: &[u8] =
                         b"//  === Remove this line to cancel editing ===\n";
-                    const BAD_JSON_MSG: &'static [u8] = b"//  === Remove this line and everything below after correcting the errors ===\n";
+                    const BAD_JSON_MSG: & [u8] = b"//  === Remove this line and everything below after correcting the errors ===\n";
                     let plugin = plugins[idx].clone();
                     let mut json_val: CborValue = cbor4ii::serde::from_slice(&plugin.param)
                         .context("Failed to deserialize Plugin param from CBOR")?;
@@ -688,7 +686,7 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                                 name,
                                 plugin.desc.clone(),
                                 plugin.plugin.clone(),
-                                plugin.plugin_version.clone(),
+                                plugin.plugin_version,
                                 plugin.param.clone(),
                                 &ctx.conn,
                             )
@@ -712,7 +710,7 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                                 plugin.name.clone(),
                                 desc,
                                 plugin.plugin.clone(),
-                                plugin.plugin_version.clone(),
+                                plugin.plugin_version,
                                 plugin.param.clone(),
                                 &ctx.conn,
                             )
@@ -722,8 +720,7 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                     }));
                 }
                 _ => {}
-            },
-            _ => {}
+            }
         };
     }
     Ok(NavChoice::Back)
@@ -904,8 +901,8 @@ fn run_plugin_type_view(
             }
         }
 
-        match crossterm::event::read().unwrap() {
-            Event::Key(KeyEvent { code, .. }) => match code {
+        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+            match code {
                 KeyCode::Char('q') | KeyCode::Esc => break,
                 KeyCode::Enter => select_confirm = true,
                 KeyCode::Down => {
@@ -919,8 +916,7 @@ fn run_plugin_type_view(
                     ));
                 }
                 _ => (),
-            },
-            _ => {}
+            }
         }
     }
 

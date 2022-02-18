@@ -48,8 +48,8 @@ impl<N: Clone> Rule<N> {
                 return None;
             }
             match &context.remote_peer.host {
-                HostName::Ip(ip) if !ip_ranges.iter().any(|r| r.contains(ip)) => return None,
-                HostName::DomainName(_) => return None,
+                HostName::Ip(ip) if !ip_ranges.iter().any(|r| r.contains(ip)) => None,
+                HostName::DomainName(_) => None,
                 _ => Some(self.next.clone()),
             }
         }

@@ -98,7 +98,7 @@ pub(crate) fn serialize_ipaddrs<S>(ipaddrs: &Vec<IpAddr>, serializer: S) -> Resu
 where
     S: Serializer,
 {
-    serializer.collect_seq(ipaddrs.into_iter().map(|ip| ip.to_string()))
+    serializer.collect_seq(ipaddrs.iter().map(|ip| ip.to_string()))
 }
 
 pub(crate) fn deserialize_ipaddrs<'de, D>(deserializer: D) -> Result<Vec<IpAddr>, D::Error>

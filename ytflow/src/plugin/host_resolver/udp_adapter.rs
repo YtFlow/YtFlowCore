@@ -53,10 +53,12 @@ impl UdpSocket for FlowDatagramSocket {
                 Some((index, SessionState::Binding(fut))) => {
                     let fut_res = match ready!(fut.as_mut().poll(cx)) {
                         Ok(r) => r,
-                        Err(_) => Err(io::Error::new(
-                            io::ErrorKind::ConnectionRefused,
-                            "Cannot bind UDP socket for DNS",
-                        ))?,
+                        Err(_) => {
+                            return Poll::Ready(Err(io::Error::new(
+                                io::ErrorKind::ConnectionRefused,
+                                "Cannot bind UDP socket for DNS",
+                            )))
+                        }
                     };
                     *guard = Some((*index, SessionState::Ready(fut_res)));
                     continue;
@@ -65,10 +67,8 @@ impl UdpSocket for FlowDatagramSocket {
             }
         };
 
-        let (_dest, chunk) = ready!(session.as_mut().poll_recv_from(cx)).ok_or(io::Error::new(
-            io::ErrorKind::ConnectionReset,
-            "UDP recv error",
-        ))?;
+        let (_dest, chunk) = ready!(session.as_mut().poll_recv_from(cx))
+            .ok_or_else(|| io::Error::new(io::ErrorKind::ConnectionReset, "UDP recv error"))?;
         buf[..chunk.len()].copy_from_slice(&chunk);
         // Cheat trust_dns_resolver as if the packet comes from the remote peer
         let dest = SocketAddr::new(index.to_ne_bytes().into(), 53);
@@ -89,15 +89,16 @@ impl UdpSocket for FlowDatagramSocket {
             let factory = factories_guard
                 .1
                 .get(&index)
-                .ok_or(io::Error::new(
-                    io::ErrorKind::NotFound,
-                    "Cannot find UDP factory for DNS",
-                ))?
+                .ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::NotFound, "Cannot find UDP factory for DNS")
+                })?
                 .upgrade()
-                .ok_or(io::Error::new(
-                    io::ErrorKind::ConnectionAborted,
-                    "Cannot get UDP factory for DNS",
-                ))?;
+                .ok_or_else(|| {
+                    io::Error::new(
+                        io::ErrorKind::ConnectionAborted,
+                        "Cannot get UDP factory for DNS",
+                    )
+                })?;
             drop(factories_guard);
             *guard = Some((
                 index,
@@ -129,10 +130,12 @@ impl UdpSocket for FlowDatagramSocket {
                 Some((index, SessionState::Binding(fut))) => {
                     let fut_res = match ready!(fut.as_mut().poll(cx)) {
                         Ok(r) => r,
-                        Err(_) => Err(io::Error::new(
-                            io::ErrorKind::ConnectionRefused,
-                            "Cannot bind UDP socket for DNS",
-                        ))?,
+                        Err(_) => {
+                            return Poll::Ready(Err(io::Error::new(
+                                io::ErrorKind::ConnectionRefused,
+                                "Cannot bind UDP socket for DNS",
+                            )))
+                        }
                     };
                     *guard = Some((*index, SessionState::Ready(fut_res)));
                     continue;

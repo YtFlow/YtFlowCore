@@ -95,8 +95,7 @@ impl<'d> smoltcp::phy::RxToken for RxToken<'d> {
         }
         let mut guard = BufReturnGuard(ManuallyDrop::new(buf), self.1);
 
-        let ret = f(&mut guard.0);
-        ret
+        f(&mut guard.0)
     }
 }
 
@@ -221,14 +220,13 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                         p.payload_mut(),
                     );
                 }
-                _ => return,
+                _ => {}
             }
         }
         0b0110 => {
             // TODO: IPv6
-            return;
         }
-        _ => return,
+        _ => {}
     };
 }
 
@@ -267,7 +265,7 @@ fn process_tcp(
             RingBuffer::new(vec![0; 10240]),
         );
         socket
-            .listen(IpEndpoint::new(dst_addr.into(), dst_port))
+            .listen(IpEndpoint::new(dst_addr, dst_port))
             // This unwrap cannot panic for a valid TCP packet because:
             // 1) The socket is just created
             // 2) dst_port != 0
@@ -279,9 +277,9 @@ fn process_tcp(
         let socket_handle = netif.add_socket(socket);
         vac.insert(socket_handle);
         let ctx = FlowContext {
-            local_peer: SocketAddr::new(src_addr, src_port).into(),
+            local_peer: SocketAddr::new(src_addr, src_port),
             remote_peer: DestinationAddr {
-                host: HostName::Ip(smoltcp_addr_to_std(dst_addr.into())),
+                host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
                 port: dst_port,
             },
         };
@@ -348,7 +346,7 @@ fn process_udp(
                     Box::new(FlowContext {
                         local_peer: SocketAddr::new(src_addr, src_port),
                         remote_peer: DestinationAddr {
-                            host: HostName::Ip(smoltcp_addr_to_std(dst_addr.into())),
+                            host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
                             port: dst_port,
                         },
                     }),
@@ -359,7 +357,7 @@ fn process_udp(
     };
     if let Err(TrySendError::Disconnected(_)) = tx.try_send((
         DestinationAddr {
-            host: HostName::Ip(smoltcp_addr_to_std(dst_addr.into())),
+            host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
             port: dst_port,
         },
         payload.to_vec(),
@@ -377,7 +375,7 @@ fn schedule_repoll(
     debug_log(format!("Scheduled repoll: {:?}", poll_at));
     let stack_cloned = stack.clone();
     Box::pin(async move {
-        sleep_until(tokio::time::Instant::from_std(poll_at.into())).await;
+        sleep_until(tokio::time::Instant::from_std(poll_at)).await;
         if smoltcp::time::Instant::from(Instant::now()).total_millis()
             > most_recent_scheduled_poll.load(Ordering::Relaxed)
         {
@@ -389,7 +387,7 @@ fn schedule_repoll(
         if let Some(delay) = stack_guard.netif.poll_delay(poll_at.into()) {
             let scheduled_poll_milli =
                 (smoltcp::time::Instant::from(Instant::now()) + delay).total_millis();
-            if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed).into() {
+            if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed) {
                 return;
             }
             // TODO: CAS spin loop

@@ -57,7 +57,7 @@ fn generate_socks5_forward(
 ) {
     let listener = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-listener"),
+        name: prefix.to_string() + "-listener",
         desc: String::from("Listen for incoming SOCKS5 connections"),
         plugin: String::from("socket-listener"),
         plugin_version: 0,
@@ -74,7 +74,7 @@ fn generate_socks5_forward(
     };
     let socks5 = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-socks5"),
+        name: prefix.to_string() + "-socks5",
         desc: String::from("SOCKS5 server"),
         plugin: String::from("socks5-server"),
         plugin_version: 0,
@@ -89,7 +89,7 @@ fn generate_socks5_forward(
     };
     let forward = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-forward"),
+        name: prefix.to_string() + "-forward",
         desc: String::from("Main forwarder"),
         plugin: String::from("forward"),
         plugin_version: 0,
@@ -119,7 +119,7 @@ fn generate_socks5_forward(
 fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     let sys_resolver = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-sys-resolver"),
+        name: prefix.to_string() + "-sys-resolver",
         desc: String::from("System resolver"),
         plugin: String::from("system-resolver"),
         plugin_version: 0,
@@ -133,7 +133,7 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     };
     let netif = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-netif"),
+        name: prefix.to_string() + "-netif",
         desc: String::from("Dummy network interface"),
         plugin: String::from("netif"),
         plugin_version: 0,
@@ -154,7 +154,7 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     };
     let socket = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-socket"),
+        name: prefix.to_string() + "-socket",
         desc: String::from("Socket outbound"),
         plugin: String::from("socket"),
         plugin_version: 0,
@@ -190,7 +190,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
 
     let ss = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-ss"),
+        name: prefix.to_string() + "-ss",
         desc: String::from("Shadowsocks Client"),
         plugin: String::from("shadowsocks-client"),
         plugin_version: 0,
@@ -207,7 +207,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
     };
     let redir = Plugin {
         id: DUMMY_PLUGIN_ID,
-        name: String::from(prefix.to_string() + "-redir"),
+        name: prefix.to_string() + "-redir",
         desc: String::from("Redirect to Shadowsocks server"),
         plugin: String::from("redirect"),
         plugin_version: 0,

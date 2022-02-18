@@ -79,33 +79,35 @@ impl StreamHandler for SimpleHttpHandler {
             let mut reader = StreamReader::new(4096, initial_data);
             let mut expected_header_size = 1;
             let mut req_body_pos = 0;
-            while reader
-                .peek_at_least(&mut *lower, expected_header_size, |data| {
-                    if data.len() > 1024 {
+            let mut on_data = |data: &mut [u8]| {
+                if data.len() > 1024 {
+                    return Err(FlowError::UnexpectedData);
+                }
+
+                if let Some(pos) = memmem::find(data, b"\r\n\r\n") {
+                    req_body_pos = pos + 4;
+                    let ws_key_pos = memmem::find(&data[..pos], b"Sec-Websocket-Key:")
+                        .ok_or(FlowError::UnexpectedData)?;
+                    let ws_key_end_pos = memmem::find(&data[ws_key_pos..pos], b"\r\n")
+                        .ok_or(FlowError::UnexpectedData)?;
+                    if ws_key_end_pos - ws_key_pos > 32 {
                         return Err(FlowError::UnexpectedData);
                     }
-                    expected_header_size = data.len() + 1;
-
-                    if let Some(pos) = memmem::find(data, b"\r\n\r\n") {
-                        req_body_pos = pos + 4;
-                        let ws_key_pos = memmem::find(&data[..pos], b"Sec-Websocket-Key:")
-                            .ok_or(FlowError::UnexpectedData)?;
-                        let ws_key_end_pos = memmem::find(&data[ws_key_pos..pos], b"\r\n")
-                            .ok_or(FlowError::UnexpectedData)?;
-                        if ws_key_end_pos - ws_key_pos > 32 {
-                            return Err(FlowError::UnexpectedData);
-                        }
-                        let ws_key = std::str::from_utf8(&data[(ws_key_pos + 18)..ws_key_end_pos])
-                            .map_err(|_| FlowError::UnexpectedData)?
-                            .trim();
-                        res.extend_from_slice(ws_key.as_bytes());
-                        Ok(false)
-                    } else {
-                        Ok(true)
-                    }
-                })
+                    let ws_key = std::str::from_utf8(&data[(ws_key_pos + 18)..ws_key_end_pos])
+                        .map_err(|_| FlowError::UnexpectedData)?
+                        .trim();
+                    res.extend_from_slice(ws_key.as_bytes());
+                    Ok(None)
+                } else {
+                    Ok(Some(data.len()))
+                }
+            };
+            while let Some(read_len) = reader
+                .peek_at_least(&mut *lower, expected_header_size, &mut on_data)
                 .await??
-            {}
+            {
+                expected_header_size = read_len + 1;
+            }
             reader.advance(req_body_pos);
             let initial_req = reader.into_buffer().unwrap_or_default();
 
@@ -148,19 +150,22 @@ impl StreamOutboundFactory for SimpleHttpOutbound {
             let mut reader = StreamReader::new(4096, initial_req);
             let mut expected_header_size = 1;
             let mut req_body_pos = 0;
-            while reader
-                .peek_at_least(&mut *stream, expected_header_size, |data| {
-                    if data.len() > 1024 {
-                        return Err(FlowError::UnexpectedData);
-                    }
-                    expected_header_size = data.len() + 1;
+            let mut on_data = |data: &mut [u8]| {
+                if data.len() > 1024 {
+                    return Err(FlowError::UnexpectedData);
+                }
 
-                    Ok(memmem::find(data, b"\r\n\r\n")
-                        .map(|p| req_body_pos = p + 4)
-                        .is_none())
+                Ok(match memmem::find(data, b"\r\n\r\n") {
+                    Some(p) => (req_body_pos = p + 4, None).1,
+                    None => Some(data.len()),
                 })
+            };
+            while let Some(read_len) = reader
+                .peek_at_least(&mut *stream, expected_header_size, &mut on_data)
                 .await??
-            {}
+            {
+                expected_header_size = read_len + 1;
+            }
             reader.advance(req_body_pos);
             reader.into_buffer().unwrap_or_default()
         };

@@ -62,7 +62,7 @@ impl StreamReader {
                     }
 
                     let size_hint = ready!(stream.poll_request_size(cx))?.with_min_content(4096);
-                    let mut buf = std::mem::replace(buf, Vec::new());
+                    let mut buf = std::mem::take(buf);
                     buf.reserve(size_hint);
                     if let Err((b, e)) = stream.commit_rx_buffer(buf) {
                         *self = StreamReader::PollSizeHint(b, 0);

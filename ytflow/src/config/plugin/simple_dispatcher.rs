@@ -138,7 +138,7 @@ impl<'de> Factory for SimpleDispatcherFactory<'de> {
 
         set.fully_constructed
             .datagram_handlers
-            .insert(plugin_name.clone() + ".udp", udp_factory);
+            .insert(plugin_name + ".udp", udp_factory);
         Ok(())
     }
 }

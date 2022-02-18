@@ -112,7 +112,7 @@ pub extern "C" fn ytflow_profile_update(
         let locale = unsafe { CStr::from_ptr(locale) };
         let conn = unsafe { &*conn };
         Profile::update(
-            profile_id.into(),
+            profile_id,
             name.to_string_lossy().into_owned(),
             locale.to_string_lossy().into_owned(),
             conn,
@@ -125,7 +125,7 @@ pub extern "C" fn ytflow_profile_update(
 pub extern "C" fn ytflow_profile_delete(profile_id: u32, conn: *const Connection) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
-        Profile::delete(profile_id.into(), conn).map(|()| (null_mut(), 0))
+        Profile::delete(profile_id, conn).map(|()| (null_mut(), 0))
     }))
 }
 
@@ -176,7 +176,7 @@ pub extern "C" fn ytflow_plugin_update(
         let plugin = unsafe { CStr::from_ptr(plugin) };
         let conn = unsafe { &*conn };
         Plugin::update(
-            plugin_id.into(),
+            plugin_id,
             profile_id.into(),
             name.to_string_lossy().into_owned(),
             desc.to_string_lossy().into_owned(),
@@ -193,7 +193,7 @@ pub extern "C" fn ytflow_plugin_update(
 pub extern "C" fn ytflow_plugin_delete(plugin_id: u32, conn: *const Connection) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
-        Plugin::delete(plugin_id.into(), conn).map(|()| (null_mut(), 0))
+        Plugin::delete(plugin_id, conn).map(|()| (null_mut(), 0))
     }))
 }
 

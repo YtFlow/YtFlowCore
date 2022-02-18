@@ -108,7 +108,7 @@ impl XChacha20IetfPoly1305 {
         let clen = aead_pkt.len() - Self::TAG_LEN;
         let (ciphertext_in_plaintext_out, tag_in) = aead_pkt.split_at_mut(clen);
 
-        self.decrypt_slice_detached(nonce, aad, ciphertext_in_plaintext_out, &tag_in)
+        self.decrypt_slice_detached(nonce, aad, ciphertext_in_plaintext_out, tag_in)
     }
 
     #[allow(clippy::absurd_extreme_comparisons)]
@@ -132,7 +132,7 @@ impl XChacha20IetfPoly1305 {
         let mut poly1305 = {
             let mut keystream = [0u8; Self::BLOCK_LEN];
             // NOTE: 初始 BlockCounter = 0;
-            self.chacha20.encrypt_slice(0, &nonce, &mut keystream);
+            self.chacha20.encrypt_slice(0, nonce, &mut keystream);
 
             let mut poly1305_key = [0u8; Poly1305::KEY_LEN];
             poly1305_key.copy_from_slice(&keystream[..Poly1305::KEY_LEN][..]);
@@ -142,11 +142,11 @@ impl XChacha20IetfPoly1305 {
 
         // NOTE: 初始 BlockCounter = 1;
         self.chacha20
-            .encrypt_slice(1, &nonce, plaintext_in_ciphertext_out);
+            .encrypt_slice(1, nonce, plaintext_in_ciphertext_out);
 
         // NOTE: Poly1305 会自动 对齐数据。
         poly1305.update(aad);
-        poly1305.update(&plaintext_in_ciphertext_out);
+        poly1305.update(plaintext_in_ciphertext_out);
 
         let mut len_block = [0u8; 16];
         len_block[0..8].copy_from_slice(&(alen as u64).to_le_bytes());
@@ -180,7 +180,7 @@ impl XChacha20IetfPoly1305 {
         let mut poly1305 = {
             let mut keystream = [0u8; Self::BLOCK_LEN];
             // NOTE: 初始 BlockCounter = 0;
-            self.chacha20.encrypt_slice(0, &nonce, &mut keystream);
+            self.chacha20.encrypt_slice(0, nonce, &mut keystream);
 
             let mut poly1305_key = [0u8; Poly1305::KEY_LEN];
             poly1305_key.copy_from_slice(&keystream[..Poly1305::KEY_LEN][..]);
@@ -190,7 +190,7 @@ impl XChacha20IetfPoly1305 {
 
         // NOTE: Poly1305 会自动 对齐数据。
         poly1305.update(aad);
-        poly1305.update(&ciphertext_in_plaintext_out);
+        poly1305.update(ciphertext_in_plaintext_out);
 
         let mut len_block = [0u8; 16];
         len_block[0..8].copy_from_slice(&(alen as u64).to_le_bytes());
@@ -206,7 +206,7 @@ impl XChacha20IetfPoly1305 {
         if is_match {
             // NOTE: 初始 BlockCounter = 1;
             self.chacha20
-                .decrypt_slice(1, &nonce, ciphertext_in_plaintext_out);
+                .decrypt_slice(1, nonce, ciphertext_in_plaintext_out);
         }
 
         is_match

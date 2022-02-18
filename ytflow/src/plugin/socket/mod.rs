@@ -162,7 +162,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
             }
             _ => return Err(FlowError::NoOutbound),
         };
-        if initial_data.len() > 0 {
+        if !initial_data.is_empty() {
             tcp_stream.write_all(initial_data).await?;
         }
         Ok((Box::new(CompatFlow::new(tcp_stream, 4096)), Buffer::new()))
