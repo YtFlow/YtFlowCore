@@ -13,6 +13,7 @@ use crate::error::ConnectError;
 
 use flume::{bounded, Receiver, Sender, TryRecvError};
 use windows::core::{implement, IInspectable, Interface, Result, HSTRING};
+use ytflow::tokio;
 
 use crate::bindings::Windows;
 use crate::bindings::Windows::Foundation::Collections::IVectorView;
@@ -111,11 +112,30 @@ fn connect_with_factory(
     )
 }
 
+async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()> {
+    use tokio::net::TcpListener;
+    use ytflow::control::rpc::{serve_stream, ControlHubService};
+    let listener = TcpListener::bind("127.0.0.1:9097").await?;
+    let task = || async {
+        let mut service = ControlHubService(&control_hub);
+        loop {
+            let (stream, _) = match listener.accept().await {
+                Ok(s) => s,
+                Err(e) => return Err::<(), _>(e),
+            };
+            let _ = serve_stream(&mut service, stream).await;
+        }
+    };
+    let _ = futures::future::join(task(), task()).await;
+    Ok(())
+}
+
 struct VpnPlugInInner {
     tx_buf_rx: Receiver<VpnPacketBuffer>,
     rx_buf_tx: Sender<Vec<u8>>,
-    rt: ytflow::tokio::runtime::Runtime,
+    rt: tokio::runtime::Runtime,
     plugin_set: ytflow::config::PluginSet,
+    rpc_task: tokio::task::JoinHandle<std::io::Result<()>>,
 }
 
 #[implement(Windows::Networking::Vpn::IVpnPlugIn)]
@@ -217,7 +237,7 @@ impl VpnPlugIn {
             return Err(strs.join("\r\n").into());
         }
 
-        let rt = match ytflow::tokio::runtime::Runtime::new() {
+        let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
             Err(e) => return Err(format!("Cannot create tokio runtime: {}", e).into()),
         };
@@ -242,7 +262,11 @@ impl VpnPlugIn {
         });
 
         let rt_handle = rt.handle();
-        let (set, errors) = factory.load_all(&rt_handle);
+        let ytflow::config::LoadPluginResult {
+            plugin_set: set,
+            errors,
+            control_hub,
+        } = factory.load_all(&rt_handle);
         let mut error_str = if errors.is_empty() {
             String::from("There must be exactly one vpn-tun entry plugin in a profile")
         } else {
@@ -261,6 +285,7 @@ impl VpnPlugIn {
                             rx_buf_tx,
                             rt,
                             plugin_set: set,
+                            rpc_task: tokio::spawn(run_rpc(control_hub)),
                         });
                         break Ok(());
                     }
@@ -297,6 +322,7 @@ impl VpnPlugIn {
         channel.as_ref().unwrap().Stop()?;
         if let Some(inner) = self.0.take() {
             let _enter_guard = inner.rt.enter();
+            let _ = inner.rpc_task.abort();
             drop(inner.rx_buf_tx);
             drop(inner.tx_buf_rx);
             drop(inner.plugin_set);

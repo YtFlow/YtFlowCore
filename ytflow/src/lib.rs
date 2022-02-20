@@ -13,6 +13,7 @@ mod bindings {
 }
 
 pub mod config;
+pub mod control;
 pub mod data;
 pub mod ffi;
 pub mod flow;

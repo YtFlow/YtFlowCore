@@ -14,6 +14,12 @@ use crate::data::Plugin;
 
 pub struct ProfilePluginFactory<'f>(HashMap<String, Box<dyn factory::Factory + 'f>>);
 
+pub struct LoadPluginResult {
+    pub plugin_set: set::PluginSet,
+    pub errors: Vec<LoadError>,
+    pub control_hub: crate::control::ControlHub,
+}
+
 impl<'f> ProfilePluginFactory<'f> {
     pub fn parse_profile(
         entry_plugins: impl Iterator<Item = &'f Plugin>,
@@ -22,7 +28,7 @@ impl<'f> ProfilePluginFactory<'f> {
         let res = factory::parse_plugins_recursively(entry_plugins, all_plugins);
         (Self(res.factories), res.errors)
     }
-    pub fn load_all(self, rt_handle: &tokio::runtime::Handle) -> (set::PluginSet, Vec<LoadError>) {
+    pub fn load_all(self, rt_handle: &tokio::runtime::Handle) -> LoadPluginResult {
         use std::mem::ManuallyDrop;
 
         let rt_handle_cloned = rt_handle.clone();
@@ -42,6 +48,10 @@ impl<'f> ProfilePluginFactory<'f> {
             },
         );
         partial_set.load_all();
-        (partial_set.fully_constructed, partial_set.errors)
+        LoadPluginResult {
+            plugin_set: partial_set.fully_constructed,
+            errors: partial_set.errors,
+            control_hub: partial_set.control_hub,
+        }
     }
 }

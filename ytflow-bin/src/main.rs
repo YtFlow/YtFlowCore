@@ -134,7 +134,11 @@ fn try_main(args: &ArgMatches) -> Result<()> {
     }
     info!("Starting YtFlow...");
 
-    let (plugin_set, load_errors) = factory.load_all(runtime.handle());
+    let ytflow::config::LoadPluginResult {
+        plugin_set,
+        errors: load_errors,
+        ..
+    } = factory.load_all(runtime.handle());
     if !load_errors.is_empty() {
         warn!(
             "{} errors detected while loading plugins:",

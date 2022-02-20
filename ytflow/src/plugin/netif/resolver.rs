@@ -64,7 +64,8 @@ impl NetifHostResolver {
             return;
         }
 
-        let servers = self.selector.read(|netif| match self.selector.prefer {
+        let preference = self.selector.selection.load().1;
+        let servers = self.selector.read(|netif| match preference {
             FamilyPreference::NoPreference => netif.dns_servers.clone(),
             FamilyPreference::PreferIpv4 => netif
                 .dns_servers

@@ -1856,6 +1856,7 @@ name = "ytflow-uwp-plugin"
 version = "0.1.0"
 dependencies = [
  "flume",
+ "futures",
  "windows",
  "ytflow",
 ]

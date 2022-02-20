@@ -22,6 +22,7 @@ pub(super) struct PartialPluginSet<'f> {
     pub(super) plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'f>>>,
     pub(super) fully_constructed: PluginSet,
     pub(super) errors: Vec<LoadError>,
+    pub(super) control_hub: crate::control::ControlHub,
     pub(super) stream_handlers: HashMap<String, Weak<dyn StreamHandler>>,
     pub(super) stream_outbounds: HashMap<String, Weak<dyn StreamOutboundFactory>>,
     pub(super) datagram_handlers: HashMap<String, Weak<dyn DatagramSessionHandler>>,
@@ -70,6 +71,7 @@ impl<'a> PartialPluginSet<'a> {
         Self {
             fully_constructed,
             plugins,
+            control_hub: Default::default(),
             errors: vec![],
             stream_handlers: HashMap::new(),
             stream_outbounds: HashMap::new(),

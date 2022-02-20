@@ -36,6 +36,11 @@ impl Factory for NetifFactory {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         let netif = netif::NetifSelector::new(self.selection.clone(), self.family_preference)
             .ok_or_else(|| LoadError::NoUseableNetif(plugin_name.clone()))?;
+        set.control_hub.create_plugin_control(
+            plugin_name.clone(),
+            "netif",
+            netif::Responder::new(netif.clone()),
+        );
         set.fully_constructed.resolver.insert(
             plugin_name.clone() + ".resolver",
             Arc::new(netif::NetifHostResolver::new(netif.clone())),

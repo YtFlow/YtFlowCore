@@ -1,4 +1,5 @@
 mod resolver;
+mod responder;
 mod sys;
 
 use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
@@ -11,6 +12,7 @@ use arc_swap::ArcSwap;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 pub use resolver::NetifHostResolver;
+pub use responder::Responder;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "netif")]
@@ -38,9 +40,8 @@ pub struct Netif {
 }
 
 pub struct NetifSelector {
-    selection: SelectionMode,
-    prefer: FamilyPreference,
-    cached_netif: ArcSwap<Netif>,
+    pub(super) selection: ArcSwap<(SelectionMode, FamilyPreference)>,
+    pub(super) cached_netif: ArcSwap<Netif>,
     change_token: AtomicU8,
     provider: sys::NetifProvider,
 }
@@ -55,18 +56,11 @@ impl NetifSelector {
             let this = this.clone();
             let provider = sys::NetifProvider::new(move || {
                 if let Some(this) = this.upgrade() {
-                    if let Some(netif) = this
-                        .pick_netif()
-                        .filter(|new| new != &**this.cached_netif.load())
-                    {
-                        this.cached_netif.store(Arc::new(netif));
-                        this.change_token.fetch_add(1, Release);
-                    }
+                    this.update();
                 }
             });
             Self {
-                selection,
-                prefer,
+                selection: ArcSwap::new(Arc::new((selection, prefer))),
                 cached_netif: ArcSwap::new(Arc::new(dummy_netif)),
                 provider,
                 change_token: AtomicU8::new(0),
@@ -79,13 +73,28 @@ impl NetifSelector {
         callback(&guard)
     }
 
+    pub(super) fn update(&self) {
+        let netif = match self.pick_netif() {
+            Some(netif) => netif,
+            None => return,
+        };
+        let guard = self.cached_netif.load();
+        if netif == **guard {
+            return;
+        }
+        self.cached_netif.compare_and_swap(guard, Arc::new(netif));
+        self.change_token.fetch_add(1, Release);
+    }
+
     fn pick_netif(&self) -> Option<Netif> {
-        let mut netif = match &self.selection {
+        let selection_guard = self.selection.load();
+        let (selection, prefer) = &**selection_guard;
+        let mut netif = match selection {
             SelectionMode::Auto => self.provider.select_best(),
             SelectionMode::Manual(name) => self.provider.select(name.as_str()),
             SelectionMode::Virtual(netif) => Some(netif.clone()),
         }?;
-        match (self.prefer, &mut netif.ipv4_addr, &mut netif.ipv6_addr) {
+        match (prefer, &mut netif.ipv4_addr, &mut netif.ipv6_addr) {
             (FamilyPreference::PreferIpv4, Some(_), v6) => *v6 = None,
             (FamilyPreference::PreferIpv6, v4, Some(_)) => *v4 = None,
             _ => {}

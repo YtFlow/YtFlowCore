@@ -12,6 +12,7 @@ crate-type = ["staticlib"]
 [dependencies]
 ytflow = { path = "../ytflow" }
 flume = { version = "0.10", default-features = false, features = [] }
+futures = { version = "0.3", default-features = false }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.28", features = ["alloc", "std"] }
