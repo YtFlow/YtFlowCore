@@ -123,6 +123,7 @@ async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()
                 Ok(s) => s,
                 Err(e) => return Err::<(), _>(e),
             };
+            stream.set_nodelay(true)?;
             let _ = serve_stream(&mut service, stream).await;
         }
     };
@@ -283,9 +284,9 @@ impl VpnPlugIn {
                         self.0 = Some(VpnPlugInInner {
                             tx_buf_rx,
                             rx_buf_tx,
-                            rt,
                             plugin_set: set,
-                            rpc_task: tokio::spawn(run_rpc(control_hub)),
+                            rpc_task: rt_handle.spawn(run_rpc(control_hub)),
+                            rt,
                         });
                         break Ok(());
                     }

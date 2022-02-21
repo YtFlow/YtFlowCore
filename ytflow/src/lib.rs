@@ -2,9 +2,7 @@
 #![feature(generic_const_exprs)]
 #![feature(stmt_expr_attributes)]
 #![feature(const_btree_new)]
-#![feature(arc_new_cyclic)]
 #![feature(bool_to_option)]
-#![feature(vec_spare_capacity)]
 #![feature(ptr_metadata)]
 
 #[cfg(windows)]
