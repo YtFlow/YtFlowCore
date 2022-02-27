@@ -32,10 +32,16 @@ enum ControlHubRequest {
 }
 
 #[derive(Serialize)]
-#[serde(tag = "code")]
+#[serde(tag = "c")]
 enum ControlHubResponse<T, E> {
-    Ok { data: T },
-    Err { error: E },
+    Ok {
+        #[serde(rename = "d")]
+        data: T,
+    },
+    Err {
+        #[serde(rename = "e")]
+        error: E,
+    },
 }
 
 impl<T, E> From<Result<T, E>> for ControlHubResponse<T, E> {
@@ -116,6 +122,9 @@ where
                 "request size too large",
             ));
         }
+        if size == 0 {
+            continue;
+        }
         let mut buf = vec![0; size as usize];
         io.read_exact(&mut buf[..]).await?;
         let mut res = Vec::with_capacity(128);
@@ -134,6 +143,9 @@ where
     D: Sink<Vec<u8>, Error = E> + TryStream<Ok = Vec<u8>, Error = E> + Unpin,
 {
     while let Some(req) = io.try_next().await? {
+        if req.len() == 0 {
+            continue;
+        }
         let mut res = Vec::with_capacity(128);
         service
             .execute_request(&req, &mut res)

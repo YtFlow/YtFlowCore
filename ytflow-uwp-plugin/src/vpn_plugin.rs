@@ -113,9 +113,12 @@ fn connect_with_factory(
 }
 
 async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()> {
-    use tokio::net::TcpListener;
+    use tokio::net::TcpSocket;
     use ytflow::control::rpc::{serve_stream, ControlHubService};
-    let listener = TcpListener::bind("127.0.0.1:9097").await?;
+    let s = TcpSocket::new_v4()?;
+    s.set_reuseaddr(true)?;
+    s.bind(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 9097))?;
+    let listener = s.listen(16)?;
     let task = || async {
         let mut service = ControlHubService(&control_hub);
         loop {

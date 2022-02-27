@@ -48,4 +48,3 @@ jobs:
       run: |
         cargo test -p ytflow -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
         cargo test -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
-      if: false # Until windows-rs fixes UWP targets
