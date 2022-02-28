@@ -323,7 +323,7 @@ impl VpnPlugIn {
         Ok(())
     }
     fn Disconnect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
-        channel.as_ref().unwrap().Stop()?;
+        let _ = channel.as_ref().map(|c| c.Stop());
         if let Some(inner) = self.0.take() {
             let _enter_guard = inner.rt.enter();
             let _ = inner.rpc_task.abort();
