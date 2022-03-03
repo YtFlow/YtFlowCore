@@ -10,6 +10,7 @@ use futures::{
     stream::{TryStream, TryStreamExt},
 };
 use serde::{Deserialize, Serialize};
+use serde_bytes::ByteBuf;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use super::plugin;
@@ -27,7 +28,7 @@ enum ControlHubRequest {
         #[serde(rename = "fn")]
         func: String,
         #[serde(rename = "p")]
-        params: Vec<u8>,
+        params: ByteBuf,
     },
 }
 
@@ -80,9 +81,11 @@ impl<'h> ControlHubService<'h> {
                 to_writer(res, &ControlHubResponse::<_, ()>::Ok { data })
             }
             ControlHubRequest::SendRequestToPlugin { id, func, params } => {
-                let data: ControlHubResponse<_, _> =
-                    self.send_request_to_plugin(id, &func, &params).into();
-                to_writer(res, &ControlHubResponse::<_, ()>::Ok { data })
+                let response: ControlHubResponse<_, _> = self
+                    .send_request_to_plugin(id, &func, &params)
+                    .map(ByteBuf::from)
+                    .into();
+                to_writer(res, &response)
             }
         }?)
     }

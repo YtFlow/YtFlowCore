@@ -1,20 +1,30 @@
 use std::borrow::Cow;
 use std::convert::Infallible;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use serde_bytes::ByteBuf;
 use thiserror::Error;
 
-#[derive(Debug, Error, Serialize, Deserialize)]
+#[derive(Debug, Error, Serialize)]
 pub enum PluginRequestError {
     #[error("No such plugin")]
     NoSuchPlugin,
     #[error("No such func")]
     NoSuchFunc,
     #[error("Bad param")]
-    #[serde(skip_serializing)]
+    #[serde(serialize_with = "serialize_bad_param")]
     #[serde(skip_deserializing)]
     BadParam(#[from] cbor4ii::core::dec::Error<Infallible>),
+}
+
+fn serialize_bad_param<S>(
+    t: &cbor4ii::core::dec::Error<Infallible>,
+    s: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str(&format!("Bad Param: {}", t))
 }
 
 pub type PluginRequestResult<T> = Result<T, PluginRequestError>;

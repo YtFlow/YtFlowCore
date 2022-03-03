@@ -54,6 +54,11 @@ pub enum PluginType {
     )]
     SystemResolver,
     #[strum(
+        props(prefix = "switch"),
+        detailed_message = "Handle incoming connections using runtime-selected handlers from a pre-defined list."
+    )]
+    Switch,
+    #[strum(
         props(prefix = "dns-server"),
         detailed_message = "Respond to DNS request messages using results returned by the specified resolver."
     )]
@@ -159,6 +164,19 @@ impl PluginType {
                     "fallback" => name.clone() + "-host-resolver.resolver",
                 }),
                 PluginType::SystemResolver => Ok(Null),
+                PluginType::Switch => cbor!({
+                    "choices" => [{
+                        "name" => "Direct",
+                        "description" => "Connect to the destination directly.",
+                        "tcp_next" => "direct-forward.tcp",
+                        "udp_next" => "direct-forward.udp",
+                    }, {
+                        "name" => "Proxy",
+                        "description" => "Unconditionally redirect all connections to the proxy.",
+                        "tcp_next" => "proxy-forward.tcp",
+                        "udp_next" => "proxy-forward.udp",
+                    }]
+                }),
                 PluginType::DnsServer => cbor!({
                     "concurrency_limit" => 64u8,
                     "resolver" => name.clone() + "-fake-ip.resolver",

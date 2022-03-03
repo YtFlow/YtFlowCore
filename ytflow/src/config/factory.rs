@@ -85,6 +85,7 @@ pub(super) fn create_factory_from_plugin(
         "host-resolver" => box_result(HostResolverFactory::parse(plugin)),
         "fake-ip" => box_result(FakeIpFactory::parse(plugin)),
         "system-resolver" => box_result(SystemResolverFactory::parse(plugin)),
+        "switch" => box_result(SwitchFactory::parse(plugin)),
         "dns-server" => box_result(DnsServerFactory::parse(plugin)),
         "socks5-server" => box_result(Socks5ServerFactory::parse(plugin)),
         "http-obfs-server" => box_result(HttpObfsServerFactory::parse(plugin)),
