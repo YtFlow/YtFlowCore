@@ -33,7 +33,8 @@ jobs:
   
     runs-on: windows-latest
     env:
-      UWP_TARGET_TRIPLET: thumbv7a-uwp-windows-msvc
+      UWP_CROSS_TARGET_TRIPLET: thumbv7a-uwp-windows-msvc
+      UWP_NATIVE_TARGET_TRIPLET: x86_64-uwp-windows-msvc
       BUILD_STD_ARGS: build-std=std,panic_abort
     
     steps:
@@ -42,9 +43,8 @@ jobs:
       run: rustup show
     - uses: Swatinem/rust-cache@v1
 
-    - name: Build
-      run: cargo build -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
+    - name: Build ARMv7
+      run: cargo build -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_CROSS_TARGET_TRIPLET
     - name: Run tests
       run: |
-        cargo test -p ytflow -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
-        cargo test -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_TARGET_TRIPLET
+        cargo test -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_NATIVE_TARGET_TRIPLET
