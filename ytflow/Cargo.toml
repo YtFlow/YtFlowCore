@@ -28,6 +28,7 @@ cidr = { version = "0.2", features = ["serde"] }
 
 # FFI
 libc = "0.2"
+socket2 = "0.4"
 
 # Runtime
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "net", "io-util", "time"] }

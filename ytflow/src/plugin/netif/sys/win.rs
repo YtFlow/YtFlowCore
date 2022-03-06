@@ -49,17 +49,6 @@ fn enum_adapters() -> Vec<(Netif, Rate)> {
         .collect()
 }
 
-// let rate = if adapter_addresses.OperStatus != IfOperStatusUp
-//     || adapter_addresses.FirstGatewayAddress.is_null()
-//     || adapter_addresses.PhysicalAddressLength == 0
-// {
-//     Rate::NotRecommended
-// } else if adapter_addresses.IfType == IF_TYPE_IEEE80211 {
-//     Rate::Backup
-// } else {
-//     Rate::Recommended
-// };
-
 pub struct NetifProvider {
     event_token: EventRegistrationToken,
 }

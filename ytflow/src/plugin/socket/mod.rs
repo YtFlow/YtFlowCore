@@ -6,9 +6,11 @@ use std::io;
 use std::net::ToSocketAddrs;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use std::sync::{Arc, Weak};
+use std::time::Duration;
 
 use async_trait::async_trait;
 use flume::{bounded, SendError};
+use socket2::TcpKeepalive;
 use tokio::io::AsyncWriteExt;
 
 use crate::flow::*;
@@ -19,15 +21,22 @@ pub struct SocketOutboundFactory {
     pub netif_selector: Arc<NetifSelector>,
 }
 
+fn prepare_tcp_socket(socket: &socket2::Socket) -> io::Result<()> {
+    socket.set_nodelay(true)?;
+    socket.set_tcp_keepalive(&TcpKeepalive::new().with_time(Duration::from_secs(600)))?;
+    socket.set_nonblocking(true)?;
+    Ok(())
+}
+
 pub fn listen_tcp(
     next: Weak<dyn StreamHandler>,
     addr: impl ToSocketAddrs + Send + 'static,
 ) -> io::Result<tokio::task::JoinHandle<()>> {
     let listener = std::net::TcpListener::bind(addr)?;
-    listener.set_nonblocking(true)?;
+    let socket = socket2::Socket::from(listener);
+    prepare_tcp_socket(&socket)?;
+    let listener = tokio::net::TcpListener::from_std(socket.into())?;
     Ok(tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::from_std(listener)
-            .expect("Calling listen_tcp when runtime is not set");
         loop {
             match listener.accept().await {
                 Ok((stream, connector)) => {
@@ -127,7 +136,7 @@ impl StreamOutboundFactory for SocketOutboundFactory {
         let (bind_addr_v4, bind_addr_v6) = self
             .netif_selector
             .read(|netif| (netif.ipv4_addr, netif.ipv6_addr));
-        let mut tcp_stream = match (context.remote_peer.host.clone(), bind_addr_v4, bind_addr_v6) {
+        let tcp_stream = match (context.remote_peer.host.clone(), bind_addr_v4, bind_addr_v6) {
             (HostName::Ip(IpAddr::V4(ip)), _, _) if ip.is_loopback() => {
                 tcp::dial_v4(
                     SocketAddrV4::new(ip, port),
@@ -162,6 +171,9 @@ impl StreamOutboundFactory for SocketOutboundFactory {
             }
             _ => return Err(FlowError::NoOutbound),
         };
+        let socket = socket2::Socket::from(tcp_stream.into_std()?);
+        prepare_tcp_socket(&socket)?;
+        let mut tcp_stream = tokio::net::TcpStream::from_std(socket.into())?;
         if !initial_data.is_empty() {
             tcp_stream.write_all(initial_data).await?;
         }
