@@ -662,7 +662,7 @@ dependencies = [
 [[package]]
 name = "mio"
 version = "0.7.14"
-source = "git+https://github.com/YtFlow/mio-noafd#3d39bcb948fa34967e49c9a76f302e242706418a"
+source = "git+https://github.com/YtFlow/mio-noafd?branch=noafd-v0.7-nobind#bc1242847321a79f85b7bd649affc3bc6d447d1d"
 dependencies = [
  "iovec",
  "libc",

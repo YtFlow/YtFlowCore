@@ -7,7 +7,7 @@ members = [
 ]
 
 [patch.crates-io]
-mio = { git = "https://github.com/YtFlow/mio-noafd" }
+mio = { git = "https://github.com/YtFlow/mio-noafd", branch = "noafd-v0.7-nobind" }
 
 [profile.release]
 lto = true
