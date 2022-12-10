@@ -24,7 +24,8 @@ jobs:
       run: rustup show
     - uses: Swatinem/rust-cache@v1
 
-    - name: Install OpenSSL
+    - name: Install OpenSSL (Windows)
+      if: ${{ runner.os == 'Windows' }}
       run: vcpkg install openssl:x64-windows
 
     - name: Build
@@ -40,6 +41,7 @@ jobs:
       UWP_CROSS_TARGET_TRIPLET: thumbv7a-uwp-windows-msvc
       UWP_NATIVE_TARGET_TRIPLET: x86_64-uwp-windows-msvc
       BUILD_STD_ARGS: build-std=std,panic_abort
+      THUMBV7A_UWP_WINDOWS_MSVC_OPENSSL_DIR: '${{ github.workspace }}/vcpkg/installed/arm-uwp'
     
     steps:
     - uses: actions/checkout@v2
