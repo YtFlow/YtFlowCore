@@ -1,7 +1,5 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
-
-use parking_lot::Mutex;
 
 use crate::flow::*;
 
@@ -30,7 +28,7 @@ impl Stream for InitialDataExtractStream {
         _cx: &mut Context<'_>,
         size: std::num::NonZeroUsize,
     ) -> Poll<FlowResult<Buffer>> {
-        let mut buf = self.data.lock();
+        let mut buf = self.data.lock().unwrap();
         let mut buf = buf
             .take()
             .expect("InitialDataExtractStream: should not poll tx buffer without committing first");
@@ -39,7 +37,7 @@ impl Stream for InitialDataExtractStream {
     }
 
     fn commit_tx_buffer(&mut self, buffer: Buffer) -> FlowResult<()> {
-        let mut buf = self.data.lock();
+        let mut buf = self.data.lock().unwrap();
         *buf = Some(buffer);
         Ok(())
     }

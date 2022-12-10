@@ -1,21 +1,19 @@
 use std::collections::BTreeMap;
 use std::io;
 use std::net::SocketAddr;
-
-use std::sync::Weak;
+use std::sync::{Mutex, RwLock, Weak};
 use std::task::{Context, Poll};
 
 use async_trait::async_trait;
 use futures::future::{BoxFuture, FutureExt};
 use futures::ready;
-use parking_lot::{const_mutex, const_rwlock, Mutex, RwLock};
 use trust_dns_resolver::name_server::{RuntimeProvider, TokioRuntime};
 use trust_dns_resolver::proto::udp::UdpSocket;
 
 use crate::flow::*;
 
 pub static UDP_FACTORIES: RwLock<(u32, BTreeMap<u32, Weak<dyn DatagramSessionFactory>>)> =
-    const_rwlock((0, BTreeMap::new()));
+    RwLock::new((0, BTreeMap::new()));
 
 enum SessionState {
     Binding(BoxFuture<'static, FlowResult<Box<dyn DatagramSession>>>),
@@ -31,7 +29,7 @@ impl UdpSocket for FlowDatagramSocket {
 
     /// UdpSocket
     async fn bind(_addr: SocketAddr) -> io::Result<Self> {
-        Ok(FlowDatagramSocket(const_mutex(None)))
+        Ok(FlowDatagramSocket(Mutex::new(None)))
     }
 
     /// Poll once Receive data from the socket and returns the number of bytes read and the address from
@@ -41,7 +39,7 @@ impl UdpSocket for FlowDatagramSocket {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<(usize, SocketAddr)>> {
-        let mut guard = self.0.lock();
+        let mut guard = self.0.lock().unwrap();
         let (index, session) = loop {
             match &mut *guard {
                 None => {
@@ -82,10 +80,10 @@ impl UdpSocket for FlowDatagramSocket {
         buf: &[u8],
         target: SocketAddr,
     ) -> Poll<io::Result<usize>> {
-        let mut guard = self.0.lock();
+        let mut guard = self.0.lock().unwrap();
         if let (None, SocketAddr::V4(addrv4)) = (&*guard, target) {
             let index = u32::from_ne_bytes(addrv4.ip().octets());
-            let factories_guard = UDP_FACTORIES.read();
+            let factories_guard = UDP_FACTORIES.read().unwrap();
             let factory = factories_guard
                 .1
                 .get(&index)
@@ -158,7 +156,7 @@ impl UdpSocket for FlowDatagramSocket {
 impl Drop for FlowDatagramSocket {
     fn drop(&mut self) {
         let sess = {
-            let mut guard = self.0.lock();
+            let mut guard = self.0.lock().unwrap();
             match guard.take() {
                 Some((_, sess)) => sess,
                 None => return,

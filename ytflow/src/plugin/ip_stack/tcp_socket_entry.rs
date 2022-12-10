@@ -1,8 +1,7 @@
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
-use parking_lot::FairMutex;
 use smoltcp::iface::SocketHandle;
 use smoltcp::socket::TcpSocket;
 
@@ -11,7 +10,7 @@ use super::*;
 pub(super) struct TcpSocketEntry {
     pub(super) socket_handle: SocketHandle,
     pub(super) local_port: u16,
-    pub(super) stack: Arc<FairMutex<IpStackInner>>,
+    pub(super) stack: Arc<Mutex<IpStackInner>>,
     pub(super) most_recent_scheduled_poll: Arc<AtomicI64>,
 }
 
@@ -19,14 +18,14 @@ impl TcpSocketEntry {
     pub fn lock(&self) -> SocketEntryGuard<'_> {
         SocketEntryGuard {
             entry: self,
-            guard: self.stack.lock(),
+            guard: self.stack.lock().unwrap(),
         }
     }
 }
 
 pub(super) struct SocketEntryGuard<'s> {
     pub(super) entry: &'s TcpSocketEntry,
-    pub(super) guard: FairMutexGuard<'s, IpStackInner>,
+    pub(super) guard: MutexGuard<'s, IpStackInner>,
 }
 
 impl<'s> SocketEntryGuard<'s> {

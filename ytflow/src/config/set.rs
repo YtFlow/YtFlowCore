@@ -4,7 +4,6 @@ use std::sync::{Arc, Weak};
 
 use super::*;
 use crate::flow::*;
-use crate::plugin::netif::NetifSelector;
 
 pub struct PluginSet {
     pub(super) rt_handle: tokio::runtime::Handle,
@@ -15,7 +14,6 @@ pub struct PluginSet {
     pub(super) datagram_outbounds: ManuallyDrop<HashMap<String, Arc<dyn DatagramSessionFactory>>>,
     pub(super) resolver: ManuallyDrop<HashMap<String, Arc<dyn Resolver>>>,
     pub(super) tun: ManuallyDrop<HashMap<String, Arc<dyn Tun>>>,
-    pub(super) netif: ManuallyDrop<HashMap<String, Arc<NetifSelector>>>,
 }
 
 pub(super) struct PartialPluginSet<'f> {
@@ -120,18 +118,6 @@ impl<'a> PartialPluginSet<'a> {
     );
     impl_get_or_create!(get_or_create_resolver, resolver, Resolver);
     impl_get_or_create!(get_or_create_tun, tun, Tun);
-    pub(super) fn get_or_create_netif(
-        &mut self,
-        initiator: String,
-        descriptor: &str,
-    ) -> LoadResult<Arc<NetifSelector>> {
-        loop {
-            if let Some(netif) = self.fully_constructed.netif.get(descriptor) {
-                break Ok(netif.clone());
-            }
-            self.load_plugin(initiator.clone(), descriptor)?;
-        }
-    }
 
     pub(super) fn load_all(&mut self) {
         while let Some((plugin_name, _)) = self.plugins.iter_mut().find(|(_, v)| v.is_some()) {
@@ -157,7 +143,6 @@ impl Drop for PluginSet {
             let _datagram_outbounds = ManuallyDrop::take(&mut self.datagram_outbounds);
             let _resolver = ManuallyDrop::take(&mut self.resolver);
             let _tun = ManuallyDrop::take(&mut self.tun);
-            let _netif = ManuallyDrop::take(&mut self.netif);
 
             for handle in &self.long_running_tasks {
                 handle.abort()

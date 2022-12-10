@@ -19,7 +19,6 @@ bitflags! {
         const DATAGRAM_SESSION_FACTORY = 0b00001000;
         const RESOLVER                 = 0b00010000;
         const TUN                      = 0b00100000;
-        const NETIF                    = 0b01000000;
     }
 }
 

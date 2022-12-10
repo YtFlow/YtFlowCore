@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::sync::Mutex;
 
 use async_trait::async_trait;
-use parking_lot::Mutex;
 use smallvec::smallvec;
 
 use crate::flow::*;
@@ -24,7 +24,7 @@ impl FakeIp {
         }
     }
     fn lookup_or_alloc(&self, domain: String) -> u16 {
-        let mut guard = self.inner.lock();
+        let mut guard = self.inner.lock().unwrap();
         let (index, table, rtable) = &mut *guard;
         if let Some(suffix) = table.get(&domain) {
             return *suffix;
@@ -70,7 +70,7 @@ impl Resolver for FakeIp {
             IpAddr::V4(ip) => [ip.octets()[2], ip.octets()[3]],
             IpAddr::V6(ip) => [ip.octets()[14], ip.octets()[15]],
         });
-        let guard = self.inner.lock();
+        let guard = self.inner.lock().unwrap();
         guard.2.get(&index).cloned().ok_or(FlowError::NoOutbound)
     }
 }

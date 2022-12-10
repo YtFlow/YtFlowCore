@@ -13,7 +13,7 @@ pub struct Responder {
 struct Info<'a> {
     selection: &'a super::SelectionMode,
     preference: super::FamilyPreference,
-    netif: &'a super::Netif,
+    netif: &'a super::sys::Netif,
 }
 
 #[derive(Deserialize)]

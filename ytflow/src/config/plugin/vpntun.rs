@@ -4,6 +4,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use cidr::{Ipv4Cidr, Ipv6Cidr};
 
 use crate::config::factory::*;
+use crate::config::HumanRepr;
 use crate::config::*;
 
 pub type TunFactory = Box<dyn FnOnce(&VpnTunFactory) -> Arc<dyn crate::flow::Tun>>;
@@ -15,13 +16,11 @@ thread_local! {
 
 #[derive(Clone, Deserialize)]
 pub struct VpnTunFactory {
-    pub ipv4: Option<Ipv4Addr>,
-    pub ipv6: Option<Ipv6Addr>,
-    pub ipv4_route: Vec<Ipv4Cidr>,
-    pub ipv6_route: Vec<Ipv6Cidr>,
-    #[serde(serialize_with = "crate::plugin::netif::serialize_ipaddrs")]
-    #[serde(deserialize_with = "crate::plugin::netif::deserialize_ipaddrs")]
-    pub dns: Vec<IpAddr>,
+    pub ipv4: Option<HumanRepr<Ipv4Addr>>,
+    pub ipv6: Option<HumanRepr<Ipv6Addr>>,
+    pub ipv4_route: Vec<HumanRepr<Ipv4Cidr>>,
+    pub ipv6_route: Vec<HumanRepr<Ipv6Cidr>>,
+    pub dns: Vec<HumanRepr<IpAddr>>,
     // Use String so that the struct can be 'static.
     pub web_proxy: Option<String>,
 }

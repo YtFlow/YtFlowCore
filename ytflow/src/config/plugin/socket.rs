@@ -1,15 +1,31 @@
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
+
 use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::netif::{FamilyPreference, NetifSelector, SelectionMode};
 use crate::plugin::null::Null;
 use crate::plugin::socket;
+
+fn default_bind_addr_v4() -> Option<HumanRepr<SocketAddrV4>> {
+    Some(HumanRepr {
+        inner: SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0),
+    })
+}
+
+fn default_bind_addr_v6() -> Option<HumanRepr<SocketAddrV6>> {
+    Some(HumanRepr {
+        inner: SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, 0, 0, 0),
+    })
+}
 
 #[derive(Clone, Deserialize)]
 pub struct SocketFactory<'a> {
     resolver: &'a str,
-    netif: &'a str,
+    #[serde(default = "default_bind_addr_v4")]
+    bind_addr_v4: Option<HumanRepr<SocketAddrV4>>,
+    #[serde(default = "default_bind_addr_v6")]
+    bind_addr_v6: Option<HumanRepr<SocketAddrV6>>,
 }
 
 impl<'de> SocketFactory<'de> {
@@ -18,16 +34,10 @@ impl<'de> SocketFactory<'de> {
         let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             factory: config.clone(),
-            requires: vec![
-                Descriptor {
-                    descriptor: config.resolver,
-                    r#type: AccessPointType::RESOLVER,
-                },
-                Descriptor {
-                    descriptor: config.netif,
-                    r#type: AccessPointType::NETIF,
-                },
-            ],
+            requires: vec![Descriptor {
+                descriptor: config.resolver,
+                r#type: AccessPointType::RESOLVER,
+            }],
             provides: vec![Descriptor {
                 descriptor: name.clone(),
                 r#type: AccessPointType::STREAM_OUTBOUND_FACTORY
@@ -51,20 +61,10 @@ impl<'de> Factory for SocketFactory<'de> {
                     Arc::downgrade(&(Arc::new(Null) as _))
                 }
             };
-            let netif_selector = match set.get_or_create_netif(plugin_name.clone(), self.netif) {
-                Ok(netif) => netif,
-                Err(e) => {
-                    set.errors.push(e);
-                    NetifSelector::new(
-                        SelectionMode::Virtual(Default::default()),
-                        FamilyPreference::NoPreference,
-                    )
-                    .expect("Creating a NULL virtual netif should not fail")
-                }
-            };
             socket::SocketOutboundFactory {
                 resolver,
-                netif_selector,
+                bind_addr_v4: self.bind_addr_v4.clone().map(|h| h.inner),
+                bind_addr_v6: self.bind_addr_v6.clone().map(|h| h.inner),
             }
         });
         set.fully_constructed

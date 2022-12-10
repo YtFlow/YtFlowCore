@@ -40,8 +40,6 @@ pub enum ConfigError {
 pub enum LoadError {
     #[error("error in config: {0}")]
     Config(#[from] ConfigError),
-    #[error(r#""{0}" cannot select a useable network interface"#)]
-    NoUseableNetif(String),
     #[error(r#"plugin "{initiator:}" requires "{descriptor:}" to be fully loaded"#)]
     UnsatisfiedStrongReference {
         initiator: String,

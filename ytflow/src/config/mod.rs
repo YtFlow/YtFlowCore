@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 mod error;
 pub mod factory;
+mod human_repr;
 mod param;
 pub mod plugin;
 mod set;
 pub mod verify;
 
 pub use error::*;
+pub use human_repr::HumanRepr;
 pub use set::PluginSet;
 
 use crate::data::Plugin;
@@ -44,7 +46,6 @@ impl<'f> ProfilePluginFactory<'f> {
                 datagram_outbounds: ManuallyDrop::new(HashMap::new()),
                 resolver: ManuallyDrop::new(HashMap::new()),
                 tun: ManuallyDrop::new(HashMap::new()),
-                netif: ManuallyDrop::new(HashMap::new()),
             },
         );
         partial_set.load_all();

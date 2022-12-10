@@ -8,11 +8,10 @@ use std::mem::ManuallyDrop;
 use std::net::{IpAddr, SocketAddr};
 use std::pin::Pin;
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 use flume::{bounded, Sender, TrySendError};
-use parking_lot::{const_fair_mutex, FairMutex, FairMutexGuard};
 use smoltcp::iface::{Interface, InterfaceBuilder, Route, Routes, SocketHandle};
 use smoltcp::phy::{Checksum, ChecksumCapabilities, DeviceCapabilities, Medium};
 use smoltcp::socket::TcpSocket;
@@ -123,7 +122,7 @@ impl<'d> smoltcp::phy::TxToken for TxToken<'d> {
     }
 }
 
-type IpStack = Arc<FairMutex<IpStackInner>>;
+type IpStack = Arc<Mutex<IpStackInner>>;
 
 struct IpStackInner {
     netif: Interface<'static, Device>,
@@ -163,7 +162,7 @@ pub fn run(
     ))
     .finalize();
 
-    let stack = Arc::new(const_fair_mutex(IpStackInner {
+    let stack = Arc::new(Mutex::new(IpStackInner {
         netif,
         tcp_sockets: BTreeMap::new(),
         udp_sockets: BTreeMap::new(),
@@ -239,7 +238,7 @@ fn process_tcp(
     is_syn: bool,
     packet: Buffer,
 ) {
-    let mut guard = stack.lock();
+    let mut guard = stack.lock().unwrap();
     let IpStackInner {
         netif,
         tcp_sockets,
@@ -317,7 +316,7 @@ fn process_udp(
     dst_port: u16,
     payload: &mut [u8],
 ) {
-    let mut guard = stack.lock();
+    let mut guard = stack.lock().unwrap();
     let IpStackInner {
         udp_sockets,
         udp_next,
@@ -368,7 +367,7 @@ fn process_udp(
 }
 
 fn schedule_repoll(
-    stack: Arc<FairMutex<IpStackInner>>,
+    stack: Arc<Mutex<IpStackInner>>,
     poll_at: Instant,
     most_recent_scheduled_poll: Arc<AtomicI64>,
 ) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>> {
@@ -382,7 +381,7 @@ fn schedule_repoll(
             // A more urgent poll was scheduled.
             return;
         }
-        let mut stack_guard = stack.lock();
+        let mut stack_guard = stack.lock().unwrap();
         let _ = stack_guard.netif.poll(poll_at.into());
         if let Some(delay) = stack_guard.netif.poll_delay(poll_at.into()) {
             let scheduled_poll_milli =

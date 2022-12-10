@@ -259,7 +259,7 @@ impl PluginType {
                     "netif" => name.clone() + "-main-netif.netif",
                 }),
                 PluginType::Netif => cbor!(NetifFactory {
-                    family_preference: FamilyPreference::PreferIpv4,
+                    family_preference: FamilyPreference::Ipv4Only,
                     selection: SelectionMode::Manual("eth0".into())
                 }),
             }

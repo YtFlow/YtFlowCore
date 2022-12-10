@@ -1,76 +1,64 @@
-mod resolver;
+pub mod resolver;
 mod responder;
 mod sys;
 
 use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
-use std::sync::{
-    atomic::{AtomicU8, Ordering::Release},
-    Arc,
-};
+use std::sync::{Arc, Weak};
 
 use arc_swap::ArcSwap;
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize, Serializer};
 
-pub use resolver::NetifHostResolver;
 pub use responder::Responder;
+
+use crate::flow::*;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "netif")]
 pub enum SelectionMode {
     Auto,
     Manual(String),
-    Virtual(Netif),
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum FamilyPreference {
-    NoPreference,
-    PreferIpv4,
-    PreferIpv6,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub struct Netif {
-    pub name: String,
-    pub ipv4_addr: Option<SocketAddrV4>,
-    pub ipv6_addr: Option<SocketAddrV6>,
-    #[serde(serialize_with = "serialize_ipaddrs")]
-    #[serde(deserialize_with = "deserialize_ipaddrs")]
-    pub dns_servers: Vec<IpAddr>,
+    Both,
+    Ipv4Only,
+    Ipv6Only,
 }
 
 pub struct NetifSelector {
     pub(super) selection: ArcSwap<(SelectionMode, FamilyPreference)>,
-    pub(super) cached_netif: ArcSwap<Netif>,
-    change_token: AtomicU8,
+    pub(super) cached_netif: ArcSwap<sys::Netif>,
     provider: sys::NetifProvider,
+    resolver: sys::Resolver,
+    me: Weak<Self>,
 }
 
 impl NetifSelector {
-    pub fn new(selection: SelectionMode, prefer: FamilyPreference) -> Option<Arc<Self>> {
-        let dummy_netif = Netif {
+    pub fn new(selection: SelectionMode, prefer: FamilyPreference) -> Arc<Self> {
+        let dummy_netif = sys::Netif {
             name: String::from("dummy_netif_awaiting_change"),
-            ..Netif::default()
+            ..sys::Netif::default()
         };
-        Some(Arc::<Self>::new_cyclic(|this| {
+        Arc::<Self>::new_cyclic(|this| {
             let this = this.clone();
-            let provider = sys::NetifProvider::new(move || {
-                if let Some(this) = this.upgrade() {
-                    this.update();
+            let provider = sys::NetifProvider::new({
+                let this = this.clone();
+                move || {
+                    if let Some(this) = this.upgrade() {
+                        this.update();
+                    }
                 }
             });
             Self {
                 selection: ArcSwap::new(Arc::new((selection, prefer))),
                 cached_netif: ArcSwap::new(Arc::new(dummy_netif)),
                 provider,
-                change_token: AtomicU8::new(0),
+                resolver: sys::Resolver::new(this.clone()),
+                me: this,
             }
-        }))
-    }
-
-    pub fn read<R, C: FnOnce(&Netif) -> R>(&self, callback: C) -> R {
-        let guard = self.cached_netif.load();
-        callback(&guard)
+        })
     }
 
     pub(super) fn update(&self) {
@@ -83,22 +71,15 @@ impl NetifSelector {
             return;
         }
         self.cached_netif.compare_and_swap(guard, Arc::new(netif));
-        self.change_token.fetch_add(1, Release);
     }
 
-    fn pick_netif(&self) -> Option<Netif> {
+    fn pick_netif(&self) -> Option<sys::Netif> {
         let selection_guard = self.selection.load();
-        let (selection, prefer) = &**selection_guard;
-        let mut netif = match selection {
+        let (selection, _) = &**selection_guard;
+        let netif = match selection {
             SelectionMode::Auto => self.provider.select_best(),
             SelectionMode::Manual(name) => self.provider.select(name.as_str()),
-            SelectionMode::Virtual(netif) => Some(netif.clone()),
         }?;
-        match (prefer, &mut netif.ipv4_addr, &mut netif.ipv6_addr) {
-            (FamilyPreference::PreferIpv4, Some(_), v6) => *v6 = None,
-            (FamilyPreference::PreferIpv6, v4, Some(_)) => *v4 = None,
-            _ => {}
-        }
         Some(netif)
     }
 }
@@ -110,16 +91,76 @@ where
     serializer.collect_seq(ipaddrs.iter().map(|ip| ip.to_string()))
 }
 
-pub(crate) fn deserialize_ipaddrs<'de, D>(deserializer: D) -> Result<Vec<IpAddr>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let ipaddrs: Vec<String> = Deserialize::deserialize(deserializer)?;
-    ipaddrs
-        .into_iter()
-        .map(|ip| {
-            ip.parse()
-                .map_err(|_| de::Error::invalid_value(de::Unexpected::Str(&ip), &"IP address"))
-        })
-        .collect()
+#[async_trait]
+impl StreamOutboundFactory for NetifSelector {
+    async fn create_outbound(
+        &self,
+        context: Box<FlowContext>,
+        initial_data: &'_ [u8],
+    ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
+        let preference = self.selection.load().1;
+        let netif = self.cached_netif.load();
+        crate::plugin::socket::dial_stream(
+            &context,
+            self.me.upgrade().unwrap(),
+            // A workaround for E0308 "one type is more general than the other"
+            // https://github.com/rust-lang/rust/issues/70263
+            Some(|s: &mut _| sys::bind_socket_v4(&netif, s)).filter(|_| {
+                matches!(
+                    preference,
+                    FamilyPreference::Both | FamilyPreference::Ipv4Only,
+                )
+            }),
+            Some(|s: &mut _| sys::bind_socket_v6(&netif, s)).filter(|_| {
+                matches!(
+                    preference,
+                    FamilyPreference::Both | FamilyPreference::Ipv6Only,
+                )
+            }),
+            initial_data,
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl DatagramSessionFactory for NetifSelector {
+    async fn bind(&self, context: Box<FlowContext>) -> FlowResult<Box<dyn DatagramSession>> {
+        let preference = self.selection.load().1;
+        let netif = self.cached_netif.load();
+        crate::plugin::socket::dial_datagram_session(
+            &context,
+            self.me.upgrade().unwrap(),
+            // A workaround for E0308 "one type is more general than the other"
+            // https://github.com/rust-lang/rust/issues/70263
+            Some(|s: &mut _| sys::bind_socket_v4(&netif, s)).filter(|_| {
+                matches!(
+                    preference,
+                    FamilyPreference::Both | FamilyPreference::Ipv4Only,
+                )
+            }),
+            Some(|s: &mut _| sys::bind_socket_v6(&netif, s)).filter(|_| {
+                matches!(
+                    preference,
+                    FamilyPreference::Both | FamilyPreference::Ipv6Only,
+                )
+            }),
+        )
+        .await
+    }
+}
+
+#[async_trait]
+impl Resolver for NetifSelector {
+    async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
+        self.resolver.resolve_ipv4(domain).await
+    }
+
+    async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
+        self.resolver.resolve_ipv6(domain).await
+    }
+
+    async fn resolve_reverse(&self, ip: IpAddr) -> FlowResult<String> {
+        self.resolver.resolve_reverse(ip).await
+    }
 }

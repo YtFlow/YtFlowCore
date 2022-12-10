@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use futures::{StreamExt, TryStreamExt};
-use parking_lot::{const_mutex, Mutex};
 use rtnetlink::sys::SocketAddr;
 use rtnetlink::Handle;
 use tokio::task::JoinHandle;
@@ -47,7 +46,7 @@ impl NetifProvider {
             .expect("Failed to bind to rtnetlink socket");
 
         tokio::spawn(conn);
-        let known_netifs = Arc::new(const_mutex(vec![]));
+        let known_netifs = Arc::new(Mutex::new(vec![]));
         let monitor_handle = tokio::spawn({
             let known_netifs = known_netifs.clone();
             async move {
@@ -69,6 +68,7 @@ impl NetifProvider {
     pub fn select(&self, name: &str) -> Option<Netif> {
         self.known_netifs
             .lock()
+            .unwrap()
             .iter()
             .find(|(netif, _)| netif.name == name)
             .map(|(netif, _)| netif.clone())
@@ -77,6 +77,7 @@ impl NetifProvider {
     pub fn select_best(&self) -> Option<Netif> {
         self.known_netifs
             .lock()
+            .unwrap()
             .iter()
             .find(|(_, best)| best.0)
             .map(|(netif, _)| netif.clone())

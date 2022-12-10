@@ -1,11 +1,10 @@
 use std::pin::Pin;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Mutex, Weak};
 use std::task::Poll;
 
 use async_trait::async_trait;
 use futures::future::poll_fn;
 use openssl::ssl;
-use parking_lot::const_mutex;
 use tokio::io::AsyncWriteExt;
 
 use super::initial_data_extract_stream::InitialDataExtractStream;
@@ -57,7 +56,7 @@ impl StreamOutboundFactory for SslStreamFactory {
         .expect("Cannot create SSL");
 
         // Extract initial data from handshake to sent to lower
-        let initial_data_container = Arc::new(const_mutex(Some(Buffer::new())));
+        let initial_data_container = Arc::new(Mutex::new(Some(Buffer::new())));
         let mut ssl_stream = tokio_openssl::SslStream::new(
             ssl,
             CompatStream {
@@ -85,7 +84,11 @@ impl StreamOutboundFactory for SslStreamFactory {
         })?;
         {
             let initial_data_container = initial_data_container;
-            let initial_data = initial_data_container.lock().take().unwrap_or_default();
+            let initial_data = initial_data_container
+                .lock()
+                .unwrap()
+                .take()
+                .unwrap_or_default();
             let (lower, initial_res) = outbound_factory
                 .create_outbound(context, &initial_data)
                 .await?;

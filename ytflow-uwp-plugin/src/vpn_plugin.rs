@@ -1,12 +1,11 @@
 use std::cell::RefCell;
 use std::ffi::OsString;
-use std::lazy::SyncOnceCell;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
 use std::os::windows::ffi::OsStringExt;
 use std::rc::Rc;
 use std::slice::from_raw_parts_mut;
 use std::string::ToString;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::collections::SimpleHostNameVectorView;
 use crate::error::ConnectError;
@@ -27,7 +26,7 @@ use crate::bindings::Windows::Storage::Streams::Buffer;
 use crate::bindings::Windows::Storage::{ApplicationData, ApplicationDataContainer};
 use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
 
-static APP_SETTINGS: SyncOnceCell<ApplicationDataContainer> = SyncOnceCell::new();
+static APP_SETTINGS: OnceLock<ApplicationDataContainer> = OnceLock::new();
 
 /// Safety: user must ensure the output slice does not outlive the buffer instance.
 pub(crate) unsafe fn query_slice_from_ibuffer_mut(buf: &mut Buffer) -> &'static mut [u8] {
@@ -66,16 +65,16 @@ fn connect_with_factory(
         route_scope
             .Ipv4InclusionRoutes()?
             .Append(VpnRoute::CreateVpnRoute(
-                HostName::CreateHostName(route4.first_address().to_string())?,
-                route4.network_length(),
+                HostName::CreateHostName(route4.inner.first_address().to_string())?,
+                route4.inner.network_length(),
             )?)?;
     }
     for route6 in &factory.ipv6_route {
         route_scope
             .Ipv6InclusionRoutes()?
             .Append(VpnRoute::CreateVpnRoute(
-                HostName::CreateHostName(route6.first_address().to_string())?,
-                route6.network_length(),
+                HostName::CreateHostName(route6.inner.first_address().to_string())?,
+                route6.inner.network_length(),
             )?)?;
     }
 

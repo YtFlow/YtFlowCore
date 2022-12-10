@@ -2,8 +2,8 @@
 #![feature(generic_const_exprs)]
 #![feature(stmt_expr_attributes)]
 #![feature(const_btree_new)]
-#![feature(bool_to_option)]
 #![feature(ptr_metadata)]
+#![feature(let_else)]
 
 #[cfg(windows)]
 mod bindings {

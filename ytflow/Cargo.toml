@@ -11,13 +11,13 @@ edition = "2021"
 # Primitive
 bitflags = "1"
 async-trait = "0.1"
-parking_lot = "0.11" # parking_lot 0.12 uses windows-rs ^0.32, which does not build on thumbv7a
 futures = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 thiserror = "1"
 pin-project-lite = "0.2"
 chrono = { version = "*", features = ["serde"] }
 memchr = "2"
 rand = "0.8"
+itertools = "0.10"
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
@@ -31,7 +31,8 @@ libc = "0.2"
 socket2 = "0.4"
 
 # Runtime
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "net", "io-util", "time"] }
+# To use patched mio v0.7.
+tokio = { version = "=1.16.1", features = ["rt", "rt-multi-thread", "sync", "net", "io-util", "time", "macros"] }
 
 # Protocol
 httparse = "1"
@@ -39,6 +40,8 @@ base64 = "0.13"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
 crypto2 = { git = "https://github.com/shadowsocks/crypto2.git", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = ["tokio-runtime"] }
+# Note: UWP build is only supported since OpenSSL 3.0
+openssl = "0.10"
 tokio-openssl = "0.6"
 
 # Data
@@ -49,10 +52,7 @@ refinery-core = "0.8"
 cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
 
 [target.'cfg(windows)'.dependencies]
-# UWP build is only supported since OpenSSL 3.0
-openssl = { version = "^0.10.38", features = ["vendored"] }
-openssl-sys = "=0.9.71"
-rusqlite = { version = "*", features = ["chrono", "winsqlite3"] }
+rusqlite = { version = "0.26", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.28", features = ["alloc", "std"] }
 ipconfig = { git = "https://github.com/liranringel/ipconfig.git", default-features = false }
 
@@ -60,8 +60,7 @@ ipconfig = { git = "https://github.com/liranringel/ipconfig.git", default-featur
 windows = { version = "0.28", features = ["alloc", "std", "build"] }
 
 [target.'cfg(not(windows))'.dependencies]
-openssl = "0.10"
-rusqlite = { version = "*", features = ["chrono"] }
+rusqlite = { version = "0.26", features = ["chrono"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = "0.8"

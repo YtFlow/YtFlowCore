@@ -1,11 +1,10 @@
 mod udp_adapter;
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-use std::sync::Weak;
+use std::sync::{Mutex, Weak};
 
 use async_trait::async_trait;
 use lru::LruCache;
-use parking_lot::{const_mutex, Mutex};
 use trust_dns_resolver::config::{
     NameServerConfig, NameServerConfigGroup, Protocol, ResolverConfig, ResolverOpts,
 };
@@ -38,12 +37,13 @@ pub struct HostResolver {
 }
 
 impl HostResolver {
-    pub fn new(datagram_hosts: impl Iterator<Item = Weak<dyn DatagramSessionFactory>>) -> Self {
+    pub fn new(datagram_hosts: impl IntoIterator<Item = Weak<dyn DatagramSessionFactory>>) -> Self {
+        let datagram_hosts = datagram_hosts.into_iter();
         let size_hint = datagram_hosts.size_hint().1.unwrap_or(0);
         let mut dns_configs = Vec::with_capacity(size_hint);
         let mut factory_ids = Vec::with_capacity(size_hint);
         {
-            let mut guard = UDP_FACTORIES.write();
+            let mut guard = UDP_FACTORIES.write().unwrap();
             let (max_id, factories) = &mut *guard;
             for factory in datagram_hosts {
                 *max_id = max_id.wrapping_add(1);
@@ -69,8 +69,8 @@ impl HostResolver {
         Self {
             inner,
             factory_ids,
-            cache_v4: const_mutex(LruCache::new(CACHE_CAPACITY)),
-            cache_v6: const_mutex(LruCache::new(CACHE_CAPACITY)),
+            cache_v4: Mutex::new(LruCache::new(CACHE_CAPACITY)),
+            cache_v6: Mutex::new(LruCache::new(CACHE_CAPACITY)),
         }
     }
 }
@@ -102,7 +102,7 @@ impl Resolver for HostResolver {
             .map_err(resolve_error_to_flow_error)?;
         let res = res.into_iter().collect();
         for &ip in &res {
-            self.cache_v4.lock().put(ip, domain.clone());
+            self.cache_v4.lock().unwrap().put(ip, domain.clone());
         }
         Ok(res)
     }
@@ -117,14 +117,14 @@ impl Resolver for HostResolver {
             .map_err(resolve_error_to_flow_error)?;
         let res = res.into_iter().collect();
         for &ip in &res {
-            self.cache_v6.lock().put(ip, domain.clone());
+            self.cache_v6.lock().unwrap().put(ip, domain.clone());
         }
         Ok(res)
     }
     async fn resolve_reverse(&'_ self, ip: IpAddr) -> FlowResult<String> {
         if let Some(s) = match &ip {
-            IpAddr::V4(ip) => self.cache_v4.lock().get(ip).cloned(),
-            IpAddr::V6(ip) => self.cache_v6.lock().get(ip).cloned(),
+            IpAddr::V4(ip) => self.cache_v4.lock().unwrap().get(ip).cloned(),
+            IpAddr::V6(ip) => self.cache_v6.lock().unwrap().get(ip).cloned(),
         } {
             return Ok(s);
         }
@@ -139,7 +139,7 @@ impl Resolver for HostResolver {
 
 impl Drop for HostResolver {
     fn drop(&mut self) {
-        let mut guard = UDP_FACTORIES.write();
+        let mut guard = UDP_FACTORIES.write().unwrap();
         let (_, factories) = &mut *guard;
         for id in &self.factory_ids {
             factories.remove(id);

@@ -1,8 +1,21 @@
-use std::net::SocketAddrV6;
+use serde::Serialize;
 
 use super::super::*;
 use crate::bindings::Windows::Foundation::EventRegistrationToken;
 use crate::bindings::Windows::Networking::Connectivity::*;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct Netif {
+    pub name: String,
+    pub ipv4_addr: Option<SocketAddrV4>,
+    pub ipv6_addr: Option<SocketAddrV6>,
+    /// Only has values on Windows. On Linux and macOS we just forward DNS requests to systemd-resolved and
+    /// DNSServiceGetAddrInfo since we can specify which interface to query DNS on.
+    #[serde(serialize_with = "serialize_ipaddrs")]
+    pub dns_servers: Vec<IpAddr>,
+}
+
+pub(in super::super) type Resolver = super::super::resolver::NetifHostResolver;
 
 #[derive(Debug)]
 enum Rate {
@@ -96,4 +109,16 @@ impl Drop for NetifProvider {
     fn drop(&mut self) {
         NetworkInformation::RemoveNetworkStatusChanged(self.event_token).unwrap();
     }
+}
+
+pub fn bind_socket_v4(netif: &Netif, socket: &mut socket2::Socket) -> FlowResult<()> {
+    // TODO: log error
+    socket.bind(&netif.ipv4_addr.ok_or_else(|| FlowError::NoOutbound)?.into())?;
+    Ok(())
+}
+
+pub fn bind_socket_v6(netif: &Netif, socket: &mut socket2::Socket) -> FlowResult<()> {
+    // TODO: log error
+    socket.bind(&netif.ipv6_addr.ok_or_else(|| FlowError::NoOutbound)?.into())?;
+    Ok(())
 }

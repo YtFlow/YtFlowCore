@@ -5,14 +5,14 @@ use super::*;
 use crate::flow::*;
 
 pub(super) struct IpStackDatagramSession {
-    pub(super) stack: Arc<FairMutex<IpStackInner>>,
+    pub(super) stack: Arc<Mutex<IpStackInner>>,
     pub(super) local_endpoint: IpAddress,
     pub(super) local_port: u16,
 }
 
 impl MultiplexedDatagramSession for IpStackDatagramSession {
     fn on_close(&mut self) {
-        let mut stack_guard = self.stack.lock();
+        let mut stack_guard = self.stack.lock().unwrap();
         stack_guard.udp_sockets.remove(&self.local_port);
     }
     fn poll_send_ready(&mut self, _cx: &mut Context<'_>) -> Poll<()> {
@@ -30,7 +30,7 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
             _ => return,
         };
 
-        let mut stack_guard = self.stack.lock();
+        let mut stack_guard = self.stack.lock().unwrap();
         use smoltcp::phy::{Device, TxToken};
         let sender = stack_guard.netif.device_mut().transmit();
         let ip_buf = match sender {
