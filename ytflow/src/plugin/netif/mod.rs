@@ -1,4 +1,5 @@
-pub mod resolver;
+#[cfg(windows)] // The generic resolver is only used in Windows.
+mod resolver;
 mod responder;
 mod sys;
 

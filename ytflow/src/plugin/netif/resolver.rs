@@ -2,14 +2,12 @@ use std::net::IpAddr;
 use std::sync::{Arc, Weak};
 
 use arc_swap::AsRaw;
-use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 use super::{FamilyPreference, NetifSelector};
 use crate::flow::*;
 use crate::plugin::host_resolver::HostResolver;
 
-#[allow(dead_code)]
 pub(super) struct NetifHostResolver {
     inner: RwLock<(
         HostResolver,
@@ -61,6 +59,22 @@ impl NetifHostResolver {
         let (resolver, tcp_next, udp_next) = create_host_resolver(self.selector.clone(), servers);
         *guard = (resolver, new_ptr, tcp_next, udp_next);
     }
+
+    pub async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
+        self.ensure_up_to_date().await;
+        let guard = self.inner.read().await;
+        guard.0.resolve_ipv4(domain).await
+    }
+    pub async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
+        self.ensure_up_to_date().await;
+        let guard = self.inner.read().await;
+        guard.0.resolve_ipv6(domain).await
+    }
+    pub async fn resolve_reverse(&self, ip: IpAddr) -> FlowResult<String> {
+        self.ensure_up_to_date().await;
+        let guard = self.inner.read().await;
+        guard.0.resolve_reverse(ip).await
+    }
 }
 
 fn create_host_resolver(
@@ -93,23 +107,4 @@ fn create_host_resolver(
         vec![],
         udp_factories,
     )
-}
-
-#[async_trait]
-impl Resolver for NetifHostResolver {
-    async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
-        self.ensure_up_to_date().await;
-        let guard = self.inner.read().await;
-        guard.0.resolve_ipv4(domain).await
-    }
-    async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
-        self.ensure_up_to_date().await;
-        let guard = self.inner.read().await;
-        guard.0.resolve_ipv6(domain).await
-    }
-    async fn resolve_reverse(&self, ip: IpAddr) -> FlowResult<String> {
-        self.ensure_up_to_date().await;
-        let guard = self.inner.read().await;
-        guard.0.resolve_reverse(ip).await
-    }
 }

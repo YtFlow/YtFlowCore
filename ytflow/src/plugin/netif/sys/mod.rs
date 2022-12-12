@@ -8,5 +8,9 @@ mod linux;
 #[cfg(target_os = "linux")]
 pub(super) use linux::*;
 
-#[cfg(not(any(windows, target_os = "linux")))]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+mod apple;
+pub(super) use apple::*;
+
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos", target_os = "ios")))]
 compile_error!("Target OS does not support netif features");

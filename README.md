@@ -11,7 +11,7 @@ If you are looking for the UWP app powered by YtFlowCore, please head over to [Y
 - Fully customizable. Design your own network flow!
 - Multiple inbound types: VPN, SOCKS5.
 - Supports common proxy protocols: Shadowsocks, Trojan, SOCKS5 and HTTP.
-- Runs on Linux and Universal Windows Platform.
+- Runs on Linux, macOS and Universal Windows Platform.
 
 ## Usage
 
