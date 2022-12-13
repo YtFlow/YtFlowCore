@@ -36,12 +36,16 @@ pub struct Netif {
 
 impl Netif {
     fn get_idx(&self) -> io::Result<libc::c_uint> {
-        let idx: libc::c_uint = unsafe { libc::if_nametoindex(self.bsd_name.as_ptr()) };
-        if idx == 0 {
-            return Err(io::Error::last_os_error());
-        }
-        Ok(idx)
+        get_netif_idx(&self.bsd_name)
     }
+}
+
+fn get_netif_idx(bsd_name: &CStr) -> io::Result<libc::c_uint> {
+    let idx: libc::c_uint = unsafe { libc::if_nametoindex(bsd_name.as_ptr()) };
+    if idx == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(idx)
 }
 
 pub struct NetifProvider {
@@ -54,7 +58,7 @@ impl NetifProvider {
     pub fn new<C: Fn() + Clone + Send + 'static>(callback: C) -> NetifProvider {
         let dispatch_queue = DispatchQueueBuilder::new()
             .label(CStr::from_bytes_with_nul(b"com.bdbai.ytflow.core.netifprovider\0").unwrap())
-            .attr(DispatchQueueAttributes::SERIAL) // Ensure race-free access to context pointer
+            .attr(DispatchQueueAttributes::SERIAL)
             .build();
         let best_if_bsd_name = Arc::new(Mutex::new(CString::new("").unwrap()));
         let monitor = unsafe { ObjcArc::from_raw(ffi::nw_path_monitor_create()) };
@@ -81,7 +85,6 @@ impl NetifProvider {
                 callback();
             })
             .copy();
-            // TODO: set forbid type
             ffi::nw_path_monitor_prohibit_interface_type(monitor_ptr, ffi::nw_interface_type_other);
             ffi::nw_path_monitor_prohibit_interface_type(
                 monitor_ptr,
@@ -99,9 +102,9 @@ impl NetifProvider {
     }
 
     fn select_bsd(name: CString) -> Netif {
-        // TODO: get localized name on macOS
         Netif {
-            name: name.to_string_lossy().to_string(),
+            name: retrieve_localized_if_name(&name)
+                .unwrap_or_else(|| name.to_string_lossy().to_string()),
             ipv4_addr: None,
             ipv6_addr: None,
             dns_servers: vec![],
@@ -118,6 +121,35 @@ impl NetifProvider {
             self.best_if_bsd_name.lock().unwrap().clone(),
         ))
     }
+}
+
+#[cfg(target_os = "ios")]
+fn retrieve_localized_if_name(_bsd_name: &CStr) -> Option<String> {
+    None
+}
+#[cfg(target_os = "macos")]
+fn retrieve_localized_if_name(bsd_name: &CStr) -> Option<String> {
+    unsafe {
+        let netifs = ObjcArc::from_raw(ffi::SCNetworkInterfaceCopyAll());
+        for idx in 0..netifs.len() {
+            let netif = netifs.get_raw_unchecked(idx);
+            if netif.is_null() {
+                continue;
+            }
+            let Ok(got_bsd_name) = CStr::from_bytes_with_nul(
+                (*ffi::SCNetworkInterfaceGetBSDName(netif))
+                    .to_str_with_nul()
+                    .as_bytes(),
+            ) else {
+                continue;
+            };
+            if bsd_name != got_bsd_name {
+                continue;
+            }
+            return Some((*ffi::SCNetworkInterfaceGetLocalizedDisplayName(netif)).to_string());
+        }
+    }
+    None
 }
 
 #[cfg(test)]

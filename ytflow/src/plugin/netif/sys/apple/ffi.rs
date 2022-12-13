@@ -2,9 +2,12 @@
 
 use std::ffi::c_char;
 
+use fruity::core::{Arc as ObjcArc, ObjectType};
+use fruity::core_foundation::CFType;
+use fruity::foundation::NSString;
 use fruity::objc::NSObject;
 // https://github.com/AstroHQ/astro-dnssd/blob/c5b3d6957cb5b4f63d841fa1f20808d758a7c583/src/ffi/apple.rs
-use libc::{c_uint, sockaddr};
+use libc::{c_long, c_uint, c_void, sockaddr};
 
 pub type DNSServiceRef = *mut ();
 pub type DNSServiceFlags = u32;
@@ -83,4 +86,52 @@ extern "C" {
         enumerate_block: nw_path_enumerate_interface_handler_t,
     );
     pub fn nw_interface_get_name(interface: nw_interface_t) -> *const c_char;
+}
+
+#[repr(C)]
+pub struct NSArray {
+    __priv: c_void,
+}
+
+impl NSArray {
+    pub fn len(&self) -> usize {
+        extern "C" {
+            fn CFArrayGetCount(theArray: *const NSArray) -> c_long;
+        }
+        unsafe { CFArrayGetCount(self) as usize }
+    }
+    pub unsafe fn get_raw_unchecked(&self, idx: usize) -> *const c_void {
+        extern "C" {
+            fn CFArrayGetValueAtIndex(theArray: *const NSArray, idx: c_long) -> *const c_void;
+        }
+        unsafe { CFArrayGetValueAtIndex(self, idx as c_long) }
+    }
+}
+
+impl ObjectType for NSArray {
+    fn retain(obj: &Self) -> ObjcArc<Self> {
+        unsafe {
+            let cf_type = obj as *const _ as *const CFType;
+            std::mem::transmute(CFType::retain(&*cf_type))
+        }
+    }
+
+    unsafe fn release(obj: std::ptr::NonNull<Self>) {
+        unsafe {
+            let cf_type = obj.cast();
+            CFType::release(cf_type)
+        }
+    }
+}
+
+pub type SCNetworkInterfaceRef = *const c_void;
+
+#[link(name = "SystemConfiguration", kind = "framework")]
+extern "C" {
+    pub fn SCNetworkInterfaceCopyAll() -> *mut NSArray;
+    pub fn SCNetworkInterfaceGetBSDName(interface: SCNetworkInterfaceRef)
+        -> *mut NSString<'static>;
+    pub fn SCNetworkInterfaceGetLocalizedDisplayName(
+        interface: SCNetworkInterfaceRef,
+    ) -> *mut NSString<'static>;
 }
