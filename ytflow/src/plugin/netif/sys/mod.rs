@@ -10,6 +10,7 @@ pub(super) use linux::*;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod apple;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 pub(super) use apple::*;
 
 #[cfg(not(any(windows, target_os = "linux", target_os = "macos", target_os = "ios")))]
