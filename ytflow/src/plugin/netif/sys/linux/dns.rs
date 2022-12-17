@@ -216,7 +216,7 @@ mod tests {
         let now = std::time::SystemTime::now();
         println!(
             "{:?} {:?}",
-            resolver.resolve_ipv6("google.com".into()).await.unwrap(),
+            resolver.resolve_ipv6("google.com".into()).await,
             now.elapsed()
         );
         println!(
@@ -224,7 +224,6 @@ mod tests {
             resolver
                 .resolve_ipv4("baidu.skldjflksdfjkds.com".into())
                 .await
-                .unwrap_err()
         );
     }
 }
