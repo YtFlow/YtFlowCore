@@ -1,4 +1,5 @@
 use std::io;
+use std::net::{SocketAddrV4, SocketAddrV6};
 
 use fruity::core::Arc as ObjcArc;
 use libc::sockaddr;
@@ -200,7 +201,7 @@ impl Resolver {
         }
     }
     pub async fn resolve_reverse(&self, _ip: IpAddr) -> FlowResult<String> {
-        todo!("To be refactored out with map_back entry points in `dns_server`")
+        unimplemented!("To be refactored out with map_back entry points in `dns_server`")
     }
 }
 

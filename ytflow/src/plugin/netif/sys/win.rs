@@ -1,4 +1,6 @@
-use serde::Serialize;
+use std::net::{SocketAddrV4, SocketAddrV6};
+
+use serde::{Serialize, Serializer};
 
 use super::super::*;
 use crate::bindings::Windows::Foundation::EventRegistrationToken;
@@ -13,6 +15,19 @@ pub struct Netif {
     /// DNSServiceGetAddrInfo since we can specify which interface to query DNS on.
     #[serde(serialize_with = "serialize_ipaddrs")]
     pub dns_servers: Vec<IpAddr>,
+}
+
+pub(crate) fn serialize_ipaddrs<S>(ipaddrs: &Vec<IpAddr>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.collect_seq(ipaddrs.iter().map(|ip| ip.to_string()))
+}
+
+impl Netif {
+    pub async fn dns_servers(&self) -> &[IpAddr] {
+        &self.dns_servers
+    }
 }
 
 pub(in super::super) type Resolver = super::super::resolver::NetifHostResolver;

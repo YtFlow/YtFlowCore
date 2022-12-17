@@ -31,19 +31,7 @@ cidr = { version = "0.2", features = ["serde"] }
 
 # FFI
 libc = "0.2"
-socket2 = "0.4"
-
-# Runtime
-# To use patched mio v0.7.
-tokio = { version = "=1.16.1", features = [
-    "rt",
-    "rt-multi-thread",
-    "sync",
-    "net",
-    "io-util",
-    "time",
-    "macros",
-] }
+socket2 = { version = "0.4", features = ["all"] }
 
 # Protocol
 httparse = "1"
@@ -67,6 +55,16 @@ refinery-core = "0.8"
 cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
 
 [target.'cfg(windows)'.dependencies]
+# To use patched mio v0.7.
+tokio = { version = "=1.16.1", features = [
+    "rt",
+    "rt-multi-thread",
+    "sync",
+    "net",
+    "io-util",
+    "time",
+    "macros",
+] }
 rusqlite = { version = "0.26", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.28", features = ["alloc", "std"] }
 ipconfig = { git = "https://github.com/liranringel/ipconfig.git", default-features = false }
@@ -75,11 +73,22 @@ ipconfig = { git = "https://github.com/liranringel/ipconfig.git", default-featur
 windows = { version = "0.28", features = ["alloc", "std", "build"] }
 
 [target.'cfg(not(windows))'.dependencies]
+tokio = { version = "1", features = [
+    "rt",
+    "rt-multi-thread",
+    "sync",
+    "net",
+    "io-util",
+    "time",
+    "macros",
+    "parking_lot",
+] }
 rusqlite = { version = "0.26", features = ["chrono"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = "0.8"
 netlink-packet-route = "*"
+zbus_systemd = { version = "0.0.8", features = ["resolve1"] }
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 fruity = { version = "0.3", features = [

@@ -1,14 +1,16 @@
-#[cfg(windows)] // The generic resolver is only used in Windows.
+// Windows does not provide per-link hostname resolution.
+// On Linux, fallback to resolver when sytemd-resolved is not available.
+#[cfg(any(windows, target_os = "linux"))]
 mod resolver;
 mod responder;
 mod sys;
 
-use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
+use std::net::IpAddr;
 use std::sync::{Arc, Weak};
 
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 pub use responder::Responder;
 
@@ -83,13 +85,6 @@ impl NetifSelector {
         }?;
         Some(netif)
     }
-}
-
-pub(crate) fn serialize_ipaddrs<S>(ipaddrs: &Vec<IpAddr>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.collect_seq(ipaddrs.iter().map(|ip| ip.to_string()))
 }
 
 #[async_trait]

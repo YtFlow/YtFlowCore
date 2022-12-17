@@ -2,6 +2,7 @@
 #![feature(generic_const_exprs)]
 #![feature(stmt_expr_attributes)]
 #![feature(ptr_metadata)]
+#![feature(once_cell)]
 
 #[cfg(windows)]
 mod bindings {

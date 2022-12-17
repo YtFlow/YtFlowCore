@@ -1,4 +1,7 @@
+mod dns;
+
 use std::collections::BTreeMap;
+use std::ffi::{c_uint, CString};
 use std::net::{Ipv4Addr, Ipv6Addr};
 use std::sync::{Arc, Mutex};
 
@@ -8,6 +11,23 @@ use rtnetlink::Handle;
 use tokio::task::JoinHandle;
 
 use super::super::*;
+pub use dns::Resolver;
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
+pub struct Netif {
+    pub name: String,
+    pub bsd_name: CString,
+    pub if_idx: c_uint,
+}
+
+impl Netif {
+    pub async fn dns_servers(&self) -> Vec<IpAddr> {
+        dns::retrieve_all_link_dns_servers()
+            .await
+            .remove(self.bsd_name.to_str().unwrap_or_default())
+            .unwrap_or_default()
+    }
+}
 
 #[derive(Debug)]
 struct Recommended(bool);
@@ -51,7 +71,7 @@ impl NetifProvider {
             let known_netifs = known_netifs.clone();
             async move {
                 loop {
-                    *known_netifs.lock() = receive_netifs(&handle).await;
+                    *known_netifs.lock().unwrap() = receive_netifs(&handle).await;
                     callback();
                     let _ = messages.next().await;
                 }
@@ -123,20 +143,31 @@ async fn receive_netifs(handle: &Handle) -> Vec<(Netif, Recommended)> {
             LinkNla::IfName(name) => Some(name),
             _ => None,
         }) {
-            let (v4, v6) = addr_dict.remove(&index).unwrap_or_default();
+            let mut bsd_name = ifname.clone().into_bytes();
+            bsd_name.push(0);
+            let Ok(bsd_name) = CString::from_vec_with_nul(bsd_name) else {
+                continue;
+            };
             ret.push((
                 Netif {
+                    bsd_name,
                     name: ifname,
-                    ipv4_addr: v4.first().map(|ip| SocketAddrV4::new(*ip, 0)),
-                    ipv6_addr: v6.first().map(|ip| SocketAddrV6::new(*ip, 0, 0, index)),
-                    // Directly invoke systemd-resolved for netif-specific DNS resolution
-                    dns_servers: vec![],
+                    if_idx: index,
                 },
                 Recommended(is_up && is_ether),
             ))
         }
     }
     ret
+}
+
+pub fn bind_socket_v4(netif: &Netif, socket: &mut socket2::Socket) -> FlowResult<()> {
+    socket.bind_device(Some(netif.bsd_name.as_bytes_with_nul()))?;
+    Ok(())
+}
+pub fn bind_socket_v6(netif: &Netif, socket: &mut socket2::Socket) -> FlowResult<()> {
+    socket.bind_device(Some(netif.bsd_name.as_bytes_with_nul()))?;
+    Ok(())
 }
 
 #[cfg(test)]

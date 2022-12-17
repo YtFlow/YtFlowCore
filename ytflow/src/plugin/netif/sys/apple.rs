@@ -22,15 +22,6 @@ use super::super::*;
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct Netif {
     pub name: String,
-    /// Always None because we rely on its BSD name to bind a socket, not IP address
-    pub ipv4_addr: Option<SocketAddrV4>,
-    /// Always None because we rely on its BSD name to bind a socket, not IP address
-    pub ipv6_addr: Option<SocketAddrV6>,
-    /// Only has values on Windows. On Linux and macOS we just forward DNS requests to systemd-resolved and
-    /// DNSServiceGetAddrInfo since we can specify which interface to query DNS on.
-    #[serde(serialize_with = "serialize_ipaddrs")]
-    pub dns_servers: Vec<IpAddr>,
-
     pub bsd_name: CString,
 }
 
@@ -105,9 +96,6 @@ impl NetifProvider {
         Netif {
             name: retrieve_localized_if_name(&name)
                 .unwrap_or_else(|| name.to_string_lossy().to_string()),
-            ipv4_addr: None,
-            ipv6_addr: None,
-            dns_servers: vec![],
             bsd_name: name,
         }
     }

@@ -47,15 +47,12 @@ impl NetifHostResolver {
         }
 
         let preference = selector.selection.load().1;
-        let servers = netif
-            .dns_servers
-            .iter()
-            .cloned()
-            .filter(|dns| match preference {
-                FamilyPreference::Both => true,
-                FamilyPreference::Ipv4Only => dns.is_ipv4(),
-                FamilyPreference::Ipv6Only => dns.is_ipv6(),
-            });
+        let servers = netif.dns_servers().await;
+        let servers = servers.iter().cloned().filter(|dns| match preference {
+            FamilyPreference::Both => true,
+            FamilyPreference::Ipv4Only => dns.is_ipv4(),
+            FamilyPreference::Ipv6Only => dns.is_ipv6(),
+        });
         let (resolver, tcp_next, udp_next) = create_host_resolver(self.selector.clone(), servers);
         *guard = (resolver, new_ptr, tcp_next, udp_next);
     }
