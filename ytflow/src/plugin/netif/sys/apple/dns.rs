@@ -216,9 +216,6 @@ mod tests {
             NetifSelector::new(SelectionMode::Manual("en0".into()), FamilyPreference::Both);
         selector.cached_netif.store(Arc::new(Netif {
             name: "en0".into(),
-            ipv4_addr: None,
-            ipv6_addr: None,
-            dns_servers: vec![],
             bsd_name: CString::from_vec_with_nul(b"en0\0"[..].into()).unwrap(),
         }));
         let resolver = super::Resolver::new(Arc::downgrade(&selector));
