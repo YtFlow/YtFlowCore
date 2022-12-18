@@ -1,6 +1,7 @@
 use std::sync::Weak;
 
 use async_trait::async_trait;
+use sha2::Digest;
 
 use crate::flow::*;
 
@@ -17,7 +18,7 @@ impl TrojanStreamOutboundFactory {
                 _ => n + 87,
             }
         }
-        let hash = crypto2::hash::sha224(password);
+        let hash = sha2::Sha224::digest(password);
         let mut hex = Vec::with_capacity(56);
         for x in hash {
             hex.push(nibble_to_hex(x >> 4));

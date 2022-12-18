@@ -90,7 +90,7 @@ async fn serve_handshake(
             .await?? as usize;
         let req_match = reader
             .read_exact(stream, 1 + 1 + idlen + 1 + pwlen, |buf| {
-                crypto2::mem::constant_time_eq(buf, &*auth_req)
+                subtle::ConstantTimeEq::ct_eq(buf, &*auth_req).into()
             })
             .await?;
         send_response(stream, if req_match { &[0x01, 0] } else { &[0x01, 0xff] }).await?;

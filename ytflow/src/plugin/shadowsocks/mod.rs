@@ -1,7 +1,6 @@
 mod crypto;
 mod stream;
 pub(crate) mod util;
-mod xchacha20;
 
 use std::convert::TryInto;
 use std::marker::PhantomData;
@@ -81,13 +80,13 @@ pub fn create_factory<R: ReceiveFactory>(method: SupportedCipher, password: &[u8
         SupportedCipher::Rc4Md5 => r.receive_factory(FactoryCreator::<Rc4Md5>{ key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes128Cfb => r.receive_factory(FactoryCreator::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes192Cfb => r.receive_factory(FactoryCreator::<Aes192Cfb> { key: bk(p), crypto_phantom: PhantomData }),
-        SupportedCipher::Aes256Cfb => r.receive_factory(FactoryCreator::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes256Cfb => r.receive_factory(FactoryCreator::<Aes256Cfb> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes128Ctr => r.receive_factory(FactoryCreator::<Aes128Ctr> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes192Ctr => r.receive_factory(FactoryCreator::<Aes192Ctr> { key: bk(p), crypto_phantom: PhantomData }),
-        SupportedCipher::Aes256Ctr => r.receive_factory(FactoryCreator::<Aes128Ctr> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Aes256Ctr => r.receive_factory(FactoryCreator::<Aes256Ctr> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Camellia128Cfb => r.receive_factory(FactoryCreator::<Camellia128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Camellia192Cfb => r.receive_factory(FactoryCreator::<Camellia192Cfb> { key: bk(p), crypto_phantom: PhantomData }),
-        SupportedCipher::Camellia256Cfb => r.receive_factory(FactoryCreator::<Camellia128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Camellia256Cfb => r.receive_factory(FactoryCreator::<Camellia256Cfb> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes128Gcm => r.receive_factory(FactoryCreator::<Aes128Gcm> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes256Gcm => r.receive_factory(FactoryCreator::<Aes256Gcm> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Chacha20Ietf => r.receive_factory(FactoryCreator::<Chacha20Ietf> { key: bk(p), crypto_phantom: PhantomData }),

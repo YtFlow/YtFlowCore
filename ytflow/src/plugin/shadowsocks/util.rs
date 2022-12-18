@@ -1,7 +1,5 @@
 use std::net::IpAddr;
 
-use crypto2::hash::Md5;
-
 use crate::flow::{DestinationAddr, HostName};
 
 pub fn write_dest(w: &mut Vec<u8>, remote_peer: &DestinationAddr) {
@@ -54,13 +52,14 @@ pub fn parse_dest(w: &[u8]) -> Option<DestinationAddr> {
     })
 }
 
+/// https://github.com/shadowsocks/shadowsocks-crypto/blob/bf3c3f0cdf3ebce6a19ce15a96248ccd94a82848/src/v1/cipher.rs#LL33-L58C2
 /// Key derivation of OpenSSL's [EVP_BytesToKey](https://wiki.openssl.org/index.php/Manual:EVP_BytesToKey(3))
-///
-/// See [shadowsocks_crypto::openssl_bytes_to_key](https://github.com/shadowsocks/shadowsocks-crypto/blob/cb54882c7db80200be34ef98e73dbb80fd236097/src/v1/cipher.rs#L140-L163).
 pub fn openssl_bytes_to_key<const K: usize>(password: &[u8]) -> [u8; K] {
+    use md5::{Digest, Md5};
+
     let mut key = [0u8; K];
 
-    let mut last_digest: Option<[u8; Md5::DIGEST_LEN]> = None;
+    let mut last_digest = None;
 
     let mut offset = 0usize;
     while offset < K {
@@ -73,22 +72,21 @@ pub fn openssl_bytes_to_key<const K: usize>(password: &[u8]) -> [u8; K] {
 
         let digest = m.finalize();
 
-        let amt = std::cmp::min(K - offset, Md5::DIGEST_LEN);
+        let amt = std::cmp::min(K - offset, digest.len());
         key[offset..offset + amt].copy_from_slice(&digest[..amt]);
 
-        offset += Md5::DIGEST_LEN;
+        offset += amt;
         last_digest = Some(digest);
     }
-
     key
 }
 
-pub fn increase_num_buf<const N: usize>(buf: &mut [u8; N]) {
+pub fn increase_num_buf(buf: &mut [u8]) {
     let mut c = buf[0] as u16 + 1;
     buf[0] = c as u8;
     c >>= 8;
     let mut n = 1;
-    while n < N {
+    while n < buf.len() {
         c += buf[n] as u16;
         buf[n] = c as u8;
         c >>= 8;

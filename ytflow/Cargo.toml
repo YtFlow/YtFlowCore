@@ -37,15 +37,27 @@ socket2 = { version = "0.4", features = ["all"] }
 httparse = "1"
 base64 = "0.13"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
-crypto2 = { git = "https://github.com/shadowsocks/crypto2.git", default-features = false, features = [
-    "std",
-] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = [
     "tokio-runtime",
 ] }
 # Note: UWP build is only supported since OpenSSL 3.0
 openssl = "0.10"
 tokio-openssl = "0.6"
+
+# Crypto
+cipher = "0.4"
+subtle = "2"
+md-5 = "0.10"
+sha1 = "0.10"
+sha2 = "0.10"
+aes-gcm = "0.10"
+chacha20poly1305 = "0.10"
+rc4 = "0.1"
+chacha20 = "0.9"
+camellia = "0.1"
+ctr = "0.9"
+cfb-mode = "0.8"
+hkdf = "0.12"
 
 # Data
 serde = { version = "1", features = ["derive"] }
@@ -67,7 +79,7 @@ tokio = { version = "=1.16.1", features = [
 ] }
 rusqlite = { version = "0.26", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.28", features = ["alloc", "std"] }
-ipconfig = { git = "https://github.com/liranringel/ipconfig.git", default-features = false }
+ipconfig = { version = "0.3", default-features = false }
 
 [target.'cfg(windows)'.build-dependencies]
 windows = { version = "0.28", features = ["alloc", "std", "build"] }
