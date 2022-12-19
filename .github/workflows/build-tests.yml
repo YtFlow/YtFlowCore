@@ -28,7 +28,7 @@ jobs:
       if: ${{ runner.os == 'Windows' }}
       run: |
         vcpkg install openssl:x64-windows
-        echo "OPENSSL_DIR=C:\vcpkg\installed\x64-windows" >> $GITHUB_ENV
+        echo "OPENSSL_DIR=C:\vcpkg\installed\x64-windows" >> $env:GITHUB_ENV
 
 
     - name: Build
