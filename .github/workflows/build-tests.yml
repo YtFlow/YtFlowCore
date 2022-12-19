@@ -17,8 +17,6 @@ jobs:
         os: ["windows-latest", "ubuntu-latest", "macos-latest"]
 
     runs-on: ${{ matrix.os }}
-    env:
-      OPENSSL_DIR: 'C:\vcpkg\installed\x64-windows'
 
     steps:
     - uses: actions/checkout@v2
@@ -28,7 +26,10 @@ jobs:
 
     - name: Install OpenSSL (Windows)
       if: ${{ runner.os == 'Windows' }}
-      run: vcpkg install openssl:x64-windows
+      run: |
+        vcpkg install openssl:x64-windows
+        echo "OPENSSL_DIR=C:\vcpkg\installed\x64-windows" >> $GITHUB_ENV
+
 
     - name: Build
       run: cargo build
