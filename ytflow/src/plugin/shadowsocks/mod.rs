@@ -76,7 +76,7 @@ pub fn create_factory<R: ReceiveFactory>(method: SupportedCipher, password: &[u8
     #[rustfmt::skip]
     match method {
         SupportedCipher::None => r.receive_factory(FactoryCreator::<Plain> { key: [], crypto_phantom: PhantomData }),
-        SupportedCipher::Rc4=> r.receive_factory(FactoryCreator::<Rc4>{ key: bk(p), crypto_phantom: PhantomData }),
+        SupportedCipher::Rc4 => r.receive_factory(FactoryCreator::<Rc4>{ key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Rc4Md5 => r.receive_factory(FactoryCreator::<Rc4Md5>{ key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes128Cfb => r.receive_factory(FactoryCreator::<Aes128Cfb> { key: bk(p), crypto_phantom: PhantomData }),
         SupportedCipher::Aes192Cfb => r.receive_factory(FactoryCreator::<Aes192Cfb> { key: bk(p), crypto_phantom: PhantomData }),

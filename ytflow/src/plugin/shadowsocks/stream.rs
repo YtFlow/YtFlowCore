@@ -111,7 +111,7 @@ where
             if let Ok(written) = &res {
                 let _ = reader.advance(*written);
             }
-            Ok(())
+            res.map(|_| ())
         } else {
             // AEAD cipher
             let chunk_size = rx_chunk_size.get();

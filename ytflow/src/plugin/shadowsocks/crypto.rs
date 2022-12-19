@@ -48,14 +48,14 @@ pub trait ShadowCrypto: Send + Sync + Unpin + 'static {
         -> bool;
 }
 
-pub type Aes128Gcm = RustCryptoAead<aes_gcm::AesGcm<Aes128, U12>, 32>;
+pub type Aes128Gcm = RustCryptoAead<aes_gcm::AesGcm<Aes128, U12>, 16>;
 pub type Aes256Gcm = RustCryptoAead<aes_gcm::AesGcm<Aes256, U12>, 32>;
 pub type Chacha20IetfPoly1305 = RustCryptoAead<chacha20poly1305::ChaCha20Poly1305, 32>;
 pub type XChacha20IetfPoly1305 = RustCryptoAead<chacha20poly1305::XChaCha20Poly1305, 32>;
 
 pub type Rc4 = RustCryptoStream<KeyOnlyCtor<rc4::Rc4<U16>>, 0>;
 pub type Rc4Md5 = RustCryptoStream<Rc4Md5Ctor<rc4::Rc4<U16>>, 16>;
-pub type Chacha20Ietf = RustCryptoStream<KeyIvCtor<chacha20::ChaCha20>, 8>;
+pub type Chacha20Ietf = RustCryptoStream<KeyIvCtor<chacha20::ChaCha20>, 12>;
 pub type Aes128Ctr = RustCryptoStream<KeyIvCtor<Ctr64BE<Aes128>>, 16>;
 pub type Aes192Ctr = RustCryptoStream<KeyIvCtor<Ctr64BE<Aes192>>, 16>;
 pub type Aes256Ctr = RustCryptoStream<KeyIvCtor<Ctr64BE<Aes256>>, 16>;

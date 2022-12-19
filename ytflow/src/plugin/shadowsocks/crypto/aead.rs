@@ -17,8 +17,8 @@ where
 
     fn create_crypto(key: &[u8; Self::KEY_LEN], iv: &[u8; Self::IV_LEN]) -> Self {
         let mut subkey = [0u8; Self::KEY_LEN];
-        Hkdf::<Sha1>::new(Some(b"ss-subkey"), key)
-            .expand(iv, &mut subkey)
+        Hkdf::<Sha1>::new(Some(iv), key)
+            .expand(b"ss-subkey", &mut subkey)
             .unwrap();
 
         Self {
