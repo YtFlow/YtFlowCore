@@ -131,27 +131,6 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
         ),
         updated_at: MIN_DATETIME,
     };
-    let netif = Plugin {
-        id: DUMMY_PLUGIN_ID,
-        name: prefix.to_string() + "-netif",
-        desc: String::from("Dummy network interface"),
-        plugin: String::from("netif"),
-        plugin_version: 0,
-        param: serialize_cbor(
-            cbor!({
-                "family_preference" => "NoPreference",
-                "type" => "Virtual",
-                "netif" => {
-                    "name" => "DummyInterface",
-                    "ipv4_addr" => "0.0.0.0:0",
-                    "ipv6_addr" => "[::]:0",
-                    "dns_servers" => []
-                }
-            })
-            .expect("Cannot generate netif params"),
-        ),
-        updated_at: MIN_DATETIME,
-    };
     let socket = Plugin {
         id: DUMMY_PLUGIN_ID,
         name: prefix.to_string() + "-socket",
@@ -161,7 +140,6 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
         param: serialize_cbor(
             cbor!({
                 "resolver" => prefix.to_string() + "-sys-resolver.resolver",
-                "netif" => prefix.to_string() + "-netif.netif"
             })
             .expect("Cannot generate socket params"),
         ),
@@ -169,10 +147,6 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
     };
     plugins.push(GeneratedPlugin {
         plugin: sys_resolver,
-        is_entry: false,
-    });
-    plugins.push(GeneratedPlugin {
-        plugin: netif,
         is_entry: false,
     });
     plugins.push(GeneratedPlugin {

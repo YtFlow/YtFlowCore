@@ -147,9 +147,9 @@ impl PluginType {
                     "udp_next" => name.clone() + "-reject.udp",
                 }),
                 PluginType::VpnTun => cbor!({
-                    "ipv4" => [192, 168, 3, 1],
+                    "ipv4" => "192.168.3.1",
                     "ipv6" => Null,
-                    "ipv4_route" => [(16, [11, 17, 0, 0]), (24, [11, 16, 0, 0])],
+                    "ipv4_route" => ["11.17.0.0/16", "11.16.0.0/24"],
                     "ipv6_route" => Vec::<()>::new(),
                     "dns" => ["11.16.1.1"],
                     "web_proxy" => Null,
@@ -181,6 +181,8 @@ impl PluginType {
                     "concurrency_limit" => 64u8,
                     "resolver" => name.clone() + "-fake-ip.resolver",
                     "ttl" => 60u8,
+                    "tcp_map_back" => ["forward.tcp"],
+                    "udp_map_back" => ["resolve-dest.udp"],
                 }),
                 PluginType::Socks5Server => cbor!({
                     "tcp_next" => name.clone() + "-forward.tcp",
@@ -193,17 +195,17 @@ impl PluginType {
                 }),
                 PluginType::ResolveDest => cbor!({
                     "resolver" => name.clone() + "-fake-ip.resolver",
-                    "reverse" => true,
                     "tcp_next" => name.clone() + "-forward.tcp",
+                    "udp_next" => name.clone() + "-forward.udp",
                 }),
                 PluginType::SimpleDispatcher => cbor!({
                     "rules" => [cbor!({
                         "src" => cbor!({
-                            "ip_ranges" => [(0, [0, 0, 0, 0])],
+                            "ip_ranges" => ["0.0.0.0/0"],
                             "port_ranges" => [0u16..=65535],
                         }).unwrap(),
                         "dst" => cbor!({
-                            "ip_ranges" => [(32, [11, 16, 1, 1])],
+                            "ip_ranges" => ["11.16.1.1/32"],
                             "port_ranges" => [53u16..=53],
                         }).unwrap(),
                         "is_udp" => true,
@@ -256,7 +258,6 @@ impl PluginType {
                 }),
                 PluginType::Socket => cbor!({
                     "resolver" => name.clone() + "-system-resolver.resolver",
-                    "netif" => name.clone() + "-main-netif.netif",
                 }),
                 PluginType::Netif => cbor!(NetifFactory {
                     family_preference: FamilyPreference::Ipv4Only,

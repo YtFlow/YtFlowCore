@@ -6,12 +6,13 @@ use cidr::IpCidr;
 use serde::Deserialize;
 use smallvec::SmallVec;
 
+use crate::config::HumanRepr;
 use crate::flow::*;
 
 #[derive(Clone, Deserialize)]
 pub struct Condition {
-    pub ip_ranges: SmallVec<[IpCidr; 2]>,
-    pub port_ranges: SmallVec<[RangeInclusive<u16>; 4]>,
+    pub ip_ranges: SmallVec<[HumanRepr< IpCidr>; 2]>,
+    pub port_ranges: SmallVec<[HumanRepr<RangeInclusive<u16>>; 4]>,
 }
 
 pub struct Rule<N> {
@@ -30,10 +31,10 @@ impl<N: Clone> Rule<N> {
             } = &self.src_cond;
             let ip = context.local_peer.ip();
             let port = context.local_peer.port();
-            if !ip_ranges.iter().any(|r| r.contains(&ip)) {
+            if !ip_ranges.iter().any(|r| r.inner.contains(&ip)) {
                 return None;
             }
-            if !port_ranges.iter().any(|r| r.contains(&port)) {
+            if !port_ranges.iter().any(|r| r.inner.contains(&port)) {
                 return None;
             }
         }
@@ -44,11 +45,11 @@ impl<N: Clone> Rule<N> {
                 port_ranges,
             } = &self.dst_cond;
             let port = context.remote_peer.port;
-            if !port_ranges.iter().any(|r| r.contains(&port)) {
+            if !port_ranges.iter().any(|r| r.inner.contains(&port)) {
                 return None;
             }
             match &context.remote_peer.host {
-                HostName::Ip(ip) if !ip_ranges.iter().any(|r| r.contains(ip)) => None,
+                HostName::Ip(ip) if !ip_ranges.iter().any(|r| r.inner.contains(ip)) => None,
                 HostName::DomainName(_) => None,
                 _ => Some(self.next.clone()),
             }
