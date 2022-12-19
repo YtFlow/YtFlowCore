@@ -135,7 +135,8 @@ async fn serve_handshake(
     let dest = reader
         .read_exact(stream, req_len, |buf| parse_dest(&buf[3..]))
         .await?
-        .ok_or(FlowError::UnexpectedData)?;
+        .ok_or(FlowError::UnexpectedData)?
+        .0;
     send_response(stream, &[0x05, 0, 0, 0x01, 0, 0, 0, 0, 0, 0]).await?;
     Ok((dest, reader.into_buffer().unwrap_or_default()))
 }

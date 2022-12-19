@@ -47,6 +47,18 @@ where
         post_overhead.copy_from_slice(&tag);
         increase_num_buf(&mut self.nonce);
     }
+    fn encrypt_all(
+        &mut self,
+        data: &mut [u8],
+        post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD],
+    ) {
+        let tag = self
+            .inner
+            .encrypt_in_place_detached(&self.nonce, &[], data)
+            .unwrap();
+        post_overhead.copy_from_slice(&tag);
+        increase_num_buf(&mut self.nonce);
+    }
 
     fn decrypt_size(
         &mut self,

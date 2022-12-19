@@ -76,11 +76,10 @@ impl<'de> ShadowsocksFactory<'de> {
                     descriptor: name.to_string() + ".tcp",
                     r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
-                // TODO:
-                // Descriptor {
-                //     descriptor: name.to_string() + ".udp",
-                //     r#type: AccessPointType::DatagramSessionFactory,
-                // },
+                Descriptor {
+                    descriptor: name.to_string() + ".udp",
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
+                },
             ],
         })
     }
@@ -92,28 +91,47 @@ impl<'de> Factory for ShadowsocksFactory<'de> {
             plugin_name: String,
             set: &'set mut PartialPluginSet<'f>,
             tcp_next: &'de str,
+            udp_next: &'de str,
             result: &'r mut LoadResult<()>,
         }
         impl<'set, 'de, 'f, 'r> shadowsocks::ReceiveFactory for FactoryReceiver<'set, 'de, 'f, 'r> {
             fn receive_factory<F: shadowsocks::CreateFactory>(self, factory: F) {
                 let tcp_ap = self.plugin_name.clone() + ".tcp";
-                let factory = Arc::new_cyclic(|weak| {
+                let tcp_factory = Arc::new_cyclic(|weak| {
                     self.set
                         .stream_outbounds
                         .insert(tcp_ap.clone(), weak.clone() as _);
                     let tcp_next = self
                         .set
-                        .get_or_create_stream_outbound(self.plugin_name, self.tcp_next)
+                        .get_or_create_stream_outbound(self.plugin_name.clone(), self.tcp_next)
                         .unwrap_or_else(|e| {
                             *self.result = Err(e);
                             Arc::downgrade(&(Arc::new(Null) as _))
                         });
-                    factory.create_factory(tcp_next)
+                    factory.create_stream_factory(tcp_next)
+                });
+                let udp_ap = self.plugin_name.clone() + ".udp";
+                let udp_factory = Arc::new_cyclic(|weak| {
+                    self.set
+                        .datagram_outbounds
+                        .insert(udp_ap.clone(), weak.clone() as _);
+                    let udp_next = self
+                        .set
+                        .get_or_create_datagram_outbound(self.plugin_name, self.udp_next)
+                        .unwrap_or_else(|e| {
+                            *self.result = Err(e);
+                            Arc::downgrade(&(Arc::new(Null) as _))
+                        });
+                    factory.create_datagram_session_factory(udp_next)
                 });
                 self.set
                     .fully_constructed
                     .stream_outbounds
-                    .insert(tcp_ap, factory);
+                    .insert(tcp_ap, tcp_factory);
+                self.set
+                    .fully_constructed
+                    .datagram_outbounds
+                    .insert(udp_ap, udp_factory);
             }
         }
         let mut res = Ok(());
@@ -124,6 +142,7 @@ impl<'de> Factory for ShadowsocksFactory<'de> {
                 plugin_name: name,
                 set,
                 tcp_next: self.tcp_next,
+                udp_next: self.udp_next,
                 result: &mut res,
             },
         );

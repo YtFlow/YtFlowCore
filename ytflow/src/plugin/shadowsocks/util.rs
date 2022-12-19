@@ -22,7 +22,7 @@ pub fn write_dest(w: &mut Vec<u8>, remote_peer: &DestinationAddr) {
     w.extend_from_slice(&remote_peer.port.to_be_bytes());
 }
 
-pub fn parse_dest(w: &[u8]) -> Option<DestinationAddr> {
+pub fn parse_dest(w: &[u8]) -> Option<(DestinationAddr, usize)> {
     if w.len() < 2 {
         return None;
     }
@@ -46,10 +46,13 @@ pub fn parse_dest(w: &[u8]) -> Option<DestinationAddr> {
         _ => return None,
     };
     let port = u16::from_be_bytes([w[port_offset], w[port_offset + 1]]);
-    Some(DestinationAddr {
-        host: dest_addr,
-        port,
-    })
+    Some((
+        DestinationAddr {
+            host: dest_addr,
+            port,
+        },
+        port_offset + 2,
+    ))
 }
 
 /// https://github.com/shadowsocks/shadowsocks-crypto/blob/bf3c3f0cdf3ebce6a19ce15a96248ccd94a82848/src/v1/cipher.rs#LL33-L58C2

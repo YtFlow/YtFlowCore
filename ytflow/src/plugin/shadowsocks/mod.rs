@@ -1,15 +1,17 @@
 mod crypto;
+mod datagram;
 mod stream;
 pub(crate) mod util;
 
 use std::convert::TryInto;
 use std::marker::PhantomData;
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 
 use crate::flow::*;
 use crypto::*;
+use datagram::ShadowsocksDatagramSessionFactory;
 
 struct ShadowsocksStreamOutboundFactory<C: ShadowCrypto>
 where
@@ -36,8 +38,13 @@ pub trait ReceiveFactory {
 }
 
 pub trait CreateFactory {
-    type Factory: StreamOutboundFactory + 'static;
-    fn create_factory(self, next: Weak<dyn StreamOutboundFactory>) -> Self::Factory;
+    type StreamFactory: StreamOutboundFactory + 'static;
+    type DatagramFactory: DatagramSessionFactory + 'static;
+    fn create_stream_factory(&self, next: Weak<dyn StreamOutboundFactory>) -> Self::StreamFactory;
+    fn create_datagram_session_factory(
+        &self,
+        next: Weak<dyn DatagramSessionFactory>,
+    ) -> Self::DatagramFactory;
 }
 
 struct FactoryCreator<C: ShadowCrypto>
@@ -55,16 +62,23 @@ where
     [(); C::PRE_CHUNK_OVERHEAD]:,
     [(); C::POST_CHUNK_OVERHEAD]:,
 {
-    type Factory = ShadowsocksStreamOutboundFactory<C>;
-    fn create_factory(self, next: Weak<dyn StreamOutboundFactory>) -> Self::Factory {
-        let Self {
-            key,
-            crypto_phantom,
-        } = self;
+    type StreamFactory = ShadowsocksStreamOutboundFactory<C>;
+    type DatagramFactory = ShadowsocksDatagramSessionFactory<C>;
+    fn create_stream_factory(&self, next: Weak<dyn StreamOutboundFactory>) -> Self::StreamFactory {
         ShadowsocksStreamOutboundFactory {
-            key,
-            crypto_phantom,
+            key: self.key,
+            crypto_phantom: PhantomData,
             next,
+        }
+    }
+    fn create_datagram_session_factory(
+        &self,
+        next: Weak<dyn DatagramSessionFactory>,
+    ) -> Self::DatagramFactory {
+        ShadowsocksDatagramSessionFactory {
+            key: Arc::new(self.key),
+            next,
+            crypto_phantom: PhantomData,
         }
     }
 }

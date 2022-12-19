@@ -11,7 +11,7 @@ use crate::flow::*;
 
 #[derive(Clone, Deserialize)]
 pub struct Condition {
-    pub ip_ranges: SmallVec<[HumanRepr< IpCidr>; 2]>,
+    pub ip_ranges: SmallVec<[HumanRepr<IpCidr>; 2]>,
     pub port_ranges: SmallVec<[HumanRepr<RangeInclusive<u16>>; 4]>,
 }
 

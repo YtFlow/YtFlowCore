@@ -32,6 +32,13 @@ where
     ) {
         self.inner.apply_keystream(data);
     }
+    fn encrypt_all(
+        &mut self,
+        data: &mut [u8],
+        _post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD],
+    ) {
+        self.inner.apply_keystream(data);
+    }
 
     fn decrypt_size(&mut self, _pre_overhead: &mut [u8; 0]) -> Option<NonZeroUsize> {
         None

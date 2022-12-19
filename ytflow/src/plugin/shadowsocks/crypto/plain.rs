@@ -19,6 +19,12 @@ impl ShadowCrypto for Plain {
         _post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD],
     ) {
     }
+    fn encrypt_all(
+        &mut self,
+        _data: &mut [u8],
+        _post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD],
+    ) {
+    }
 
     fn decrypt_size(
         &mut self,

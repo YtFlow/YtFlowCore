@@ -39,6 +39,7 @@ pub trait ShadowCrypto: Send + Sync + Unpin + 'static {
         data: &mut [u8],
         post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD],
     );
+    fn encrypt_all(&mut self, data: &mut [u8], post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD]);
     fn decrypt_size(
         &mut self,
         pre_overhead: &mut [u8; Self::PRE_CHUNK_OVERHEAD],
