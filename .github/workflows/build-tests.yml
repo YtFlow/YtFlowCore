@@ -17,6 +17,8 @@ jobs:
         os: ["windows-latest", "ubuntu-latest", "macos-latest"]
 
     runs-on: ${{ matrix.os }}
+    env:
+      OPENSSL_DIR: 'C:\vcpkg\installed\x64-windows'
 
     steps:
     - uses: actions/checkout@v2
