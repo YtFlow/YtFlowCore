@@ -5,7 +5,6 @@ mod resolver;
 mod responder;
 mod sys;
 
-use std::net::IpAddr;
 use std::sync::{Arc, Weak};
 
 use arc_swap::ArcSwap;
@@ -154,9 +153,5 @@ impl Resolver for NetifSelector {
 
     async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
         self.resolver.resolve_ipv6(domain).await
-    }
-
-    async fn resolve_reverse(&self, ip: IpAddr) -> FlowResult<String> {
-        self.resolver.resolve_reverse(ip).await
     }
 }

@@ -12,7 +12,6 @@ use crate::plugin::resolve_dest;
 #[derive(Clone, Deserialize)]
 pub struct ResolveDestFactory<'a> {
     resolver: &'a str,
-    reverse: bool,
     tcp_next: Option<&'a str>,
     udp_next: Option<&'a str>,
 }
@@ -152,43 +151,23 @@ fn create_udp<
 
 impl<'de> Factory for ResolveDestFactory<'de> {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        if self.reverse {
-            create_tcp(
-                self.resolver,
-                self.tcp_next,
-                plugin_name.clone(),
-                set,
-                |next, resolver| resolve_dest::StreamReverseResolver { resolver, next },
-                |set| {
-                    create_udp(
-                        self.resolver,
-                        self.udp_next,
-                        plugin_name.clone(),
-                        set,
-                        |next, resolver| resolve_dest::DatagramReverseResolver { resolver, next },
-                        |_| {},
-                    );
-                },
-            );
-        } else {
-            create_tcp(
-                self.resolver,
-                self.tcp_next,
-                plugin_name.clone(),
-                set,
-                |next, resolver| resolve_dest::StreamForwardResolver { resolver, next },
-                |set| {
-                    create_udp(
-                        self.resolver,
-                        self.udp_next,
-                        plugin_name.clone(),
-                        set,
-                        |next, resolver| resolve_dest::DatagramForwardResolver { resolver, next },
-                        |_| {},
-                    );
-                },
-            );
-        }
+        create_tcp(
+            self.resolver,
+            self.tcp_next,
+            plugin_name.clone(),
+            set,
+            |next, resolver| resolve_dest::StreamForwardResolver { resolver, next },
+            |set| {
+                create_udp(
+                    self.resolver,
+                    self.udp_next,
+                    plugin_name.clone(),
+                    set,
+                    |next, resolver| resolve_dest::DatagramForwardResolver { resolver, next },
+                    |_| {},
+                );
+            },
+        );
 
         Ok(())
     }

@@ -136,9 +136,6 @@ impl Resolver {
         }
         self.fallback.resolve_ipv6(domain).await
     }
-    pub async fn resolve_reverse(&self, _ip: IpAddr) -> FlowResult<String> {
-        unimplemented!("To be refactored out with map_back entry points in `dns_server`")
-    }
 }
 
 pub async fn retrieve_all_link_dns_servers() -> HashMap<String, Vec<IpAddr>> {

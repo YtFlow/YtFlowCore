@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+use std::net::IpAddr;
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
 
@@ -63,14 +65,21 @@ impl DatagramSessionHandler for DatagramForwardResolver {
             Some(resolver) => resolver,
             None => return,
         };
+        let old_remote_host = context.remote_peer.host.clone();
         handle_context(&self.resolver, context, move |c| {
+            let mut reverse_mapping = BTreeMap::new();
+            if let (HostName::DomainName(domain), HostName::Ip(resolved_ip)) =
+                (old_remote_host, c.remote_peer.host.clone())
+            {
+                reverse_mapping.insert(resolved_ip, domain);
+            }
             next.on_session(
                 Box::new(DatagramForwardSession {
                     is_ipv6: c.local_peer.is_ipv6(),
                     resolver,
                     lower,
                     resolving: None,
-                    reverse_resolving: None,
+                    reverse_mapping,
                 }),
                 c,
             )
@@ -83,7 +92,7 @@ struct DatagramForwardSession {
     resolver: Arc<dyn Resolver>,
     lower: Box<dyn DatagramSession>,
     resolving: Option<BoxFuture<'static, (DestinationAddr, Buffer)>>,
-    reverse_resolving: Option<BoxFuture<'static, (DestinationAddr, Buffer)>>,
+    reverse_mapping: BTreeMap<IpAddr, String>,
 }
 
 // TODO: 为啥？
@@ -122,31 +131,16 @@ impl DatagramSession for DatagramForwardSession {
     }
 
     fn poll_send_ready(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-        if let Some(mut fut) = self.reverse_resolving.take() {
-            if let Poll::Ready((dest, buf)) = fut.as_mut().poll(cx) {
-                self.lower.as_mut().send_to(dest, buf);
-            } else {
-                self.reverse_resolving = Some(fut);
-                // Poll resolving task and lower send_ready simultaneously.
-                let _ = self.lower.as_mut().poll_send_ready(cx);
-                return Poll::Pending;
-            };
-        }
         self.lower.as_mut().poll_send_ready(cx)
     }
 
-    fn send_to(&mut self, remote_peer: DestinationAddr, buf: Buffer) {
-        let (ip, port) = match remote_peer {
-            DestinationAddr {
-                host: HostName::Ip(ip),
-                port,
-            } => (ip, port),
-            dest => return self.lower.as_mut().send_to(dest, buf),
-        };
-        let resolver = self.resolver.clone();
-        self.resolving = Some(Box::pin(async move {
-            (super::try_resolve_reverse(resolver, ip, port).await, buf)
-        }));
+    fn send_to(&mut self, mut remote_peer: DestinationAddr, buf: Buffer) {
+        if let HostName::Ip(ip) = remote_peer.host {
+            if let Some(domain) = self.reverse_mapping.get(&ip) {
+                remote_peer.host = HostName::DomainName(domain.clone())
+            }
+        }
+        self.lower.as_mut().send_to(remote_peer, buf)
     }
 
     fn poll_shutdown(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {

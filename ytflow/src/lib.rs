@@ -3,6 +3,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
+#![feature(let_chains)]
 
 #[cfg(windows)]
 mod bindings {

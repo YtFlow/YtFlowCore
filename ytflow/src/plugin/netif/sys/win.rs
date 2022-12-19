@@ -1,4 +1,4 @@
-use std::net::{SocketAddrV4, SocketAddrV6};
+use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
 
 use serde::{Serialize, Serializer};
 

@@ -2,7 +2,7 @@ mod dns;
 
 use std::collections::BTreeMap;
 use std::ffi::{c_uint, CString};
-use std::net::{Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::{Arc, Mutex};
 
 use futures::{StreamExt, TryStreamExt};

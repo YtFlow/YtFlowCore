@@ -1,10 +1,7 @@
 mod forward;
-mod reverse;
 
 pub use forward::{DatagramForwardResolver, StreamForwardResolver};
-pub use reverse::{DatagramReverseResolver, StreamReverseResolver};
 
-use std::net::IpAddr;
 use std::sync::Arc;
 
 use crate::flow::*;
@@ -37,23 +34,6 @@ async fn try_resolve_forward(
 
         None => DestinationAddr {
             host: HostName::DomainName(domain),
-            port,
-        },
-    }
-}
-
-async fn try_resolve_reverse(
-    resolver: Arc<dyn Resolver>,
-    ip: IpAddr,
-    port: u16,
-) -> DestinationAddr {
-    match resolver.resolve_reverse(ip).await {
-        Ok(domain) => DestinationAddr {
-            host: HostName::DomainName(domain),
-            port,
-        },
-        Err(_) => DestinationAddr {
-            host: HostName::Ip(ip),
             port,
         },
     }

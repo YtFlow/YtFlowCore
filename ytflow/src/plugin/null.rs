@@ -1,5 +1,3 @@
-use std::net::IpAddr;
-
 use async_trait::async_trait;
 
 use crate::flow::*;
@@ -30,9 +28,6 @@ impl Resolver for Null {
         Err(FlowError::NoOutbound)
     }
     async fn resolve_ipv6(&self, _domain: String) -> ResolveResultV6 {
-        Err(FlowError::NoOutbound)
-    }
-    async fn resolve_reverse(&self, _ip: IpAddr) -> FlowResult<String> {
         Err(FlowError::NoOutbound)
     }
 }

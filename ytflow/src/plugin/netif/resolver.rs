@@ -67,11 +67,6 @@ impl NetifHostResolver {
         let guard = self.inner.read().await;
         guard.0.resolve_ipv6(domain).await
     }
-    pub async fn resolve_reverse(&self, ip: IpAddr) -> FlowResult<String> {
-        self.ensure_up_to_date().await;
-        let guard = self.inner.read().await;
-        guard.0.resolve_reverse(ip).await
-    }
 }
 
 fn create_host_resolver(

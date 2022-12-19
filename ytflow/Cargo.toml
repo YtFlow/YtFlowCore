@@ -25,7 +25,7 @@ itertools = "0.10"
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union", "serde"] }
-lru = "0.7"
+lru = "0.8"
 arc-swap = "1"
 cidr = { version = "0.2", features = ["serde"] }
 

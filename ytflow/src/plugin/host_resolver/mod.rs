@@ -1,10 +1,9 @@
 mod udp_adapter;
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
-use std::sync::{Mutex, Weak};
+use std::net::SocketAddr;
+use std::sync::Weak;
 
 use async_trait::async_trait;
-use lru::LruCache;
 use trust_dns_resolver::config::{
     NameServerConfig, NameServerConfigGroup, Protocol, ResolverConfig, ResolverOpts,
 };
@@ -16,8 +15,6 @@ use trust_dns_resolver::AsyncResolver;
 
 use crate::flow::*;
 use udp_adapter::*;
-
-const CACHE_CAPACITY: usize = 1024;
 
 #[derive(Clone)]
 struct FlowRuntime {}
@@ -32,8 +29,6 @@ impl RuntimeProvider for FlowRuntime {
 pub struct HostResolver {
     inner: AsyncResolver<GenericConnection, GenericConnectionProvider<FlowRuntime>>,
     factory_ids: Vec<u32>,
-    cache_v4: Mutex<LruCache<Ipv4Addr, String>>,
-    cache_v6: Mutex<LruCache<Ipv6Addr, String>>,
 }
 
 impl HostResolver {
@@ -66,12 +61,7 @@ impl HostResolver {
                 TokioHandle,
             )
             .unwrap();
-        Self {
-            inner,
-            factory_ids,
-            cache_v4: Mutex::new(LruCache::new(CACHE_CAPACITY)),
-            cache_v6: Mutex::new(LruCache::new(CACHE_CAPACITY)),
-        }
+        Self { inner, factory_ids }
     }
 }
 
@@ -101,9 +91,6 @@ impl Resolver for HostResolver {
             .await
             .map_err(resolve_error_to_flow_error)?;
         let res = res.into_iter().collect();
-        for &ip in &res {
-            self.cache_v4.lock().unwrap().put(ip, domain.clone());
-        }
         Ok(res)
     }
     async fn resolve_ipv6(&self, mut domain: String) -> ResolveResultV6 {
@@ -116,24 +103,7 @@ impl Resolver for HostResolver {
             .await
             .map_err(resolve_error_to_flow_error)?;
         let res = res.into_iter().collect();
-        for &ip in &res {
-            self.cache_v6.lock().unwrap().put(ip, domain.clone());
-        }
         Ok(res)
-    }
-    async fn resolve_reverse(&'_ self, ip: IpAddr) -> FlowResult<String> {
-        if let Some(s) = match &ip {
-            IpAddr::V4(ip) => self.cache_v4.lock().unwrap().get(ip).cloned(),
-            IpAddr::V6(ip) => self.cache_v6.lock().unwrap().get(ip).cloned(),
-        } {
-            return Ok(s);
-        }
-        let res = self
-            .inner
-            .reverse_lookup(ip)
-            .await
-            .map_err(resolve_error_to_flow_error)?;
-        Ok(res.iter().next().unwrap().to_ascii())
     }
 }
 
