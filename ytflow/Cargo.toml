@@ -25,7 +25,7 @@ itertools = "0.10"
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union", "serde"] }
-lru = "0.8"
+lru = "0.9"
 arc-swap = "1"
 cidr = { version = "0.2", features = ["serde"] }
 
@@ -35,7 +35,7 @@ socket2 = { version = "0.4", features = ["all"] }
 
 # Protocol
 httparse = "1"
-base64 = "0.13"
+base64 = "0.21"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
 trust-dns-resolver = { version = "0.20", default-features = false, features = [
     "tokio-runtime",
@@ -77,7 +77,7 @@ tokio = { version = "=1.16.1", features = [
     "time",
     "macros",
 ] }
-rusqlite = { version = "0.26", features = ["chrono", "winsqlite3"] }
+rusqlite = { version = "0.28", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.28", features = ["alloc", "std"] }
 ipconfig = { version = "0.3", default-features = false }
 
@@ -95,11 +95,10 @@ tokio = { version = "1", features = [
     "macros",
     "parking_lot",
 ] }
-rusqlite = { version = "0.26", features = ["chrono"] }
+rusqlite = { version = "0.28", features = ["chrono"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rtnetlink = "0.8"
-netlink-packet-route = "*"
+rtnetlink = "0.11"
 zbus_systemd = { version = "0.0.8", features = ["resolve1"] }
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
@@ -109,7 +108,7 @@ fruity = { version = "0.3", features = [
     "dispatch",
 ] }
 nix = { version = "0.26", default-features = false, features = ["net"] }
-block2 = "=0.2.0-alpha.6"
+block2 = "=0.2.0-alpha.7"
 
 [dependencies.smoltcp]
 version = "0.8"

@@ -1,6 +1,7 @@
 use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
+use base64::prelude::*;
 use memchr::memmem;
 use rand::{thread_rng, RngCore};
 
@@ -137,7 +138,9 @@ impl StreamOutboundFactory for SimpleHttpOutbound {
             let mut ws_key = [0; 16];
             thread_rng().fill_bytes(&mut ws_key);
             let mut b64 = [0; 32];
-            let b64_len = base64::encode_config_slice(&ws_key, base64::URL_SAFE, &mut b64);
+            let b64_len = BASE64_URL_SAFE
+                .encode_slice(&ws_key, &mut b64)
+                .expect("A base64 repr of 16 bytes should not exceed 32 chars");
             req.extend_from_slice(&b64[..b64_len]);
             req.extend_from_slice(b"\r\nContent-Length: ");
             req.extend_from_slice(initial_data.len().to_string().as_bytes());

@@ -4,6 +4,7 @@ use std::io::Write;
 use std::sync::Weak;
 
 use async_trait::async_trait;
+use base64::prelude::*;
 
 use crate::flow::*;
 
@@ -43,11 +44,9 @@ impl HttpProxyOutboundFactory {
             // Append credential
             let offset = req_after_addr.len();
             req_after_addr.resize(offset + cred_plain_b64_len, 0);
-            let written = base64::encode_config_slice(
-                cred_plain,
-                base64::STANDARD,
-                &mut req_after_addr[offset..],
-            );
+            let written = BASE64_STANDARD
+                .encode_slice(cred_plain, &mut req_after_addr[offset..])
+                .expect("Estimated base64 length is not enough");
             req_after_addr.resize(offset + written, 0);
         }
         req_after_addr.extend_from_slice(b"\r\n\r\n");

@@ -39,7 +39,7 @@ pub struct NetifProvider {
 
 impl NetifProvider {
     pub fn new<C: Fn() + Send + 'static>(callback: C) -> Self {
-        use netlink_packet_route::constants::*;
+        use rtnetlink::netlink_packet_route::constants::*;
 
         let (mut conn, handle, mut messages) =
             rtnetlink::new_connection().expect("Cannot create rtnetlink socket");
@@ -111,7 +111,7 @@ impl Drop for NetifProvider {
 }
 
 async fn receive_netifs(handle: &Handle) -> Vec<(Netif, Recommended)> {
-    use netlink_packet_route::{AF_INET, AF_INET6, ARPHRD_ETHER, IFF_LOWER_UP, IFF_UP};
+    use rtnetlink::netlink_packet_route::{AF_INET, AF_INET6, ARPHRD_ETHER, IFF_LOWER_UP, IFF_UP};
     use rtnetlink::packet::address::Nla as AddrNla;
     use rtnetlink::packet::link::nlas::Nla as LinkNla;
 

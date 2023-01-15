@@ -24,7 +24,8 @@ pub extern "C" fn ytflow_plugin_verify(
             plugin: plugin.to_string_lossy().into_owned(),
             plugin_version,
             param: unsafe { std::slice::from_raw_parts(param, param_len).to_vec() },
-            updated_at: NaiveDateTime::from_timestamp(0, 0),
+            updated_at: NaiveDateTime::from_timestamp_opt(0, 0)
+                .expect("Timestamp with 0 sec 0 nsec should be valid"),
         };
         verify_plugin(&plugin).map(|v| serialize_buffer(&v))
     })

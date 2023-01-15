@@ -1,4 +1,4 @@
-use chrono::naive::MIN_DATETIME;
+use chrono::NaiveDateTime;
 use ciborium::cbor;
 
 pub mod defaults;
@@ -29,7 +29,7 @@ fn generate_common_plugins(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
         plugin: String::from("reject"),
         plugin_version: 0,
         param: serialize_cbor(ciborium::value::Value::Null),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     let null = Plugin {
         id: DUMMY_PLUGIN_ID,
@@ -38,7 +38,7 @@ fn generate_common_plugins(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
         plugin: String::from("null"),
         plugin_version: 0,
         param: serialize_cbor(ciborium::value::Value::Null),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     plugins.push(GeneratedPlugin {
         plugin: reject,
@@ -70,7 +70,7 @@ fn generate_socks5_forward(
             })
             .expect("Cannot generate SOCKS5 listener params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     let socks5 = Plugin {
         id: DUMMY_PLUGIN_ID,
@@ -85,7 +85,7 @@ fn generate_socks5_forward(
             })
             .expect("Cannot generate SOCKS5 params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     let forward = Plugin {
         id: DUMMY_PLUGIN_ID,
@@ -100,7 +100,7 @@ fn generate_socks5_forward(
             })
             .expect("Cannot generate SOCKS5 forwarder params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     plugins.push(GeneratedPlugin {
         plugin: listener,
@@ -129,7 +129,7 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
             })
             .expect("Cannot generate system resolver params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     let socket = Plugin {
         id: DUMMY_PLUGIN_ID,
@@ -143,7 +143,7 @@ fn generate_socket_outbound(prefix: &str, plugins: &mut Vec<GeneratedPlugin>) {
             })
             .expect("Cannot generate socket params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     plugins.push(GeneratedPlugin {
         plugin: sys_resolver,
@@ -177,7 +177,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
             })
             .expect("Cannot generate Shadowsocks params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     let redir = Plugin {
         id: DUMMY_PLUGIN_ID,
@@ -196,7 +196,7 @@ pub fn generate_shadowsocks_plugins() -> Vec<GeneratedPlugin> {
             })
             .expect("Cannot generate Shadowsocks redir params"),
         ),
-        updated_at: MIN_DATETIME,
+        updated_at: NaiveDateTime::MIN,
     };
     plugins.push(GeneratedPlugin {
         plugin: ss,

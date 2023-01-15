@@ -20,12 +20,12 @@ fern = { version = "0.6", features = ["colored"] }
 log = "0.4"
 chrono = "0.4"
 nanoid = "0.4"
-strum = "0.23"
-strum_macros = "0.23"
+strum = "0.24"
+strum_macros = "0.24"
 cidr = { version = "0.2", features = ["serde"] }
 
 # CLI
-clap = { version = "3", features = ["cargo"] }
+clap = { version = "4", features = ["cargo"] }
 ctrlc = "3"
 edit = "0.1"
 
@@ -34,10 +34,10 @@ cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
 ciborium = "0.2"
 serde_bytes = "0.11"
 serde_json = { version = "1", features = ["alloc"] }
-base64 = "0.13"
+base64 = "0.21"
 
 # TUI
-tui = { version = "0.17", default-features = false, features = ['crossterm'] }
+tui = { version = "0.19", default-features = false, features = ['crossterm'] }
 # tui 0.16.0 still uses crossterm 0.20, which crashes on Windows Terminal
-crossterm = "0.22"
-tui-input = "0.1"
+crossterm = "0.25"
+tui-input = "0.6"

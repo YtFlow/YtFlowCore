@@ -28,9 +28,9 @@ where
 
     fn encrypt(
         &mut self,
-        _pre_overhead: &mut [u8; Self::PRE_CHUNK_OVERHEAD],
+        _pre_overhead: &mut [u8; 0],
         data: &mut [u8],
-        _post_overhead: &mut [u8; Self::POST_CHUNK_OVERHEAD],
+        _post_overhead: &mut [u8; 0],
     ) {
         self.enc.encrypt(data);
     }

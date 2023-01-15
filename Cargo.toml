@@ -8,6 +8,7 @@ members = [
 
 [patch.crates-io]
 mio = { git = "https://github.com/YtFlow/mio-noafd", branch = "noafd-v0.7-nobind" }
+libsqlite3-sys = { git = "https://github.com/YtFlow/rusqlite" }
 
 [profile.release]
 lto = true

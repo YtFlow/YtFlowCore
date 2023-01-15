@@ -3,7 +3,7 @@ use serde_bytes::Bytes;
 use strum::{EnumMessage, EnumProperty};
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty};
 
-use super::{serialize_cbor, DUMMY_PLUGIN_ID, MIN_DATETIME};
+use super::{serialize_cbor, NaiveDateTime, DUMMY_PLUGIN_ID};
 use ytflow::{
     config::plugin::NetifFactory,
     data::Plugin,
@@ -273,7 +273,7 @@ impl PluginType {
             plugin,
             plugin_version: 0,
             param,
-            updated_at: MIN_DATETIME,
+            updated_at: NaiveDateTime::MIN,
         }
     }
 }

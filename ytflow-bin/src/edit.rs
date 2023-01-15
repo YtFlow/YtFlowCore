@@ -1,7 +1,9 @@
 use std::io;
+use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
-use clap::{app_from_crate, arg, ArgMatches};
+use base64::prelude::*;
+use clap::{arg, value_parser, ArgMatches};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent},
     execute,
@@ -39,13 +41,13 @@ fn main() -> Result<()> {
 }
 
 fn get_args() -> ArgMatches {
-    app_from_crate!()
-        .arg(arg!(<PATH> "Path to the database file").allow_invalid_utf8(true))
+    clap::command!()
+        .arg(arg!(<PATH> "Path to the database file").value_parser(value_parser!(PathBuf)))
         .get_matches()
 }
 
 fn get_db_conn(args: &ArgMatches) -> Result<Connection> {
-    let db_path = args.value_of_os("PATH").expect("Cannot get database path");
+    let db_path: &PathBuf = args.get_one("PATH").expect("Cannot get database path");
     let db = Database::open(db_path).context("Could not prepare database")?;
     let conn = db.connect().context("Could not connect to database")?;
     Ok(conn)
@@ -508,7 +510,7 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                                         ),
                                         (
                                             CborValue::Text("data".into()),
-                                            CborValue::Text(base64::encode(&bytes)),
+                                            CborValue::Text(BASE64_STANDARD.encode(&bytes)),
                                         ),
                                     ]),
                                 };
@@ -590,7 +592,8 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
                                             std::mem::take(buf).into_bytes()
                                         }
                                         (Some(repr), Some(buf)) if repr == "base64" => {
-                                            base64::decode(std::mem::take(buf).into_bytes())
+                                            BASE64_STANDARD
+                                                .decode(std::mem::take(buf).into_bytes())
                                                 .map_err(|_| "Invalid base64 data")?
                                         }
                                         (Some(_), None) => return Err("Missing data field".into()),
@@ -728,7 +731,7 @@ fn run_profile_view(ctx: &mut AppContext, id: ProfileId) -> Result<NavChoice> {
 
 fn run_input_view(ctx: &mut AppContext, req: &mut InputRequest) -> Result<NavChoice> {
     use tui_input::backend::crossterm as input_backend;
-    use tui_input::InputResponse;
+    use tui_input::StateChanged;
 
     let mut input = tui_input::Input::default().with_value(req.initial_value.clone());
     let desc = req.desc.clone() + "\r\n\r\nPress Enter to submit, Esc to go back.";
@@ -772,17 +775,26 @@ fn run_input_view(ctx: &mut AppContext, req: &mut InputRequest) -> Result<NavCho
             f.render_widget(desc, desc_chunk);
         })?;
 
-        if let Some(ev) = input_backend::to_input_request(crossterm::event::read().unwrap())
-            .and_then(|req| input.handle(req))
-        {
-            match ev {
-                InputResponse::StateChanged(s) if s.value => {
+        let ev = crossterm::event::read().unwrap();
+        match &ev {
+            Event::Key(KeyEvent {
+                code: KeyCode::Esc, ..
+            }) => return Ok(NavChoice::Back),
+            Event::Key(KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            }) if !has_error => break,
+            Event::Key(KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            }) => {}
+            _ => {
+                if let Some(StateChanged { value: true, .. }) =
+                    input_backend::to_input_request(&ev).and_then(|req| input.handle(req))
+                {
                     let len = input.value().len();
                     has_error = !(1..req.max_len).contains(&len);
                 }
-                InputResponse::Escaped => return Ok(NavChoice::Back),
-                InputResponse::Submitted if !has_error => break,
-                _ => {}
             }
         }
     }

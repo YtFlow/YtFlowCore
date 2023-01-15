@@ -2,7 +2,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use clap::{app_from_crate, arg, ArgMatches};
+use clap::{arg, ArgMatches};
 use log::{error, info, warn};
 
 fn main() -> Result<()> {
@@ -12,7 +12,7 @@ fn main() -> Result<()> {
 }
 
 fn get_args() -> ArgMatches {
-    app_from_crate!()
+    clap::command!()
         .arg(
             arg!(--"db-path" <PATH> "Path to the database file. If the file does not exist, an empty database will be created. If missing, an in-memory database will be used")
                 .allow_invalid_utf8(true)
