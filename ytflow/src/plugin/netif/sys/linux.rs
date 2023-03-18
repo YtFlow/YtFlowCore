@@ -39,7 +39,8 @@ pub struct NetifProvider {
 
 impl NetifProvider {
     pub fn new<C: Fn() + Send + 'static>(callback: C) -> Self {
-        use rtnetlink::netlink_packet_route::constants::*;
+        use rtnetlink::packet::constants::*;
+        use rtnetlink::sys::AsyncSocket;
 
         let (mut conn, handle, mut messages) =
             rtnetlink::new_connection().expect("Cannot create rtnetlink socket");
@@ -62,6 +63,7 @@ impl NetifProvider {
 
         let addr = SocketAddr::new(0, groups);
         conn.socket_mut()
+            .socket_mut()
             .bind(&addr)
             .expect("Failed to bind to rtnetlink socket");
 
@@ -111,9 +113,9 @@ impl Drop for NetifProvider {
 }
 
 async fn receive_netifs(handle: &Handle) -> Vec<(Netif, Recommended)> {
-    use rtnetlink::netlink_packet_route::{AF_INET, AF_INET6, ARPHRD_ETHER, IFF_LOWER_UP, IFF_UP};
     use rtnetlink::packet::address::Nla as AddrNla;
     use rtnetlink::packet::link::nlas::Nla as LinkNla;
+    use rtnetlink::packet::{AF_INET, AF_INET6, ARPHRD_ETHER, IFF_LOWER_UP, IFF_UP};
 
     let mut addr_stream = handle.address().get().execute();
     let mut addr_dict: BTreeMap<u32, (Vec<Ipv4Addr>, Vec<Ipv6Addr>)> = BTreeMap::new();
