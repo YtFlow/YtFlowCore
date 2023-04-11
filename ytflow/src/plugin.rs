@@ -1,4 +1,5 @@
 pub mod dns_server;
+pub mod dyn_outbound;
 pub mod fakeip;
 pub mod fallback;
 pub mod forward;

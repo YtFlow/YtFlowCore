@@ -1,12 +1,11 @@
 use ciborium::{cbor, value::Value::Null};
 use serde_bytes::Bytes;
-use strum::{EnumMessage, EnumProperty};
+use strum::EnumProperty;
 use strum_macros::{Display, EnumIter, EnumMessage, EnumProperty};
 
-use super::{serialize_cbor, NaiveDateTime, DUMMY_PLUGIN_ID};
+use super::serialize_cbor;
 use ytflow::{
-    config::plugin::NetifFactory,
-    data::Plugin,
+    config::plugin::{NetifFactory, Plugin},
     flow::{DestinationAddr, HostName},
     plugin::netif::{FamilyPreference, SelectionMode},
 };
@@ -130,7 +129,6 @@ impl PluginType {
     pub fn gen_default(self) -> Plugin {
         let plugin = self.get_str("prefix").unwrap().to_string();
         let name = format!("{}-{}", &plugin, nanoid::nanoid!(5));
-        let desc = self.get_detailed_message().unwrap().to_string();
         let param = serialize_cbor(
             match self {
                 PluginType::Reject => Ok(Null),
@@ -267,13 +265,10 @@ impl PluginType {
             .unwrap(),
         );
         Plugin {
-            id: DUMMY_PLUGIN_ID,
             name,
-            desc,
             plugin,
             plugin_version: 0,
             param,
-            updated_at: NaiveDateTime::MIN,
         }
     }
 }

@@ -10,9 +10,8 @@ pub mod verify;
 
 pub use error::*;
 pub use human_repr::HumanRepr;
+pub use plugin::Plugin;
 pub use set::PluginSet;
-
-use crate::data::Plugin;
 
 pub struct ProfilePluginFactory<'f>(HashMap<String, Box<dyn factory::Factory + 'f>>);
 

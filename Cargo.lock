@@ -2837,6 +2837,7 @@ dependencies = [
  "fern",
  "log",
  "nanoid",
+ "serde",
  "serde_bytes",
  "serde_json",
  "strum",

@@ -1,8 +1,8 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use clap::{arg, ArgMatches};
+use clap::{arg, value_parser, ArgMatches};
 use log::{error, info, warn};
 
 fn main() -> Result<()> {
@@ -15,7 +15,7 @@ fn get_args() -> ArgMatches {
     clap::command!()
         .arg(
             arg!(--"db-path" <PATH> "Path to the database file. If the file does not exist, an empty database will be created. If missing, an in-memory database will be used")
-                .allow_invalid_utf8(true)
+                .value_parser(value_parser!(PathBuf))
                 .required(false)
         )
         .arg(arg!([PROFILE] "Specify the name of the profile to use"))
@@ -26,7 +26,7 @@ fn get_args() -> ArgMatches {
 }
 
 fn init_log(args: &ArgMatches) {
-    let is_verbose = args.is_present("verbose");
+    let is_verbose = args.get_flag("verbose");
     let colors = fern::colors::ColoredLevelConfig::new();
     let default_level;
     #[cfg(debug_assertions)]
@@ -66,7 +66,7 @@ fn init_log(args: &ArgMatches) {
 
 fn try_main(args: &ArgMatches) -> Result<()> {
     let db = args
-        .value_of_os("db-path")
+        .get_one::<PathBuf>("db-path")
         .map(AsRef::<Path>::as_ref)
         .map(Path::canonicalize)
         .transpose()
@@ -85,7 +85,10 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         ytflow::data::Database::connect_temp().expect("Could not open in-memory database")
     };
 
-    let profile_name = args.value_of("PROFILE").unwrap_or("default");
+    let profile_name = args
+        .get_one::<String>("PROFILE")
+        .map(|s| s.as_str())
+        .unwrap_or("default");
     info!("Selected Profile: {}", profile_name);
 
     let all_profiles = ytflow::data::Profile::query_all(&conn)
@@ -106,10 +109,16 @@ fn try_main(args: &ArgMatches) -> Result<()> {
             anyhow::anyhow!("Profile not found")
         })?;
 
-    let all_plugins = ytflow::data::Plugin::query_all_by_profile(profile.id, &conn)
-        .context("Failed to load all plugins for selected Profile from database")?;
-    let entry_plugins = ytflow::data::Plugin::query_entry_by_profile(profile.id, &conn)
-        .context("Failed to load entry plugins for selected Profile from database")?;
+    let all_plugins: Vec<_> = ytflow::data::Plugin::query_all_by_profile(profile.id, &conn)
+        .context("Failed to load all plugins for selected Profile from database")?
+        .into_iter()
+        .map(From::from)
+        .collect();
+    let entry_plugins: Vec<_> = ytflow::data::Plugin::query_entry_by_profile(profile.id, &conn)
+        .context("Failed to load entry plugins for selected Profile from database")?
+        .into_iter()
+        .map(From::from)
+        .collect();
     let (factory, load_errors) =
         ytflow::config::ProfilePluginFactory::parse_profile(entry_plugins.iter(), &all_plugins);
     if !load_errors.is_empty() {
@@ -128,7 +137,7 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         .context("Error initializing Tokio runtime")?;
     let runtime_enter_guard = runtime.enter();
 
-    if !args.is_present("skip-grace") {
+    if !args.get_flag("skip-grace") {
         info!("Starting YtFlow in 3 seconds...");
         std::thread::sleep(Duration::from_secs(3));
     }

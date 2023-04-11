@@ -6,9 +6,9 @@ use bitflags::bitflags;
 pub(super) use serde::{Deserialize, Serialize};
 
 pub(super) use super::param::*;
+pub(super) use super::plugin::Plugin;
 pub(super) use super::set::*;
 use super::*;
-pub(super) use crate::data::Plugin;
 
 bitflags! {
     #[derive(Deserialize, Serialize)]

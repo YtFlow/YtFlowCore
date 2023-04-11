@@ -1,8 +1,8 @@
 use serde::Serialize;
 
 use super::factory::{DemandDescriptor, ParsedPlugin, ProvideDescriptor};
+use super::plugin::Plugin;
 use super::ConfigResult;
-use crate::data::Plugin;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct VerifyResult<'a> {

@@ -32,6 +32,7 @@ edit = "0.1"
 # Data
 cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
 ciborium = "0.2"
+serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 serde_json = { version = "1", features = ["alloc"] }
 base64 = "0.21"

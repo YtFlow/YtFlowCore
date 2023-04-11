@@ -1,12 +1,10 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
-use chrono::NaiveDateTime;
-
 use super::error::FfiResult;
 use super::interop::serialize_buffer;
 use crate::config::verify::verify_plugin;
-use crate::data::{Id, Plugin};
+use crate::config::Plugin;
 
 #[no_mangle]
 pub extern "C" fn ytflow_plugin_verify(
@@ -18,14 +16,10 @@ pub extern "C" fn ytflow_plugin_verify(
     FfiResult::catch_result_unwind(move || {
         let plugin = unsafe { CStr::from_ptr(plugin) };
         let plugin = Plugin {
-            id: Id::default(),
             name: String::from("test_plugin"),
-            desc: String::from("Plugin for verification"),
             plugin: plugin.to_string_lossy().into_owned(),
             plugin_version,
             param: unsafe { std::slice::from_raw_parts(param, param_len).to_vec() },
-            updated_at: NaiveDateTime::from_timestamp_opt(0, 0)
-                .expect("Timestamp with 0 sec 0 nsec should be valid"),
         };
         verify_plugin(&plugin).map(|v| serialize_buffer(&v))
     })

@@ -43,3 +43,10 @@ pub use system_resolver::*;
 pub use tls::*;
 pub use trojan::*;
 pub use vpntun::*;
+
+pub struct Plugin {
+    pub name: String,
+    pub plugin: String,
+    pub plugin_version: u16,
+    pub param: Vec<u8>,
+}

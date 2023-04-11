@@ -206,15 +206,21 @@ impl VpnPlugIn {
             profile_id: usize,
             conn: &ytflow::data::Connection,
         ) -> ytflow::data::DataResult<
-            std::result::Result<(Vec<ytflow::data::Plugin>, Vec<ytflow::data::Plugin>), String>,
+            std::result::Result<(Vec<ytflow::config::Plugin>, Vec<ytflow::config::Plugin>), String>,
         > {
             use ytflow::data::{Plugin, Profile};
             let profile_id = match Profile::query_by_id(profile_id, &conn)? {
                 Some(p) => p.id,
                 None => return Ok(Err(format!("Profile {} not found", profile_id))),
             };
-            let entry_plugins = Plugin::query_entry_by_profile(profile_id, conn)?;
-            let all_plugins = Plugin::query_all_by_profile(profile_id, conn)?;
+            let entry_plugins = Plugin::query_entry_by_profile(profile_id, conn)?
+                .into_iter()
+                .map(From::from)
+                .collect();
+            let all_plugins = Plugin::query_all_by_profile(profile_id, conn)?
+                .into_iter()
+                .map(From::from)
+                .collect();
             Ok(Ok((entry_plugins, all_plugins)))
         }
 

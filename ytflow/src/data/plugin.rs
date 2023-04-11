@@ -118,3 +118,14 @@ impl Plugin {
         Ok(())
     }
 }
+
+impl From<Plugin> for crate::config::Plugin {
+    fn from(value: Plugin) -> Self {
+        Self {
+            name: value.name,
+            plugin: value.plugin,
+            plugin_version: value.plugin_version,
+            param: value.param,
+        }
+    }
+}

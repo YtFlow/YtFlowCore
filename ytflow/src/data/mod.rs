@@ -2,6 +2,8 @@ mod db;
 mod error;
 mod plugin;
 mod profile;
+mod proxy;
+pub mod proxy_group;
 
 use std::marker::PhantomData;
 
@@ -44,3 +46,5 @@ pub use db::Database;
 pub use error::*;
 pub use plugin::{Plugin, PluginId};
 pub use profile::{Profile, ProfileId};
+pub use proxy::{Proxy, ProxyId};
+pub use proxy_group::{ProxyGroup, ProxyGroupId};
