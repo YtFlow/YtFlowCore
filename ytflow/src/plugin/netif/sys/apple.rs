@@ -1,5 +1,6 @@
 mod bind;
 mod dns;
+/// cbindgen:ignore
 mod ffi;
 
 pub use bind::{bind_socket_v4, bind_socket_v6};

@@ -95,6 +95,42 @@ FfiResult ytflow_plugin_unset_as_entry(uint32_t plugin_id,
                                        uint32_t profile_id,
                                        const Connection *conn);
 
+FfiResult ytflow_proxy_group_get_all(const Connection *conn);
+
+FfiResult ytflow_proxy_group_get_by_id(uint32_t proxy_group_id, const Connection *conn);
+
+FfiResult ytflow_proxy_group_create(const char *name, const char *type, const Connection *conn);
+
+FfiResult ytflow_proxy_group_rename(uint32_t proxy_group_id,
+                                    const char *name,
+                                    const Connection *conn);
+
+FfiResult ytflow_proxy_group_delete(uint32_t proxy_group_id, const Connection *conn);
+
+FfiResult ytflow_proxy_get_by_proxy_group(uint32_t proxy_group_id, const Connection *conn);
+
+FfiResult ytflow_proxy_create(uint32_t proxy_group_id,
+                              const char *name,
+                              const uint8_t *proxy,
+                              uintptr_t proxy_len,
+                              uint16_t proxy_version,
+                              const Connection *conn);
+
+FfiResult ytflow_proxy_update(uint32_t proxy_id,
+                              const char *name,
+                              const uint8_t *proxy,
+                              uintptr_t proxy_len,
+                              uint16_t proxy_version,
+                              const Connection *conn);
+
+FfiResult ytflow_proxy_delete(uint32_t proxy_id, const Connection *conn);
+
+FfiResult ytflow_proxy_reorder(uint32_t proxy_group_id,
+                               int32_t range_start_order,
+                               int32_t range_end_order,
+                               int32_t moves,
+                               Connection *conn);
+
 void ytflow_result_free(FfiResult *result);
 
 FfiResult ytflow_buffer_free(void *ptr, uintptr_t metadata);

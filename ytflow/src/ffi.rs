@@ -15,7 +15,10 @@ pub mod exports {
         ytflow_db_conn_free, ytflow_db_conn_new, ytflow_db_free, ytflow_plugin_create,
         ytflow_plugin_delete, ytflow_plugin_update, ytflow_plugins_get_by_profile,
         ytflow_plugins_get_entry, ytflow_profile_create, ytflow_profile_delete,
-        ytflow_profile_update, ytflow_profiles_get_all,
+        ytflow_profile_update, ytflow_profiles_get_all, ytflow_proxy_create, ytflow_proxy_delete,
+        ytflow_proxy_get_by_proxy_group, ytflow_proxy_group_create, ytflow_proxy_group_delete,
+        ytflow_proxy_group_get_all, ytflow_proxy_group_get_by_id, ytflow_proxy_group_rename,
+        ytflow_proxy_reorder, ytflow_proxy_update,
     };
     pub use error::ytflow_result_free;
     pub use interop::ytflow_buffer_free;

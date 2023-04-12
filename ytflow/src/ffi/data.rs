@@ -5,7 +5,7 @@ use std::ptr::null_mut;
 
 use super::error::FfiResult;
 use super::interop::serialize_buffer;
-use crate::data::{Connection, Database, Plugin, Profile};
+use crate::data::{Connection, Database, Plugin, Profile, Proxy, ProxyGroup};
 
 #[no_mangle]
 #[cfg(windows)]
@@ -218,5 +218,154 @@ pub extern "C" fn ytflow_plugin_unset_as_entry(
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Plugin::unset_as_entry(profile_id.into(), plugin_id.into(), conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_group_get_all(conn: *const Connection) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        ProxyGroup::query_all(conn).map(|p| serialize_buffer(&p))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_group_get_by_id(
+    proxy_group_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        ProxyGroup::query_by_id(proxy_group_id as usize, conn).map(|p| serialize_buffer(&p))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_group_create(
+    name: *const c_char,
+    r#type: *const c_char,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let name = unsafe { CStr::from_ptr(name) };
+        let r#type = unsafe { CStr::from_ptr(r#type) };
+        let conn = unsafe { &*conn };
+        ProxyGroup::create(
+            name.to_string_lossy().into_owned(),
+            r#type.to_string_lossy().into_owned(),
+            conn,
+        )
+        .map(|id| (id as _, 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_group_rename(
+    proxy_group_id: u32,
+    name: *const c_char,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let name = unsafe { CStr::from_ptr(name) };
+        let conn = unsafe { &*conn };
+        ProxyGroup::rename(proxy_group_id, name.to_string_lossy().into_owned(), conn)
+            .map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_group_delete(
+    proxy_group_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        ProxyGroup::delete(proxy_group_id, conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_get_by_proxy_group(
+    proxy_group_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        Proxy::query_all_by_group(proxy_group_id.into(), conn).map(|p| serialize_buffer(&p))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_create(
+    proxy_group_id: u32,
+    name: *const c_char,
+    proxy: *const u8,
+    proxy_len: usize,
+    proxy_version: u16,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let name = unsafe { CStr::from_ptr(name) };
+        let conn = unsafe { &*conn };
+        Proxy::create(
+            proxy_group_id.into(),
+            name.to_string_lossy().into_owned(),
+            unsafe { std::slice::from_raw_parts(proxy, proxy_len).to_vec() },
+            proxy_version,
+            conn,
+        )
+        .map(|id| (id as _, 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_update(
+    proxy_id: u32,
+    name: *const c_char,
+    proxy: *const u8,
+    proxy_len: usize,
+    proxy_version: u16,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let name = unsafe { CStr::from_ptr(name) };
+        let conn = unsafe { &*conn };
+        Proxy::update(
+            proxy_id,
+            name.to_string_lossy().into_owned(),
+            unsafe { std::slice::from_raw_parts(proxy, proxy_len).to_vec() },
+            proxy_version,
+            conn,
+        )
+        .map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_delete(proxy_id: u32, conn: *const Connection) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        Proxy::delete(proxy_id, conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_reorder(
+    proxy_group_id: u32,
+    range_start_order: i32,
+    range_end_order: i32,
+    moves: i32,
+    conn: *mut Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &mut *conn };
+        Proxy::reorder(
+            proxy_group_id.into(),
+            range_start_order,
+            range_end_order,
+            moves,
+            conn,
+        )
+        .map(|()| (null_mut(), 0))
     }))
 }
