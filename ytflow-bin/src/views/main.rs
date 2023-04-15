@@ -168,7 +168,7 @@ https://github.com/YtFlow/YtFlowCore",
                             Profile::delete(profile_id.0, &ctx.conn)
                                 .context("Failed to delete profile")?;
                             if profiles.len() == idx {
-                                profile_state.select(None);
+                                profile_state.select(profiles.len().checked_sub(1));
                             }
                         }
                         DeleteAction::ProxyGroup => {
@@ -177,7 +177,7 @@ https://github.com/YtFlow/YtFlowCore",
                             ProxyGroup::delete(proxy_group_id.0, &ctx.conn)
                                 .context("Failed to delete proxy group")?;
                             if proxy_groups.len() == idx {
-                                proxy_group_state.select(None);
+                                proxy_group_state.select(proxy_groups.len().checked_sub(1));
                             }
                         }
                     }

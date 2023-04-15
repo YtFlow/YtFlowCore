@@ -96,7 +96,7 @@ pub fn run_proxy_group_view(ctx: &mut crate::AppContext, id: ProxyGroupId) -> Re
                         let proxy_id = proxies.remove(idx).id;
                         Proxy::delete(proxy_id.0, &ctx.conn).context("Failed to delete Proxy")?;
                         if idx == proxies.len() {
-                            proxy_state.select(None);
+                            proxy_state.select(proxies.len().checked_sub(1));
                         }
                     }
                     delete_confirm = false;

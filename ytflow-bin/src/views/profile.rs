@@ -107,7 +107,7 @@ pub fn run_profile_view(ctx: &mut crate::AppContext, id: ProfileId) -> Result<Na
                         Plugin::delete(plugin_id.0, &ctx.conn)
                             .context("Failed to delete Plugin")?;
                         if idx == plugins.len() {
-                            plugin_state.select(None);
+                            plugin_state.select(plugins.len().checked_sub(1));
                         }
                     }
                     delete_confirm = false;
