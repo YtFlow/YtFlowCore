@@ -91,6 +91,7 @@ pub(super) fn create_factory_from_plugin(
         "resolve-dest" => box_result(ResolveDestFactory::parse(plugin)),
         "simple-dispatcher" => box_result(SimpleDispatcherFactory::parse(plugin)),
         "forward" => box_result(ForwardFactory::parse(plugin)),
+        "dyn-outbound" => box_result(DynOutboundFactory::parse(plugin)),
         "shadowsocks-client" => box_result(ShadowsocksFactory::parse(plugin)),
         "socks5-client" => box_result(Socks5ClientFactory::parse(plugin)),
         "http-proxy-client" => box_result(HttpProxyFactory::parse(plugin)),
@@ -104,16 +105,16 @@ pub(super) fn create_factory_from_plugin(
     }
 }
 
-struct Demand<'de> {
-    initiator: &'de str,
-    ap_type: AccessPointType,
+pub(super) struct Demand<'de> {
+    pub(super) initiator: &'de str,
+    pub(super) ap_type: AccessPointType,
 }
 
 #[derive(Default)]
-struct AccessPointResolver<'de> {
+pub(super) struct AccessPointResolver<'de> {
     demanding_aps: HashMap<&'de str, Vec<Demand<'de>>>,
     provided_aps: HashMap<String, AccessPointType>,
-    plugin_to_visit: HashMap<&'de str, Option<&'de Plugin>>,
+    pub(super) plugin_to_visit: HashMap<&'de str, Option<&'de Plugin>>,
     all_plugins: HashMap<&'de str, &'de Plugin>,
 }
 
@@ -124,7 +125,7 @@ pub(super) struct ParseResultCollection<'f> {
 }
 
 impl<'de> AccessPointResolver<'de> {
-    fn provide(&mut self, desc: ProvideDescriptor, errors: &mut Vec<ConfigError>) {
+    pub(super) fn provide(&mut self, desc: ProvideDescriptor, errors: &mut Vec<ConfigError>) {
         let demands = self
             .demanding_aps
             .remove(&*desc.descriptor)
@@ -141,7 +142,7 @@ impl<'de> AccessPointResolver<'de> {
         );
         self.provided_aps.insert(desc.descriptor, desc.r#type);
     }
-    fn insert_demand(&mut self, ap: &'de str, demand: Demand<'de>) -> ConfigResult<()> {
+    pub(super) fn insert_demand(&mut self, ap: &'de str, demand: Demand<'de>) -> ConfigResult<()> {
         let plugin_name = ap.split('.').next().unwrap_or("");
         let to_visit_entry = self.plugin_to_visit.entry(plugin_name);
         if let Entry::Vacant(e) = to_visit_entry {
@@ -216,7 +217,7 @@ impl<'de> AccessPointResolver<'de> {
 }
 
 pub(super) fn parse_plugins_recursively<'de>(
-    entry_plugins: impl Iterator<Item = &'de Plugin>,
+    with_resolver: impl FnOnce(&mut AccessPointResolver<'de>, &mut Vec<ConfigError>),
     all_plugins: &'de [Plugin],
 ) -> ParseResultCollection<'de> {
     let all_plugins: HashMap<_, _> = all_plugins.iter().map(|p| (&*p.name, p)).collect();
@@ -226,11 +227,7 @@ pub(super) fn parse_plugins_recursively<'de>(
         all_plugins,
         ..Default::default()
     };
-    for entry_plugin in entry_plugins {
-        resolver
-            .plugin_to_visit
-            .insert(&entry_plugin.name, Some(entry_plugin));
-    }
+    with_resolver(&mut resolver, &mut ret.errors);
     while resolver.create_factory_from_demand(&mut ret) {}
     // Remaining access points cannot be satisfied
     for (ap, d) in resolver

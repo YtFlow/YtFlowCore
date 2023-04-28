@@ -19,6 +19,7 @@ pub struct Proxy {
 impl From<Plugin> for crate::config::Plugin {
     fn from(plugin: Plugin) -> Self {
         Self {
+            id: None,
             name: plugin.name,
             plugin: plugin.plugin,
             plugin_version: plugin.plugin_version,

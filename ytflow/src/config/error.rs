@@ -50,6 +50,8 @@ pub enum LoadError {
         plugin: String,
         error: std::io::Error,
     },
+    #[error(r#"plugin "{plugin:}" required a database to work"#)]
+    DatabaseRequired { plugin: String },
 }
 
 pub type ConfigResult<T> = Result<T, ConfigError>;

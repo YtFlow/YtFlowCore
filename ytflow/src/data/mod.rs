@@ -1,6 +1,7 @@
 mod db;
 mod error;
 mod plugin;
+mod plugin_cache;
 mod profile;
 mod proxy;
 pub mod proxy_group;
@@ -45,6 +46,7 @@ pub use db::Connection;
 pub use db::Database;
 pub use error::*;
 pub use plugin::{Plugin, PluginId};
+pub use plugin_cache::PluginCache;
 pub use profile::{Profile, ProfileId};
 pub use proxy::{Proxy, ProxyId};
 pub use proxy_group::{ProxyGroup, ProxyGroupId};

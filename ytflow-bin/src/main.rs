@@ -119,8 +119,8 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         .into_iter()
         .map(From::from)
         .collect();
-    let (factory, load_errors) =
-        ytflow::config::ProfilePluginFactory::parse_profile(entry_plugins.iter(), &all_plugins);
+    use ytflow::config::loader::{ProfileLoadResult, ProfileLoader};
+    let (factory, load_errors) = ProfileLoader::parse_profile(entry_plugins.iter(), &all_plugins);
     if !load_errors.is_empty() {
         warn!(
             "{} errors detected from selected Profile:",
@@ -143,11 +143,11 @@ fn try_main(args: &ArgMatches) -> Result<()> {
     }
     info!("Starting YtFlow...");
 
-    let ytflow::config::LoadPluginResult {
+    let ProfileLoadResult {
         plugin_set,
         errors: load_errors,
         ..
-    } = factory.load_all(runtime.handle());
+    } = factory.load_all(runtime.handle(), db.as_ref());
     if !load_errors.is_empty() {
         warn!(
             "{} errors detected while loading plugins:",

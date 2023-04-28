@@ -85,6 +85,11 @@ pub enum PluginType {
     )]
     Forward,
     #[strum(
+        props(prefix = "dyn-outbound"),
+        detailed_message = "Select an outbound proxy from the database at runtime."
+    )]
+    DynOutbound,
+    #[strum(
         props(prefix = "shadowsocks-client"),
         detailed_message = "Shadowsocks client."
     )]
@@ -216,6 +221,10 @@ impl PluginType {
                     "tcp_next" => name.clone() + "-shadowsocks-client.tcp",
                     "udp_next" => name.clone() + "-socket.udp",
                 }),
+                PluginType::DynOutbound => cbor!({
+                    "tcp_next" => name.clone() + "-socket.tcp",
+                    "udp_next" => name.clone() + "-socket.udp",
+                }),
                 PluginType::ShadowsocksClient => cbor!({
                     "method" => "aes-256-gcm",
                     "password" => Bytes::new(b"password"),
@@ -251,8 +260,8 @@ impl PluginType {
                         host: HostName::DomainName("my.proxy.server.com.".into()),
                         port: 8388,
                     },
-                    "tcp_next" => name.clone() + "-socket",
-                    "udp_next" => name.clone() + "-socket",
+                    "tcp_next" => name.clone() + "-socket.tcp",
+                    "udp_next" => name.clone() + "-socket.udp",
                 }),
                 PluginType::Socket => cbor!({
                     "resolver" => name.clone() + "-system-resolver.resolver",
@@ -265,6 +274,7 @@ impl PluginType {
             .unwrap(),
         );
         Plugin {
+            id: None,
             name,
             plugin,
             plugin_version: 0,

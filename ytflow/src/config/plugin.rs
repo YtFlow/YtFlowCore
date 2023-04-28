@@ -1,4 +1,5 @@
 mod dns_server;
+mod dyn_outbound;
 mod fakeip;
 mod forward;
 mod host_resolver;
@@ -22,6 +23,7 @@ mod trojan;
 mod vpntun;
 
 pub use dns_server::*;
+pub use dyn_outbound::*;
 pub use fakeip::*;
 pub use forward::*;
 pub use host_resolver::*;
@@ -44,7 +46,10 @@ pub use tls::*;
 pub use trojan::*;
 pub use vpntun::*;
 
+use crate::data::PluginId;
+
 pub struct Plugin {
+    pub id: Option<PluginId>,
     pub name: String,
     pub plugin: String,
     pub plugin_version: u16,

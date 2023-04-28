@@ -49,7 +49,7 @@ impl Profile {
             .optional()?)
     }
     pub fn query_all(conn: &super::Connection) -> DataResult<Vec<Profile>> {
-        let mut stmt = conn.prepare_cached("SELECT `id`, `permanent_id`, `name`, `locale`, `last_used_at`, `created_at` FROM `yt_profiles`")?;
+        let mut stmt = conn.prepare_cached("SELECT `id`, `permanent_id`, `name`, `locale`, `last_used_at`, `created_at` FROM `yt_profiles` ORDER BY `id` ASC")?;
         let ret = stmt
             .query_and_then([], map_from_row)?
             .filter_map(|r: Result<Profile, SqError>| r.ok())

@@ -3,6 +3,7 @@ use std::mem::ManuallyDrop;
 use std::sync::{Arc, Weak};
 
 use super::*;
+use crate::data::Database;
 use crate::flow::*;
 
 pub struct PluginSet {
@@ -18,6 +19,7 @@ pub struct PluginSet {
 
 pub(super) struct PartialPluginSet<'f> {
     pub(super) plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'f>>>,
+    pub(super) db: Option<&'f Database>,
     pub(super) fully_constructed: PluginSet,
     pub(super) errors: Vec<LoadError>,
     pub(super) control_hub: crate::control::ControlHub,
@@ -64,10 +66,12 @@ macro_rules! impl_get_or_create {
 impl<'a> PartialPluginSet<'a> {
     pub(super) fn new(
         plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'a>>>,
+        db: Option<&'a Database>,
         fully_constructed: PluginSet,
     ) -> Self {
         Self {
             fully_constructed,
+            db,
             plugins,
             control_hub: Default::default(),
             errors: vec![],

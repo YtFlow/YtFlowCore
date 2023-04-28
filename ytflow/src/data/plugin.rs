@@ -36,7 +36,7 @@ impl Plugin {
     ) -> DataResult<Vec<Plugin>> {
         let mut stmt = conn.prepare_cached(
             r"SELECT `id`, `name`, `desc`, `plugin`, `plugin_version`, `param`, `updated_at`
-            FROM `yt_plugins` WHERE `profile_id` = ?",
+            FROM `yt_plugins` WHERE `profile_id` = ? ORDER BY `id` ASC",
         )?;
         let ret = stmt
             .query_and_then([&profile_id.0], map_from_row)?
@@ -52,7 +52,8 @@ impl Plugin {
             r"SELECT `id`, `name`, `desc`, `plugin`, `plugin_version`, `param`, `updated_at`
             FROM `yt_profile_entry_plugin` pep
             INNER JOIN `yt_plugins` p ON pep.`plugin_id` = p.`id`
-            WHERE pep.`profile_id` = ?",
+            WHERE pep.`profile_id` = ?
+            ORDER BY `id` ASC",
         )?;
         let ret = stmt
             .query_and_then([&profile_id.0], map_from_row)?
@@ -122,6 +123,7 @@ impl Plugin {
 impl From<Plugin> for crate::config::Plugin {
     fn from(value: Plugin) -> Self {
         Self {
+            id: Some(value.id),
             name: value.name,
             plugin: value.plugin,
             plugin_version: value.plugin_version,

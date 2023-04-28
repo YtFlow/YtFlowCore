@@ -38,8 +38,9 @@ impl ProxyGroup {
             .optional()?)
     }
     pub fn query_all(conn: &super::Connection) -> DataResult<Vec<ProxyGroup>> {
-        let mut stmt = conn
-            .prepare_cached("SELECT `id`, `name`, `type`, `created_at` FROM `yt_proxy_groups`")?;
+        let mut stmt = conn.prepare_cached(
+            "SELECT `id`, `name`, `type`, `created_at` FROM `yt_proxy_groups` ORDER BY `id` ASC",
+        )?;
         let ret = stmt
             .query_and_then([], map_from_row)?
             .filter_map(|r| r.ok())

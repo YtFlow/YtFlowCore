@@ -237,8 +237,8 @@ impl VpnPlugIn {
             Err(e) => return Err(format!("Failed to load plugins from: {}", e).into()),
         };
 
-        let (factory, errors) =
-            ytflow::config::ProfilePluginFactory::parse_profile(entry_plugins.iter(), &all_plugins);
+        use ytflow::config::loader::{ProfileLoadResult, ProfileLoader};
+        let (factory, errors) = ProfileLoader::parse_profile(entry_plugins.iter(), &all_plugins);
         if !errors.is_empty() {
             let it = std::iter::once(String::from("Failed to parse plugins: "));
             let it = it.chain(errors.iter().map(ToString::to_string));
@@ -271,11 +271,11 @@ impl VpnPlugIn {
         });
 
         let rt_handle = rt.handle();
-        let ytflow::config::LoadPluginResult {
+        let ProfileLoadResult {
             plugin_set: set,
             errors,
             control_hub,
-        } = factory.load_all(&rt_handle);
+        } = factory.load_all(&rt_handle, Some(&db));
         let mut error_str = if errors.is_empty() {
             String::from("There must be exactly one vpn-tun entry plugin in a profile")
         } else {

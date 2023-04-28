@@ -16,6 +16,7 @@ pub extern "C" fn ytflow_plugin_verify(
     FfiResult::catch_result_unwind(move || {
         let plugin = unsafe { CStr::from_ptr(plugin) };
         let plugin = Plugin {
+            id: None,
             name: String::from("test_plugin"),
             plugin: plugin.to_string_lossy().into_owned(),
             plugin_version,
