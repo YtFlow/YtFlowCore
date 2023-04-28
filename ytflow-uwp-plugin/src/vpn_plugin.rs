@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::ffi::OsString;
+use std::mem::ManuallyDrop;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
 use std::os::windows::ffi::OsStringExt;
 use std::rc::Rc;
@@ -116,29 +117,54 @@ async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()
     use ytflow::control::rpc::{serve_stream, ControlHubService};
     let s = TcpSocket::new_v4()?;
     s.set_reuseaddr(true)?;
-    s.bind(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 9097))?;
-    let listener = s.listen(16)?;
+    s.bind(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0))?;
+    let port = HSTRING::try_from(s.local_addr()?.port().to_string()).unwrap();
+    let _ = APP_SETTINGS.get().unwrap().Values()?.Insert(
+        "YTFLOW_CORE_RPC_PORT",
+        IInspectable::try_from(port).unwrap(),
+    );
+    let listener = s.listen(128)?;
     let task = || async {
+        use tokio::time::{sleep, Duration};
         let mut service = ControlHubService(&control_hub);
         loop {
             let (stream, _) = match listener.accept().await {
                 Ok(s) => s,
-                Err(e) => return Err::<(), _>(e),
+                _ => {
+                    // retry listening
+                    // TODO: log errors
+                    sleep(Duration::from_secs(1)).await;
+                    continue;
+                }
             };
             stream.set_nodelay(true)?;
             let _ = serve_stream(&mut service, stream).await;
         }
+        #[allow(unreachable_code)]
+        Ok::<_, std::io::Error>(())
     };
     let _ = futures::future::join(task(), task()).await;
     Ok(())
 }
 
 struct VpnPlugInInner {
-    tx_buf_rx: Receiver<VpnPacketBuffer>,
-    rx_buf_tx: Sender<Vec<u8>>,
+    tx_buf_rx: ManuallyDrop<Receiver<VpnPacketBuffer>>,
+    rx_buf_tx: ManuallyDrop<Sender<Vec<u8>>>,
+    plugin_set: ManuallyDrop<ytflow::config::PluginSet>,
     rt: tokio::runtime::Runtime,
-    plugin_set: ytflow::config::PluginSet,
     rpc_task: tokio::task::JoinHandle<std::io::Result<()>>,
+}
+
+impl Drop for VpnPlugInInner {
+    fn drop(&mut self) {
+        let _enter_guard = self.rt.enter();
+        unsafe {
+            let _ = self.rpc_task.abort();
+            let _rx_buf_tx = ManuallyDrop::take(&mut self.rx_buf_tx);
+            let _tx_buf_rx = ManuallyDrop::take(&mut self.tx_buf_rx);
+            let _plugin_set = ManuallyDrop::take(&mut self.plugin_set);
+        }
+    }
 }
 
 #[implement(Windows::Networking::Vpn::IVpnPlugIn)]
@@ -152,9 +178,7 @@ impl VpnPlugIn {
     }
 
     fn connect_core(&mut self, channel: &VpnChannel) -> std::result::Result<(), ConnectError> {
-        if self.0.is_some() {
-            return Err("A fresh reconnect is required".into());
-        }
+        let _ = self.0.take();
 
         let transport = DatagramSocket::new()?;
         channel.AssociateTransport(&transport, None)?;
@@ -290,9 +314,9 @@ impl VpnPlugIn {
                 match connect_with_factory(&transport, &vpn_tun_factory, &channel) {
                     Ok(()) => {
                         self.0 = Some(VpnPlugInInner {
-                            tx_buf_rx,
-                            rx_buf_tx,
-                            plugin_set: set,
+                            tx_buf_rx: ManuallyDrop::new(tx_buf_rx),
+                            rx_buf_tx: ManuallyDrop::new(rx_buf_tx),
+                            plugin_set: ManuallyDrop::new(set),
                             rpc_task: rt_handle.spawn(run_rpc(control_hub)),
                             rt,
                         });
@@ -329,13 +353,7 @@ impl VpnPlugIn {
     }
     fn Disconnect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
         let _ = channel.as_ref().map(|c| c.Stop());
-        if let Some(inner) = self.0.take() {
-            let _enter_guard = inner.rt.enter();
-            let _ = inner.rpc_task.abort();
-            drop(inner.rx_buf_tx);
-            drop(inner.tx_buf_rx);
-            drop(inner.plugin_set);
-        }
+        if let Some(_) = self.0.take() {}
         Ok(())
     }
     fn GetKeepAlivePayload(
