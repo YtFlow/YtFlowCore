@@ -1,6 +1,6 @@
 [package]
 name = "ytflow-uwp-plugin"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["bdbai <bdbaiapp@163.com>"]
 edition = "2021"
 
