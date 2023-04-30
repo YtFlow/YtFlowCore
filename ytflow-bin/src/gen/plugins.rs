@@ -44,7 +44,7 @@ pub enum PluginType {
     HostResolver,
     #[strum(
         props(prefix = "fake-ip"),
-        detailed_message = "Assign a fake IP address for each domain name. This is useful for TUN inbounds where incoming connections carry no information about domain names. By using a Fake IP resolver, destination IP addresses can be mapped back to a domain name that the client is connecting to."
+        detailed_message = "Assign a fake IP address for each domain name. This is useful for TUN inbounds where incoming connections carry no information about domain names."
     )]
     FakeIp,
     #[strum(
@@ -59,7 +59,7 @@ pub enum PluginType {
     Switch,
     #[strum(
         props(prefix = "dns-server"),
-        detailed_message = "Respond to DNS request messages using results returned by the specified resolver."
+        detailed_message = "Respond to DNS request messages using results returned by the specified resolver. Also provides domain name lookup (map_back) for resolved IP addresses."
     )]
     DnsServer,
     #[strum(props(prefix = "socks5-server"), detailed_message = "SOCKS5 server.")]
@@ -71,7 +71,7 @@ pub enum PluginType {
     HttpObfsServer,
     #[strum(
         props(prefix = "resolve-dest"),
-        detailed_message = "Resolve domain names in flow destinations from/to IP addresses."
+        detailed_message = "Resolve domain names in flow destinations to IP addresses."
     )]
     ResolveDest,
     #[strum(
