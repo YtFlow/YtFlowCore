@@ -147,38 +147,62 @@ async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()
     Ok(())
 }
 
-struct VpnPlugInInner {
-    tx_buf_rx: ManuallyDrop<Receiver<VpnPacketBuffer>>,
+struct Runtime {
     rx_buf_tx: ManuallyDrop<Sender<Vec<u8>>>,
     plugin_set: ManuallyDrop<ytflow::config::PluginSet>,
     rt: tokio::runtime::Runtime,
     rpc_task: tokio::task::JoinHandle<std::io::Result<()>>,
 }
 
-impl Drop for VpnPlugInInner {
+impl Drop for Runtime {
     fn drop(&mut self) {
         let _enter_guard = self.rt.enter();
         unsafe {
             let _ = self.rpc_task.abort();
             let _rx_buf_tx = ManuallyDrop::take(&mut self.rx_buf_tx);
-            let _tx_buf_rx = ManuallyDrop::take(&mut self.tx_buf_rx);
             let _plugin_set = ManuallyDrop::take(&mut self.plugin_set);
         }
     }
 }
 
+#[derive(Default)]
+enum VpnPlugInInner {
+    #[default]
+    NotRunning,
+    Running {
+        tx_buf_rx: Receiver<VpnPacketBuffer>,
+        runtime: Runtime,
+    },
+    Stopping {
+        tx_buf_rx: Receiver<VpnPacketBuffer>,
+    },
+}
+
+impl VpnPlugInInner {
+    fn request_stop(&mut self) {
+        let this = std::mem::take(self);
+        *self = match this {
+            Self::Running {
+                tx_buf_rx,
+                runtime: _, // Drop the runtime.
+            } => Self::Stopping { tx_buf_rx },
+            _ => this,
+        }
+    }
+}
+
 #[implement(Windows::Networking::Vpn::IVpnPlugIn)]
-pub struct VpnPlugIn(Option<VpnPlugInInner>);
+pub struct VpnPlugIn(VpnPlugInInner);
 
 #[allow(non_snake_case)]
 impl VpnPlugIn {
     pub fn new() -> Self {
         let _ = APP_SETTINGS.set(ApplicationData::Current().unwrap().LocalSettings().unwrap());
-        Self(None)
+        Self(Default::default())
     }
 
     fn connect_core(&mut self, channel: &VpnChannel) -> std::result::Result<(), ConnectError> {
-        let _ = self.0.take();
+        self.0 = Default::default();
 
         let transport = DatagramSocket::new()?;
         channel.AssociateTransport(&transport, None)?;
@@ -313,13 +337,15 @@ impl VpnPlugIn {
                 let (tx_buf_rx, rx_buf_tx, vpn_tun_factory) = vpn_items;
                 match connect_with_factory(&transport, &vpn_tun_factory, &channel) {
                     Ok(()) => {
-                        self.0 = Some(VpnPlugInInner {
-                            tx_buf_rx: ManuallyDrop::new(tx_buf_rx),
-                            rx_buf_tx: ManuallyDrop::new(rx_buf_tx),
-                            plugin_set: ManuallyDrop::new(set),
-                            rpc_task: rt_handle.spawn(run_rpc(control_hub)),
-                            rt,
-                        });
+                        self.0 = VpnPlugInInner::Running {
+                            tx_buf_rx: tx_buf_rx,
+                            runtime: Runtime {
+                                rx_buf_tx: ManuallyDrop::new(rx_buf_tx),
+                                plugin_set: ManuallyDrop::new(set),
+                                rpc_task: rt_handle.spawn(run_rpc(control_hub)),
+                                rt,
+                            },
+                        };
                         break Ok(());
                     }
                     Err(e) => {
@@ -352,8 +378,10 @@ impl VpnPlugIn {
         Ok(())
     }
     fn Disconnect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
-        let _ = channel.as_ref().map(|c| c.Stop());
-        if let Some(_) = self.0.take() {}
+        // Don't .Stop() the channel because there may be some inflight tx buffers remaining,
+        // which will block the VPN background task, leading to the whole process being killed.
+        // .Stop() until all buffers are drained in Decapsulate.
+        self.0.request_stop();
         Ok(())
     }
     fn GetKeepAlivePayload(
@@ -371,9 +399,10 @@ impl VpnPlugIn {
         _encapulatedPackets: &Option<VpnPacketBufferList>,
     ) -> Result<()> {
         let packets = packets.as_ref().unwrap().clone();
-        let rx_buf_tx = match &self.0 {
-            Some(t) => &t.rx_buf_tx,
-            None => return Ok(()),
+        let rx_buf_tx = if let VpnPlugInInner::Running { runtime, .. } = &self.0 {
+            &runtime.rx_buf_tx
+        } else {
+            return Ok(());
         };
         let packet_count = packets.Size()?;
         for _ in 0..packet_count {
@@ -394,16 +423,17 @@ impl VpnPlugIn {
         Ok(())
     }
     fn Decapsulate(
-        &self,
-        _channel: &Option<VpnChannel>,
+        &mut self,
+        channel: &Option<VpnChannel>,
         _encapBuffer: &Option<VpnPacketBuffer>,
         decapsulatedPackets: &Option<VpnPacketBufferList>,
         _controlPacketsToSend: &Option<VpnPacketBufferList>,
     ) -> Result<()> {
         let decapsulatedPackets = decapsulatedPackets.as_ref().unwrap().clone();
         let tx_buf_rx = match &self.0 {
-            Some(r) => &r.tx_buf_rx,
-            None => return Ok(()),
+            VpnPlugInInner::NotRunning => return Ok(()),
+            VpnPlugInInner::Running { tx_buf_rx, .. } => tx_buf_rx,
+            VpnPlugInInner::Stopping { tx_buf_rx } => tx_buf_rx,
         };
         let mut idle_loop_count = 0;
         loop {
@@ -412,7 +442,11 @@ impl VpnPlugIn {
                     idle_loop_count = 0;
                     decapsulatedPackets.Append(buf)?;
                 }
-                Err(TryRecvError::Disconnected) => return Ok(()),
+                Err(TryRecvError::Disconnected) => {
+                    self.0 = VpnPlugInInner::NotRunning;
+                    let _ = channel.as_ref().unwrap().Stop();
+                    return Ok(());
+                }
                 Err(TryRecvError::Empty) if idle_loop_count < 8 => {
                     idle_loop_count += 1;
                     continue;

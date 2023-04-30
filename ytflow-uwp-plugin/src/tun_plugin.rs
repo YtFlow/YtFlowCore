@@ -61,3 +61,10 @@ impl Tun for VpnTun {
         self.send_buffer(vpn_buffer);
     }
 }
+
+impl Drop for VpnTun {
+    fn drop(&mut self) {
+        // Signal to Decapsulate to drain all tx buffers (if any) and shutdown the channel.
+        let _ = self.dummy_socket.send(&[1][..]);
+    }
+}
