@@ -1,26 +1,48 @@
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::Mutex;
 
 use async_trait::async_trait;
+use lru::LruCache;
 use smallvec::smallvec;
 
 use crate::flow::*;
 
+const CACHE_SIZE: NonZeroUsize = NonZeroUsize::new(1000).unwrap();
+
+struct Inner {
+    current: u16,
+    cache: LruCache<String, u16>,
+}
+
 pub struct FakeIp {
     prefix_v4: u16,
     prefix_v6: [u8; 14],
-    current: AtomicU16,
+    inner: Mutex<Inner>,
 }
 
 impl FakeIp {
     pub fn new(prefix_v4: [u8; 2], prefix_v6: [u8; 14]) -> Self {
+        // TODO: persist current cursor into cache
         Self {
             prefix_v4: u16::from_be_bytes(prefix_v4),
             prefix_v6,
-            current: AtomicU16::new(1),
+            inner: Mutex::new(Inner {
+                current: 1,
+                cache: LruCache::new(CACHE_SIZE),
+            }),
         }
     }
-    fn lookup_or_alloc(&self, _domain: String) -> u16 {
-        self.current.fetch_add(1, Ordering::Relaxed)
+    fn lookup_or_alloc(&self, domain: String) -> u16 {
+        let mut inner = self.inner.lock().unwrap();
+        let cached = inner.cache.get(&*domain).copied();
+        if let Some(cached) = cached {
+            return cached;
+        }
+        let ret = inner.current;
+        inner.cache.put(domain, ret);
+        inner.current += 1;
+        ret
     }
 }
 

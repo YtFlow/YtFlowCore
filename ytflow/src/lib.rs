@@ -5,6 +5,7 @@
 #![feature(once_cell)]
 #![feature(let_chains)]
 #![feature(ip)]
+#![feature(const_option)]
 
 #[cfg(windows)]
 mod bindings {

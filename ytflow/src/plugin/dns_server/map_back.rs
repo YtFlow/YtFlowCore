@@ -47,6 +47,7 @@ pub struct MapBackStreamHandler {
 
 impl MapBackStreamHandler {
     pub fn new(handler: &DnsDatagramHandler, next: Weak<dyn StreamHandler>) -> Self {
+        // TODO: persist mapping into cache
         Self {
             back_mapper: BackMapper {
                 reverse_mapping_v4: handler.reverse_mapping_v4.clone(),
