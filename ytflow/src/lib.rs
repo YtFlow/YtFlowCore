@@ -4,6 +4,7 @@
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
 #![feature(let_chains)]
+#![feature(ip)]
 
 #[cfg(windows)]
 mod bindings {

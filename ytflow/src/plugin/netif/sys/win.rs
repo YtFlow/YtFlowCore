@@ -64,9 +64,16 @@ fn enum_adapters() -> Vec<(Netif, Rate)> {
                         _ => None,
                     }),
                     ipv6_addr: adapter.ip_addresses().iter().find_map(|ip| match ip {
-                        IpAddr::V6(v6) => {
-                            Some(SocketAddrV6::new(*v6, 0, 0, adapter.ipv6_if_index()))
-                        }
+                        IpAddr::V6(v6) => Some(SocketAddrV6::new(
+                            *v6,
+                            0,
+                            0,
+                            if v6.is_unicast_link_local() {
+                                adapter.ipv6_if_index()
+                            } else {
+                                0
+                            },
+                        )),
                         _ => None,
                     }),
                     dns_servers: adapter.dns_servers().to_vec(),
