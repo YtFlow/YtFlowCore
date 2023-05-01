@@ -1,5 +1,4 @@
 use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::Mutex;
 
 use async_trait::async_trait;

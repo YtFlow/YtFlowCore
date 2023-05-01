@@ -17,7 +17,8 @@ use smoltcp::phy::{Checksum, ChecksumCapabilities, DeviceCapabilities, Medium};
 use smoltcp::socket::TcpSocket;
 use smoltcp::storage::RingBuffer;
 use smoltcp::wire::{
-    IpAddress, IpCidr, IpEndpoint, IpProtocol, Ipv4Address, Ipv4Packet, TcpPacket, UdpPacket,
+    IpAddress, IpCidr, IpEndpoint, IpProtocol, Ipv4Address, Ipv4Packet, Ipv6Address, Ipv6Packet,
+    TcpPacket, UdpPacket,
 };
 use tokio::time::sleep_until;
 
@@ -152,11 +153,17 @@ pub fn run(
     )])
     .any_ip(true)
     .routes(Routes::new(
-        [(
-            IpCidr::new(Ipv4Address::UNSPECIFIED.into(), 0),
-            // TODO: Custom IP Address
-            Route::new_ipv4_gateway(Ipv4Address::new(192, 168, 3, 1)),
-        )]
+        [
+            (
+                IpCidr::new(Ipv4Address::UNSPECIFIED.into(), 0),
+                // TODO: Custom IP Address
+                Route::new_ipv4_gateway(Ipv4Address::new(192, 168, 3, 1)),
+            ),
+            (
+                IpCidr::new(Ipv6Address::UNSPECIFIED.into(), 0),
+                Route::new_ipv6_gateway(Ipv6Address::new(0xfd00, 0, 0, 0, 0, 0, 0, 2)),
+            ),
+        ]
         .into_iter()
         .collect::<BTreeMap<_, _>>(),
     ))
@@ -216,6 +223,7 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                         dst_addr.into(),
                         src_port,
                         dst_port,
+                        0,
                         p.payload_mut(),
                     );
                 }
@@ -223,7 +231,47 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
             }
         }
         0b0110 => {
-            // TODO: IPv6
+            let mut ipv6_packet = match Ipv6Packet::new_checked(packet) {
+                Ok(p) => p,
+                Err(_) => return,
+            };
+            let (src_addr, dst_addr) = (ipv6_packet.src_addr(), ipv6_packet.dst_addr());
+            let flow_label = ipv6_packet.flow_label();
+            match ipv6_packet.next_header() {
+                IpProtocol::Tcp => {
+                    let p = match TcpPacket::new_checked(ipv6_packet.payload_mut()) {
+                        Ok(p) => p,
+                        Err(_) => return,
+                    };
+                    let (src_port, dst_port, is_syn) = (p.src_port(), p.dst_port(), p.syn());
+                    process_tcp(
+                        stack,
+                        smoltcp_addr_to_std(src_addr.into()),
+                        dst_addr.into(),
+                        src_port,
+                        dst_port,
+                        is_syn,
+                        ipv6_packet.into_inner(),
+                    );
+                }
+                IpProtocol::Udp => {
+                    let mut p = match UdpPacket::new_checked(ipv6_packet.payload_mut()) {
+                        Ok(p) => p,
+                        Err(_) => return,
+                    };
+                    let (src_port, dst_port) = (p.src_port(), p.dst_port());
+                    process_udp(
+                        stack,
+                        smoltcp_addr_to_std(src_addr.into()),
+                        dst_addr.into(),
+                        src_port,
+                        dst_port,
+                        flow_label,
+                        p.payload_mut(),
+                    );
+                }
+                _ => {}
+            }
         }
         _ => {}
     };
@@ -314,6 +362,7 @@ fn process_udp(
     dst_addr: smoltcp::wire::IpAddress,
     src_port: u16,
     dst_port: u16,
+    flow_label: u32,
     payload: &mut [u8],
 ) {
     let mut guard = stack.lock().unwrap();
@@ -338,6 +387,7 @@ fn process_udp(
                             stack: stack_inner,
                             local_endpoint: src_addr.into(),
                             local_port: src_port,
+                            flow_label,
                         },
                         rx.into_stream(),
                         120,
