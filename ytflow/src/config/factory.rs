@@ -98,6 +98,7 @@ pub(super) fn create_factory_from_plugin(
         "tls-client" => box_result(TlsFactory::parse(plugin)),
         "trojan-client" => box_result(TrojanFactory::parse(plugin)),
         "http-obfs-client" => box_result(HttpObfsClientFactory::parse(plugin)),
+        "tls-obfs-client" => box_result(TlsObfsClientFactory::parse(plugin)),
         "redirect" => box_result(RedirectFactory::parse(plugin)),
         "socket" => box_result(SocketFactory::parse(plugin)),
         "netif" => box_result(NetifFactory::parse(plugin)),

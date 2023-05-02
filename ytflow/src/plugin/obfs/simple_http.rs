@@ -154,12 +154,9 @@ impl StreamOutboundFactory for SimpleHttpOutbound {
             let mut expected_header_size = 1;
             let mut req_body_pos = 0;
             let mut on_data = |data: &mut [u8]| {
-                if data.len() > 1024 {
-                    return Err(FlowError::UnexpectedData);
-                }
-
                 Ok(match memmem::find(data, b"\r\n\r\n") {
                     Some(p) => (req_body_pos = p + 4, None).1,
+                    None if data.len() > 1024 => return Err(FlowError::UnexpectedData),
                     None => Some(data.len()),
                 })
             };

@@ -25,6 +25,8 @@ pub enum ProxyType {
     Shadowsocks,
     #[strum(serialize = "Shadowsocks + HTTP obfs")]
     ShadowsocksHttpObfs,
+    #[strum(serialize = "Shadowsocks + TLS obfs")]
+    ShadowsocksTlsObfs,
     #[strum(serialize = "Trojan (via TLS)")]
     TrojanTls,
     #[strum(serialize = "HTTP (CONNECT)")]
@@ -55,7 +57,9 @@ fn gen_redirect(tcp_next: CborValue, udp_next: CborValue) -> Plugin {
 impl ProxyType {
     fn gen_main_protocol(self, tcp_next: CborValue, udp_next: CborValue) -> Plugin {
         match self {
-            ProxyType::Shadowsocks | ProxyType::ShadowsocksHttpObfs => Plugin {
+            ProxyType::Shadowsocks
+            | ProxyType::ShadowsocksHttpObfs
+            | ProxyType::ShadowsocksTlsObfs => Plugin {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "shadowsocks-client".into(),
                 plugin_version: 0,
@@ -116,6 +120,18 @@ impl ProxyType {
                     cbor!({
                         "host" => "windowsupdate.microsoft.com",
                         "path" => "/",
+                        "next" => tcp_next,
+                    })
+                    .unwrap(),
+                )),
+            }),
+            ProxyType::ShadowsocksTlsObfs => Some(Plugin {
+                name: PLUGIN_NAME_OBFS.into(),
+                plugin: "tls-obfs-client".into(),
+                plugin_version: 0,
+                param: ByteBuf::from(serialize_cbor(
+                    cbor!({
+                        "host" => "windowsupdate.microsoft.com",
                         "next" => tcp_next,
                     })
                     .unwrap(),

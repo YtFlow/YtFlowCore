@@ -114,6 +114,11 @@ pub enum PluginType {
     )]
     HttpObfsClient,
     #[strum(
+        props(prefix = "tls-obfs-client"),
+        detailed_message = "simple-obfs TLS client."
+    )]
+    TlsObfsClient,
+    #[strum(
         props(prefix = "redirect"),
         detailed_message = "Change the destination of connections or datagrams."
     )]
@@ -253,6 +258,10 @@ impl PluginType {
                 PluginType::HttpObfsClient => cbor!({
                     "host" => "windowsupdate.microsoft.com",
                     "path" => "/",
+                    "next" => name.clone() + "-redirect.tcp",
+                }),
+                PluginType::TlsObfsClient => cbor!({
+                    "host" => "windowsupdate.microsoft.com",
                     "next" => name.clone() + "-redirect.tcp",
                 }),
                 PluginType::Redirect => cbor!({

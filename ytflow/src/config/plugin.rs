@@ -19,6 +19,7 @@ mod socks5;
 mod switch;
 mod system_resolver;
 mod tls;
+mod tls_obfs;
 mod trojan;
 mod vpntun;
 
@@ -43,6 +44,7 @@ pub use socks5::*;
 pub use switch::*;
 pub use system_resolver::*;
 pub use tls::*;
+pub use tls_obfs::*;
 pub use trojan::*;
 pub use vpntun::*;
 
