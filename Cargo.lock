@@ -2757,7 +2757,7 @@ checksum = "447660ad36a13288b1db4d4248e857b510e8c3a225c822ba4fb748c0aafecffd"
 
 [[package]]
 name = "ytflow"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "aes-gcm",
  "arc-swap",
@@ -2813,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-bin"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "base64",
@@ -2840,7 +2840,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-ffi"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "cbindgen",
  "ytflow",
@@ -2848,7 +2848,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-uwp-plugin"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "flume",
  "futures",
