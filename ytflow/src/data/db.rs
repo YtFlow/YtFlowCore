@@ -24,14 +24,17 @@ fn setup_temp() {
     }
 
     fn setup_temp_core() -> windows::core::Result<()> {
+        use std::ffi::CString;
         let mut temp_path = ApplicationData::Current()?
             .TemporaryFolder()?
             .Path()?
             .to_string_lossy();
         unsafe {
-            sqlite3_temp_directory = temp_path.as_mut_ptr() as *mut _;
+            let c_path = CString::new(temp_path).unwrap();
+            let sqlite_dir =
+                rusqlite::ffi::sqlite3_mprintf(b"%s\0".as_ptr() as *const _, c_path.as_ptr());
+            sqlite3_temp_directory = sqlite_dir;
         }
-        std::mem::forget(temp_path);
         Ok(())
     }
 
