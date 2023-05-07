@@ -108,6 +108,8 @@ pub enum PluginType {
         detailed_message = "Trojan client. Note that TLS is not included. You will likely need to connect this plugin to a TLS plugin."
     )]
     TrojanClient,
+    #[strum(props(prefix = "vmess-client"), detailed_message = "VMess client.")]
+    VMessClient,
     #[strum(
         props(prefix = "http-obfs-client"),
         detailed_message = "simple-obfs HTTP client."
@@ -254,6 +256,10 @@ impl PluginType {
                 PluginType::TrojanClient => cbor!({
                     "password" => Bytes::new(b"password"),
                     "tls_next" => name.clone() + "-tls.tcp",
+                }),
+                PluginType::VMessClient => cbor!({
+                    "user_id" => "b831381d-6324-4d53-ad4f-8cda48b30811",
+                    "tcp_next" => name.clone() + "-redirect.udp",
                 }),
                 PluginType::HttpObfsClient => cbor!({
                     "host" => "windowsupdate.microsoft.com",

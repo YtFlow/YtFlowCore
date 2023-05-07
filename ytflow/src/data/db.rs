@@ -25,7 +25,7 @@ fn setup_temp() {
 
     fn setup_temp_core() -> windows::core::Result<()> {
         use std::ffi::CString;
-        let mut temp_path = ApplicationData::Current()?
+        let temp_path = ApplicationData::Current()?
             .TemporaryFolder()?
             .Path()?
             .to_string_lossy();

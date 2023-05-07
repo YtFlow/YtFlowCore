@@ -97,6 +97,7 @@ pub(super) fn create_factory_from_plugin(
         "http-proxy-client" => box_result(HttpProxyFactory::parse(plugin)),
         "tls-client" => box_result(TlsFactory::parse(plugin)),
         "trojan-client" => box_result(TrojanFactory::parse(plugin)),
+        "vmess-client" => box_result(VMessClientFactory::parse(plugin)),
         "http-obfs-client" => box_result(HttpObfsClientFactory::parse(plugin)),
         "tls-obfs-client" => box_result(TlsObfsClientFactory::parse(plugin)),
         "redirect" => box_result(RedirectFactory::parse(plugin)),

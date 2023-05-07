@@ -6,6 +6,7 @@
 #![feature(let_chains)]
 #![feature(ip)]
 #![feature(const_option)]
+#![feature(result_flattening)]
 
 #[cfg(windows)]
 mod bindings {

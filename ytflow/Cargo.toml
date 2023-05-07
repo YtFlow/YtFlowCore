@@ -43,6 +43,7 @@ trust-dns-resolver = { version = "0.20", default-features = false, features = [
 # Note: UWP build is only supported since OpenSSL 3.0
 openssl = "0.10"
 tokio-openssl = "0.6"
+uuid = { version = "1", features = ["serde"] }
 
 # Crypto
 cipher = "0.4"
@@ -58,6 +59,9 @@ camellia = "0.1"
 ctr = "0.9"
 cfb-mode = "0.8"
 hkdf = "0.12"
+hmac = "0.12"
+const-fnv1a-hash = "1"
+sha3 = "0.10"
 
 # Data
 serde = { version = "1", features = ["derive"] }

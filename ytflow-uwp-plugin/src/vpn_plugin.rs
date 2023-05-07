@@ -377,7 +377,7 @@ impl VpnPlugIn {
         }
         Ok(())
     }
-    fn Disconnect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
+    fn Disconnect(&mut self, _channel: &Option<VpnChannel>) -> Result<()> {
         // Don't .Stop() the channel because there may be some inflight tx buffers remaining,
         // which will block the VPN background task, leading to the whole process being killed.
         // .Stop() until all buffers are drained in Decapsulate.

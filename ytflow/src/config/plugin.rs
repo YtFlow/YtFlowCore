@@ -21,6 +21,7 @@ mod system_resolver;
 mod tls;
 mod tls_obfs;
 mod trojan;
+mod vmess;
 mod vpntun;
 
 pub use dns_server::*;
@@ -46,6 +47,7 @@ pub use system_resolver::*;
 pub use tls::*;
 pub use tls_obfs::*;
 pub use trojan::*;
+pub use vmess::*;
 pub use vpntun::*;
 
 use crate::data::PluginId;
