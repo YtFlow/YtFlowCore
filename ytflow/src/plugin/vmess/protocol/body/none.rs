@@ -1,4 +1,4 @@
-use super::super::header_client::{HeaderDecryptResult, ResponseHeaderDec};
+use super::super::header::{HeaderDecryptResult, ResponseHeaderDec};
 use super::{RxCrypto, SizeCrypto, TxCrypto};
 use crate::flow::{FlowError, FlowResult};
 
@@ -55,15 +55,14 @@ where
         }
     }
 
-    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<usize> {
+    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<Option<usize>> {
         let offset = match self.header_dec.take() {
             Some(mut dec) => match dec.decrypt_res(size_bytes) {
                 HeaderDecryptResult::Invalid => return Err(FlowError::UnexpectedData),
-                HeaderDecryptResult::Incomplete { total_required } => panic!(
-                    "header_dec expects {} bytes, but given {}",
-                    total_required,
-                    size_bytes.len()
-                ),
+                HeaderDecryptResult::Incomplete { .. } => {
+                    self.header_dec = Some(dec);
+                    return Ok(None);
+                }
                 HeaderDecryptResult::Complete { res: _, len } => len,
             },
             None => 0,
@@ -72,7 +71,7 @@ where
             .size_crypto
             .decode_size(&mut size_bytes[offset..].try_into().unwrap())?;
         self.expected_chunk_len = len;
-        Ok(len)
+        Ok(Some(len))
     }
 
     fn expected_next_chunk_len(&mut self) -> usize {

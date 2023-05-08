@@ -1,8 +1,16 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-use md5::{Digest, Md5};
+use const_fnv1a_hash::fnv1a_hash_32;
+
+mod aead;
+mod aes_cfb;
+mod crypto;
+mod hmac_hash;
 
 use crate::flow::HostName;
+pub(crate) use aead::AeadRequestEnc;
+pub(crate) use aes_cfb::AesCfbRequestEnc;
+pub(crate) use crypto::*;
 
 pub(crate) const DATA_KEY_LEN: usize = 16;
 pub(crate) const DATA_IV_LEN: usize = 16;
@@ -16,6 +24,7 @@ pub(crate) const VMESS_HEADER_ENC_AES_GCM: u8 = 3;
 pub(crate) const VMESS_HEADER_ENC_CHACHA_POLY: u8 = 4;
 pub(crate) const VMESS_HEADER_ENC_NONE: u8 = 5;
 pub(crate) const VMESS_HEADER_CMD_TCP: u8 = 1;
+#[allow(dead_code)]
 pub(crate) const VMESS_HEADER_CMD_UDP: u8 = 2;
 
 #[derive(Debug, Clone)]
@@ -139,24 +148,8 @@ impl RequestHeader {
         buf[offset..offset + random_len].copy_from_slice(&self.random[..random_len]);
         offset += random_len;
 
-        let hash = const_fnv1a_hash::fnv1a_hash_32(&buf[..offset], None);
+        let hash = fnv1a_hash_32(&buf[..offset], None);
         buf[offset..offset + 4].copy_from_slice(&hash.to_be_bytes());
         Some(offset + 4)
-    }
-    pub fn derive_res_key_aes_cfb(&self) -> [u8; DATA_KEY_LEN] {
-        let mut res_key = [0; DATA_KEY_LEN];
-        let mut res_key_hash = Md5::new();
-        res_key_hash.update(&self.data_key);
-        let res = res_key_hash.finalize();
-        res_key[..].copy_from_slice(&res[..]);
-        res_key
-    }
-    pub fn derive_res_iv_aes_cfb(&self) -> [u8; DATA_IV_LEN] {
-        let mut res_iv = [0; DATA_IV_LEN];
-        let mut res_iv_hash = Md5::new();
-        res_iv_hash.update(&self.data_iv);
-        let res = res_iv_hash.finalize();
-        res_iv[..].copy_from_slice(&res[..]);
-        res_iv
     }
 }

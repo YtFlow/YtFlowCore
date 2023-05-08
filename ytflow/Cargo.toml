@@ -62,6 +62,7 @@ hkdf = "0.12"
 hmac = "0.12"
 const-fnv1a-hash = "1"
 sha3 = "0.10"
+crc32fast = "1"
 
 # Data
 serde = { version = "1", features = ["derive"] }

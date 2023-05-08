@@ -5,6 +5,8 @@ use crate::plugin::{null::Null, vmess};
 #[derive(Clone, Deserialize)]
 pub struct VMessClientFactory<'a> {
     user_id: HumanRepr<uuid::Uuid>,
+    #[serde(default)]
+    alter_id: u16,
     tcp_next: &'a str,
 }
 
@@ -46,7 +48,11 @@ impl<'de> Factory for VMessClientFactory<'de> {
                         Arc::downgrade(&(Arc::new(Null) as _))
                     }
                 };
-            vmess::VMessStreamOutboundFactory::new(*self.user_id.inner.as_bytes(), tcp_next)
+            vmess::VMessStreamOutboundFactory::new(
+                *self.user_id.inner.as_bytes(),
+                self.alter_id,
+                tcp_next,
+            )
         });
         set.fully_constructed
             .stream_outbounds

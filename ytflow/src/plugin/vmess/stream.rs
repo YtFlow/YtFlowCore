@@ -18,12 +18,19 @@ impl<RxC: RxCrypto + Send + Sync, TxC: TxCrypto + Send + Sync> Stream
     for VMessClientStream<RxC, TxC>
 {
     fn poll_request_size(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
-        let len = self.rx_crypto.expected_next_size_len();
-        let size = ready!(self
-            .reader
-            .poll_read_exact(cx, &mut *self.lower, len, |buf| {
-                self.rx_crypto.on_size(buf)
-            }))??;
+        let size = loop {
+            let expected = self.rx_crypto.expected_next_size_len();
+            if let Some(size) =
+                ready!(self
+                    .reader
+                    .poll_peek_at_least(cx, &mut *self.lower, expected, |buf| {
+                        self.rx_crypto.on_size(&mut buf[..expected])
+                    }))??
+            {
+                self.reader.advance(expected);
+                break size;
+            }
+        };
         Poll::Ready(if size == 0 {
             // Somehow it appears once with server: v2ray-core v5.4.1 win x64
             // Not sure how to reproduce

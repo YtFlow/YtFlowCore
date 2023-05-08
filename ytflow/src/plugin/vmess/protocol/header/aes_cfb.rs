@@ -3,30 +3,13 @@ use cfb_mode::{BufDecryptor, BufEncryptor};
 use hmac::{Mac, SimpleHmac};
 use md5::{Digest, Md5};
 
-use super::header::{RequestHeader, ResponseHeader};
+use super::super::USER_ID_LEN;
+use super::{
+    derive_cmd_key, HeaderDecryptResult, RequestHeader, RequestHeaderEnc, ResponseHeader,
+    ResponseHeaderDec, HEADER_IV_LEN, HEADER_KEY_LEN,
+};
 
-pub(crate) const VMESS_HEADER_KEY_LEN: usize = 16;
-pub(crate) const VMESS_HEADER_IV_LEN: usize = 16;
-pub(crate) const AES_CFB_HEADER_CERTIFICATION_LEN: usize = 16;
-
-pub enum HeaderDecryptResult<T> {
-    Invalid,
-    Incomplete { total_required: usize },
-    Complete { res: T, len: usize },
-}
-
-pub trait RequestHeaderEnc {
-    type Dec: ResponseHeaderDec;
-
-    const REQUIRED_SIZE: usize;
-
-    fn encrypt_req(self, header: &mut RequestHeader, buf: &mut [u8]) -> Option<(usize, Self::Dec)>;
-}
-
-pub trait ResponseHeaderDec {
-    #[must_use]
-    fn decrypt_res<'a>(&mut self, data: &'a mut [u8]) -> HeaderDecryptResult<ResponseHeader>;
-}
+const AES_CFB_HEADER_CERTIFICATION_LEN: usize = 16;
 
 pub struct AesCfbRequestEnc {
     certification: [u8; AES_CFB_HEADER_CERTIFICATION_LEN],
@@ -39,7 +22,7 @@ pub struct AesCfbResponseDec {
 }
 
 impl AesCfbRequestEnc {
-    pub fn new(utc_timestamp: u64, user_id: &[u8; super::USER_ID_LEN]) -> Self {
+    pub fn new(utc_timestamp: u64, user_id: &[u8; USER_ID_LEN]) -> Self {
         let utc_timestamp = utc_timestamp.to_be_bytes();
         let certification = {
             let mut certification_hash = SimpleHmac::<md5::Md5>::new_from_slice(user_id).unwrap();
@@ -50,13 +33,7 @@ impl AesCfbRequestEnc {
 
         let enc = {
             use cipher::KeyIvInit;
-            let header_key = {
-                let mut cmd_key = *b"????????????????c48619fe-8f02-49e0-b9e9-edf763e17e21";
-                cmd_key[..super::USER_ID_LEN].copy_from_slice(user_id);
-                let mut header_key_hash = Md5::new();
-                header_key_hash.update(cmd_key);
-                header_key_hash.finalize()
-            };
+            let header_key = derive_cmd_key(user_id);
             let header_iv = {
                 let mut header_iv_hash = Md5::new();
                 for _ in 0..4 {
@@ -80,6 +57,24 @@ impl RequestHeaderEnc for AesCfbRequestEnc {
     const REQUIRED_SIZE: usize =
         AES_CFB_HEADER_CERTIFICATION_LEN + std::mem::size_of::<RequestHeader>();
 
+    fn derive_res_iv(&self, header: &RequestHeader) -> [u8; HEADER_IV_LEN] {
+        let mut res_iv = [0; HEADER_IV_LEN];
+        let mut res_iv_hash = Md5::new();
+        res_iv_hash.update(&header.data_iv);
+        let res = res_iv_hash.finalize();
+        res_iv[..].copy_from_slice(&res[..]);
+        res_iv
+    }
+
+    fn derive_res_key(&self, header: &RequestHeader) -> [u8; HEADER_KEY_LEN] {
+        let mut res_key = [0; HEADER_KEY_LEN];
+        let mut res_key_hash = Md5::new();
+        res_key_hash.update(&header.data_key);
+        let res = res_key_hash.finalize();
+        res_key[..].copy_from_slice(&res[..]);
+        res_key
+    }
+
     fn encrypt_req(
         mut self,
         header: &mut RequestHeader,
@@ -91,16 +86,8 @@ impl RequestHeaderEnc for AesCfbRequestEnc {
         let buf = &mut buf[..offset];
         self.enc.encrypt(buf);
 
-        let res_key = {
-            let mut res_key_hash = Md5::new();
-            res_key_hash.update(&header.data_key);
-            res_key_hash.finalize()
-        };
-        let res_iv = {
-            let mut res_iv_hash = Md5::new();
-            res_iv_hash.update(&header.data_iv);
-            res_iv_hash.finalize()
-        };
+        let res_key = self.derive_res_key(header);
+        let res_iv = self.derive_res_iv(header);
 
         use cipher::KeyIvInit;
         Some((

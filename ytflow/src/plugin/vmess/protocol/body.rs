@@ -13,7 +13,7 @@ pub trait SizeCrypto {
 
 pub trait RxCrypto {
     fn expected_next_size_len(&mut self) -> usize;
-    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<usize>;
+    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<Option<usize>>;
     fn expected_next_chunk_len(&mut self) -> usize;
     fn on_chunk<'c>(&mut self, chunk: &'c mut [u8]) -> FlowResult<&'c mut [u8]>;
 }
