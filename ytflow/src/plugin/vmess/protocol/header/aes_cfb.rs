@@ -59,18 +59,14 @@ impl RequestHeaderEnc for AesCfbRequestEnc {
 
     fn derive_res_iv(&self, header: &RequestHeader) -> [u8; HEADER_IV_LEN] {
         let mut res_iv = [0; HEADER_IV_LEN];
-        let mut res_iv_hash = Md5::new();
-        res_iv_hash.update(&header.data_iv);
-        let res = res_iv_hash.finalize();
+        let res = Md5::digest(&header.data_iv);
         res_iv[..].copy_from_slice(&res[..]);
         res_iv
     }
 
     fn derive_res_key(&self, header: &RequestHeader) -> [u8; HEADER_KEY_LEN] {
         let mut res_key = [0; HEADER_KEY_LEN];
-        let mut res_key_hash = Md5::new();
-        res_key_hash.update(&header.data_key);
-        let res = res_key_hash.finalize();
+        let res = Md5::digest(&header.data_key);
         res_key[..].copy_from_slice(&res[..]);
         res_key
     }
@@ -102,16 +98,20 @@ impl RequestHeaderEnc for AesCfbRequestEnc {
 
 impl ResponseHeaderDec for AesCfbResponseDec {
     fn decrypt_res<'a>(&mut self, data: &'a mut [u8]) -> HeaderDecryptResult<ResponseHeader> {
+        // Be careful not to mutate data inplace because subsequent dec may still need to continue
+        // the dec state, e.g. aes-cfb body dec.
+        // See VMessClientStream::poll_request_size.
+        let data = &*data;
         const RES_LEN: usize = 4;
         // TODO: const time?
         // TODO: cmd bytes
-        let Some(chunk) = data.get_mut(..RES_LEN) else {
+        let Some(data) = data.get(0..RES_LEN) else {
             return HeaderDecryptResult::Incomplete {
                 total_required: RES_LEN,
             };
         };
-        self.dec.decrypt(chunk);
-        let chunk = <[u8; RES_LEN]>::try_from(chunk).unwrap();
+        let mut chunk = <[u8; RES_LEN]>::try_from(data).unwrap();
+        self.dec.decrypt(&mut chunk);
         let res = ResponseHeader {
             res_auth: chunk[0],
             opt: chunk[1],

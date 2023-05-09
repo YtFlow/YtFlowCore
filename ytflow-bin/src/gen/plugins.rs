@@ -259,6 +259,8 @@ impl PluginType {
                 }),
                 PluginType::VMessClient => cbor!({
                     "user_id" => "b831381d-6324-4d53-ad4f-8cda48b30811",
+                    "alter_id" => 0,
+                    "security" => "auto",
                     "tcp_next" => name.clone() + "-redirect.udp",
                 }),
                 PluginType::HttpObfsClient => cbor!({

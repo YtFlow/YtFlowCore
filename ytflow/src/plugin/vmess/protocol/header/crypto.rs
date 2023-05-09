@@ -31,9 +31,7 @@ pub trait ResponseHeaderDec {
 pub fn derive_cmd_key(user_id: &[u8; USER_ID_LEN]) -> [u8; CMD_KEY_LEN] {
     let mut cmd_key = *b"????????????????c48619fe-8f02-49e0-b9e9-edf763e17e21";
     cmd_key[..USER_ID_LEN].copy_from_slice(user_id);
-    let mut cmd_key_hash = Md5::new();
-    cmd_key_hash.update(cmd_key);
-    let mut cmd_key = [0; CMD_KEY_LEN];
-    cmd_key[..].copy_from_slice(&cmd_key_hash.finalize()[..]);
-    cmd_key
+    let mut cmd_key_out = [0; CMD_KEY_LEN];
+    cmd_key_out[..].copy_from_slice(&Md5::digest(&cmd_key)[..]);
+    cmd_key_out
 }

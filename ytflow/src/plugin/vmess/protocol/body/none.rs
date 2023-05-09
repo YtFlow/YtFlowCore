@@ -1,13 +1,12 @@
-use super::super::header::{HeaderDecryptResult, ResponseHeaderDec};
-use super::{RxCrypto, SizeCrypto, TxCrypto};
+use super::super::header::{DATA_IV_LEN, DATA_KEY_LEN, VMESS_HEADER_ENC_NONE};
+use super::{BodyCryptoFactory, RxCrypto, SizeCrypto, TxCrypto};
 use crate::flow::{FlowError, FlowResult};
 
 pub struct NoneClientCryptoTx<S> {
     size_crypto: S,
 }
 
-pub struct NoneClientCryptoRx<S, D> {
-    header_dec: Option<D>,
+pub struct NoneClientCryptoRx<S> {
     size_crypto: S,
     expected_chunk_len: usize,
 }
@@ -18,10 +17,9 @@ impl<S> NoneClientCryptoTx<S> {
     }
 }
 
-impl<S, D> NoneClientCryptoRx<S, D> {
-    pub fn new(size_crypto: S, header_dec: D) -> Self {
+impl<S> NoneClientCryptoRx<S> {
+    pub fn new(size_crypto: S) -> Self {
         Self {
-            header_dec: Some(header_dec),
             size_crypto,
             expected_chunk_len: 0,
         }
@@ -41,37 +39,23 @@ where
     }
 }
 
-impl<S: SizeCrypto, D: ResponseHeaderDec> RxCrypto for NoneClientCryptoRx<S, D>
+impl<S: SizeCrypto> RxCrypto for NoneClientCryptoRx<S>
 where
     [(); S::LEN]:,
 {
     fn expected_next_size_len(&mut self) -> usize {
-        match &mut self.header_dec {
-            Some(header_dec) => match header_dec.decrypt_res(&mut []) {
-                HeaderDecryptResult::Incomplete { total_required } => S::LEN + total_required,
-                _ => unreachable!("header_dec should return Incomplete with empty data"),
-            },
-            None => S::LEN,
-        }
+        S::LEN
     }
 
-    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<Option<usize>> {
-        let offset = match self.header_dec.take() {
-            Some(mut dec) => match dec.decrypt_res(size_bytes) {
-                HeaderDecryptResult::Invalid => return Err(FlowError::UnexpectedData),
-                HeaderDecryptResult::Incomplete { .. } => {
-                    self.header_dec = Some(dec);
-                    return Ok(None);
-                }
-                HeaderDecryptResult::Complete { res: _, len } => len,
-            },
-            None => 0,
-        };
+    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<usize> {
         let len = self
             .size_crypto
-            .decode_size(&mut size_bytes[offset..].try_into().unwrap())?;
+            .decode_size(&mut size_bytes[..].try_into().unwrap())?;
+        if len == 0 {
+            return Err(FlowError::Eof);
+        }
         self.expected_chunk_len = len;
-        Ok(Some(len))
+        Ok(len)
     }
 
     fn expected_next_chunk_len(&mut self) -> usize {
@@ -80,5 +64,40 @@ where
 
     fn on_chunk<'c>(&mut self, chunk: &'c mut [u8]) -> FlowResult<&'c mut [u8]> {
         Ok(chunk)
+    }
+}
+
+pub struct NoneCryptoFactory {}
+
+impl BodyCryptoFactory for NoneCryptoFactory {
+    type Rx<S: SizeCrypto> = NoneClientCryptoRx<S>
+    where
+        [(); S::LEN]:,;
+    type Tx<S: SizeCrypto> = NoneClientCryptoTx<S>
+    where
+        [(); S::LEN]:,;
+    const HEADER_SEC_TYPE: u8 = VMESS_HEADER_ENC_NONE;
+
+    fn new_tx<S: SizeCrypto>(
+        &self,
+        _data_key: &[u8; DATA_KEY_LEN],
+        _data_iv: &[u8; DATA_IV_LEN],
+        size_crypto: S,
+    ) -> Self::Tx<S>
+    where
+        [(); S::LEN]:,
+    {
+        NoneClientCryptoTx::new(size_crypto)
+    }
+    fn new_rx<S: SizeCrypto>(
+        &self,
+        _res_key: &[u8; DATA_KEY_LEN],
+        _res_iv: &[u8; DATA_IV_LEN],
+        size_crypto: S,
+    ) -> Self::Rx<S>
+    where
+        [(); S::LEN]:,
+    {
+        NoneClientCryptoRx::new(size_crypto)
     }
 }

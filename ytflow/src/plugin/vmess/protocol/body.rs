@@ -1,8 +1,16 @@
+mod aead;
+mod aes_cfb;
+mod factory;
 mod none;
 mod shake;
 
 use crate::flow::FlowResult;
-pub use none::{NoneClientCryptoRx, NoneClientCryptoTx};
+pub use aead::{
+    AeadClientCryptoRx, AeadClientCryptoTx, AesGcmCryptoFactory, ChachaPolyCryptoFactory,
+};
+pub use aes_cfb::{AesCfbClientCryptoRx, AesCfbClientCryptoTx, AesCfbCryptoFactory};
+pub use factory::BodyCryptoFactory;
+pub use none::{NoneClientCryptoRx, NoneClientCryptoTx, NoneCryptoFactory};
 pub use shake::ShakeSizeCrypto;
 
 pub trait SizeCrypto {
@@ -12,8 +20,9 @@ pub trait SizeCrypto {
 }
 
 pub trait RxCrypto {
+    fn peek_header_ciphertext(&mut self, _header_ciphertext: &mut [u8]) {}
     fn expected_next_size_len(&mut self) -> usize;
-    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<Option<usize>>;
+    fn on_size(&mut self, size_bytes: &mut [u8]) -> FlowResult<usize>;
     fn expected_next_chunk_len(&mut self) -> usize;
     fn on_chunk<'c>(&mut self, chunk: &'c mut [u8]) -> FlowResult<&'c mut [u8]>;
 }

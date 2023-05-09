@@ -4,36 +4,65 @@ use std::task::{ready, Context, Poll};
 use crate::flow::*;
 
 use super::protocol::body::{RxCrypto, TxCrypto};
+use super::protocol::header::{HeaderDecryptResult, ResponseHeaderDec};
 
-pub(super) struct VMessClientStream<RxC, TxC> {
+pub(super) struct VMessClientStream<D, RxC, TxC> {
     pub(super) lower: Box<dyn Stream>,
     pub(super) reader: StreamReader,
+    pub(super) header_dec: Option<D>,
     pub(super) rx_crypto: RxC,
     pub(super) rx_buf: Option<Buffer>,
     pub(super) tx_crypto: TxC,
     pub(super) tx_chunks: (usize, usize, usize),
 }
 
-impl<RxC: RxCrypto + Send + Sync, TxC: TxCrypto + Send + Sync> Stream
-    for VMessClientStream<RxC, TxC>
+impl<
+        D: ResponseHeaderDec + Send + Sync,
+        RxC: RxCrypto + Send + Sync,
+        TxC: TxCrypto + Send + Sync,
+    > Stream for VMessClientStream<D, RxC, TxC>
 {
     fn poll_request_size(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
-        let size = loop {
-            let expected = self.rx_crypto.expected_next_size_len();
-            if let Some(size) =
-                ready!(self
-                    .reader
-                    .poll_peek_at_least(cx, &mut *self.lower, expected, |buf| {
-                        self.rx_crypto.on_size(&mut buf[..expected])
-                    }))??
-            {
-                self.reader.advance(expected);
-                break size;
+        if let Some(header_dec) = self.header_dec.as_mut() {
+            let mut expected = 1;
+            loop {
+                let read_head_res = ready!(self.reader.poll_peek_at_least(
+                    cx,
+                    &mut *self.lower,
+                    expected,
+                    |buf| {
+                        let res = header_dec.decrypt_res(&mut buf[..]);
+                        if let HeaderDecryptResult::Complete { res: _, len } = res {
+                            // Trick for aes-cfb body to continue from aes-cfb header dec state.
+                            // AesCfb header dec should not mutate data inplace.
+                            // For AEAD header, we don't care.
+                            self.rx_crypto.peek_header_ciphertext(&mut buf[..len]);
+                        }
+                        res
+                    }
+                ))?;
+                match read_head_res {
+                    HeaderDecryptResult::Invalid => {
+                        return Poll::Ready(Err(FlowError::UnexpectedData))
+                    }
+                    HeaderDecryptResult::Incomplete { total_required } => expected = total_required,
+                    HeaderDecryptResult::Complete { res: _, len } => {
+                        // TODO: res?
+                        self.reader.advance(len);
+                        self.header_dec = None;
+                        break;
+                    }
+                }
             }
-        };
+        }
+        let expected = self.rx_crypto.expected_next_size_len();
+        let size = ready!(self
+            .reader
+            .poll_read_exact(cx, &mut *self.lower, expected, |buf| {
+                self.rx_crypto.on_size(buf)
+            }))??;
         Poll::Ready(if size == 0 {
-            // Somehow it appears once with server: v2ray-core v5.4.1 win x64
-            // Not sure how to reproduce
+            // Required by the protocol
             Err(FlowError::Eof)
         } else {
             Ok(SizeHint::AtLeast(size))

@@ -7,10 +7,9 @@ use getrandom::getrandom;
 use sha2::{Digest, Sha256};
 
 use super::super::USER_ID_LEN;
-use super::{derive_cmd_key, hmac_hash};
 use super::{
-    HeaderDecryptResult, RequestHeader, RequestHeaderEnc, ResponseHeader, ResponseHeaderDec,
-    HEADER_IV_LEN, HEADER_KEY_LEN,
+    derive_cmd_key, hmac_hash, HeaderDecryptResult, RequestHeader, RequestHeaderEnc,
+    ResponseHeader, ResponseHeaderDec, HEADER_IV_LEN, HEADER_KEY_LEN,
 };
 
 pub(super) const AUTH_ID_LEN: usize = 16;
@@ -104,18 +103,14 @@ impl RequestHeaderEnc for AeadRequestEnc {
 
     fn derive_res_iv(&self, header: &RequestHeader) -> [u8; HEADER_IV_LEN] {
         let mut res_iv = [0; HEADER_IV_LEN];
-        let mut res_iv_hash = Sha256::new();
-        res_iv_hash.update(&header.data_iv);
-        let res = res_iv_hash.finalize();
+        let res = Sha256::digest(&header.data_iv);
         res_iv[..].copy_from_slice(&res[..HEADER_IV_LEN]);
         res_iv
     }
 
     fn derive_res_key(&self, header: &RequestHeader) -> [u8; HEADER_KEY_LEN] {
         let mut res_key = [0; HEADER_KEY_LEN];
-        let mut res_key_hash = Sha256::new();
-        res_key_hash.update(&header.data_key);
-        let res = res_key_hash.finalize();
+        let res = Sha256::digest(&header.data_key);
         res_key[..].copy_from_slice(&res[..HEADER_KEY_LEN]);
         res_key
     }
