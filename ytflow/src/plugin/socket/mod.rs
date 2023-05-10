@@ -5,7 +5,7 @@ use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
 use std::sync::Weak;
 use std::time::Duration;
 
-use futures::future::{select, Either, FutureExt};
+use futures::future::{select, Either, FusedFuture, FutureExt};
 use itertools::Itertools;
 use socket2::TcpKeepalive;
 use tokio::sync::mpsc::Sender;
@@ -75,6 +75,16 @@ async fn resolve_dual_stack_ips(domain: String, resolver: &dyn Resolver, ip_tx: 
                     }
                 }
             }
+            if v4_task.is_terminated() {
+                return;
+            }
+            if let Ok(ips) = v4_task.await {
+                for ip in ips {
+                    if ip_tx.send(ip.into()).await.is_err() {
+                        return;
+                    }
+                }
+            }
         }
         Either::Right((Ok(mut ipv4), mut v6_task)) => {
             // Not using tokio::time::timeout because Timeout is !Unpin,  so we cannot get back the
@@ -94,7 +104,7 @@ async fn resolve_dual_stack_ips(domain: String, resolver: &dyn Resolver, ip_tx: 
                     }
                 }
                 _ = timeout_task => {
-                     ipv4.reverse();
+                    ipv4.reverse();
                     'outer: while let Some(ip) = ipv4.pop() {
                         select! {
                             r = ip_tx.send(ip.into()) => {
@@ -112,6 +122,16 @@ async fn resolve_dual_stack_ips(domain: String, resolver: &dyn Resolver, ip_tx: 
                                     }
                                 }
                                 break 'outer;
+                            }
+                        }
+                    }
+                    if v6_task.is_terminated() {
+                        return;
+                    }
+                    if let Ok(ips) = v6_task.await {
+                        for ip in ips {
+                            if ip_tx.send(ip.into()).await.is_err() {
+                                return;
                             }
                         }
                     }
