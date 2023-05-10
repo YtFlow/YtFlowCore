@@ -29,6 +29,12 @@ pub enum ProxyType {
     ShadowsocksTlsObfs,
     #[strum(serialize = "Trojan (via TLS)")]
     TrojanTls,
+    #[strum(serialize = "VMess")]
+    VMess,
+    #[strum(serialize = "VMess + TLS")]
+    VMessTls,
+    #[strum(serialize = "VMess + WebSocket (via HTTP/1.1) + TLS")]
+    VMessWsTls,
     #[strum(serialize = "HTTP (CONNECT)")]
     HttpConnect,
     #[strum(serialize = "SOCKS5")]
@@ -85,6 +91,20 @@ impl ProxyType {
                     .unwrap(),
                 )),
             },
+            ProxyType::VMess | ProxyType::VMessTls | ProxyType::VMessWsTls => Plugin {
+                name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
+                plugin: "vmess-client".into(),
+                plugin_version: 0,
+                param: ByteBuf::from(serialize_cbor(
+                    cbor!({
+                        "user_id" => "b831381d-6324-4d53-ad4f-8cda48b30811",
+                        "alter_id" => 0,
+                        "security" => "auto",
+                        "tcp_next" => tcp_next,
+                    })
+                    .unwrap(),
+                )),
+            },
             ProxyType::HttpConnect => Plugin {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "http-proxy-client".into(),
@@ -137,17 +157,43 @@ impl ProxyType {
                     .unwrap(),
                 )),
             }),
+            ProxyType::VMessWsTls => Some(Plugin {
+                name: PLUGIN_NAME_OBFS.into(),
+                plugin: "ws-client".into(),
+                plugin_version: 0,
+                param: ByteBuf::from(serialize_cbor(
+                    cbor!({
+                        "host" => "windowsupdate.microsoft.com",
+                        "path" => "/",
+                        "next" => tcp_next,
+                    })
+                    .unwrap(),
+                )),
+            }),
             _ => None,
         }
     }
     fn gen_tls(self, tcp_next: CborValue) -> Option<Plugin> {
         match self {
-            ProxyType::TrojanTls => Some(Plugin {
+            ProxyType::TrojanTls | ProxyType::VMessTls => Some(Plugin {
                 name: PLUGIN_NAME_TLS.into(),
                 plugin: "tls-client".into(),
                 plugin_version: 0,
                 param: ByteBuf::from(serialize_cbor(
                     cbor!({
+                        "alpn" => ["h2", "http/1.1"],
+                        "next" => tcp_next,
+                    })
+                    .unwrap(),
+                )),
+            }),
+            ProxyType::VMessWsTls => Some(Plugin {
+                name: PLUGIN_NAME_TLS.into(),
+                plugin: "tls-client".into(),
+                plugin_version: 0,
+                param: ByteBuf::from(serialize_cbor(
+                    cbor!({
+                        "alpn" => ["http/1.1"],
                         "next" => tcp_next,
                     })
                     .unwrap(),
