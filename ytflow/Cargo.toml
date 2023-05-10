@@ -1,6 +1,6 @@
 [package]
 name = "ytflow"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["bdbai <bdbaiapp@163.com>"]
 edition = "2021"
 
