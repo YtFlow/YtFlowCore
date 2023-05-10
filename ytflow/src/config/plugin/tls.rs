@@ -8,6 +8,8 @@ use crate::plugin::tls;
 #[derive(Deserialize)]
 pub struct TlsFactory<'a> {
     sni: Option<&'a str>,
+    #[serde(borrow, default)]
+    alpn: Vec<&'a str>,
     #[serde(default)]
     skip_cert_check: bool,
     next: &'a str,
@@ -45,7 +47,12 @@ impl<'de> Factory for TlsFactory<'de> {
                 }
             };
 
-            tls::SslStreamFactory::new(next, self.skip_cert_check, self.sni.map(|s| s.to_string()))
+            tls::SslStreamFactory::new(
+                next,
+                std::mem::take(&mut self.alpn),
+                self.skip_cert_check,
+                self.sni.map(|s| s.to_string()),
+            )
         });
         set.fully_constructed
             .stream_outbounds

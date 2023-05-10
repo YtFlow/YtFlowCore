@@ -19,12 +19,24 @@ pub struct SslStreamFactory {
 impl SslStreamFactory {
     pub fn new(
         next: Weak<dyn StreamOutboundFactory>,
+        alpn: Vec<&str>,
         skip_cert_check: bool,
         sni: Option<String>,
     ) -> Self {
-        // TODO: sni, alpn, ...
+        let alpn = {
+            let mut alpn_buf = Vec::with_capacity(alpn.iter().map(|a| a.len() + 1).sum());
+            for alpn in alpn {
+                let len = alpn.len().min(255);
+                alpn_buf.push(len as u8);
+                alpn_buf.extend_from_slice(&alpn.as_bytes()[..len]);
+            }
+            alpn_buf
+        };
         let mut builder = ssl::SslConnector::builder(ssl::SslMethod::tls())
             .expect("Failed to create SSL Context builder");
+        if !alpn.is_empty() {
+            builder.set_alpn_protos(&alpn).expect("Failed to set ALPN");
+        }
         if skip_cert_check {
             builder.set_verify_callback(openssl::ssl::SslVerifyMode::NONE, |_, _| true);
         }

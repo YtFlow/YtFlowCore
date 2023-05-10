@@ -252,6 +252,7 @@ impl PluginType {
                     "pass" => Bytes::new(b""),
                 }),
                 PluginType::TlsClient => cbor!({
+                    "alpn" => ["http/1.1"],
                     "sni" => "remove.for.auto.sni.detection.com",
                     "next" => name.clone() + "-redirect.tls",
                 }),
