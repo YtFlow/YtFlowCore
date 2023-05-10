@@ -1,19 +1,59 @@
+use std::future::Future;
 use std::num::NonZeroUsize;
+use std::pin::Pin;
 use std::task::{ready, Context, Poll};
+
+use tokio::sync::oneshot;
 
 use crate::flow::*;
 
 use super::protocol::body::{RxCrypto, TxCrypto};
 use super::protocol::header::{HeaderDecryptResult, ResponseHeaderDec};
 
+static COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+enum TxCloseState {
+    FlushingLastChunk,
+    AwaitingRxClose,
+    ClosingLower,
+}
+
 pub(super) struct VMessClientStream<D, RxC, TxC> {
-    pub(super) lower: Box<dyn Stream>,
-    pub(super) reader: StreamReader,
-    pub(super) header_dec: Option<D>,
-    pub(super) rx_crypto: RxC,
-    pub(super) rx_buf: Option<Buffer>,
-    pub(super) tx_crypto: TxC,
-    pub(super) tx_chunks: (usize, usize, usize),
+    lower: Box<dyn Stream>,
+    reader: StreamReader,
+    header_dec: Option<D>,
+    rx_crypto: RxC,
+    rx_buf: Option<Buffer>,
+    rx_close_chan_tx: Option<oneshot::Sender<()>>,
+    rx_close_chan_rx: Option<oneshot::Receiver<()>>,
+    tx_crypto: TxC,
+    tx_chunks: (usize, usize, usize),
+    tx_close_state: TxCloseState,
+}
+
+impl<D, RxC, TxC> VMessClientStream<D, RxC, TxC> {
+    pub fn new(
+        stream: Box<dyn Stream>,
+        reader: StreamReader,
+        header_dec: D,
+        rx_crypto: RxC,
+        tx_crypto: TxC,
+    ) -> Self {
+        let cnt = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        println!("vmess cnt {}", cnt + 1);
+        Self {
+            lower: stream,
+            reader,
+            header_dec: Some(header_dec),
+            rx_crypto,
+            rx_buf: None,
+            rx_close_chan_rx: None,
+            rx_close_chan_tx: None,
+            tx_crypto,
+            tx_chunks: Default::default(),
+            tx_close_state: TxCloseState::FlushingLastChunk,
+        }
+    }
 }
 
 impl<
@@ -50,22 +90,29 @@ impl<
                         // TODO: res?
                         self.reader.advance(len);
                         self.header_dec = None;
+                        let (tx, rx) = oneshot::channel();
+                        self.rx_close_chan_tx = Some(tx);
+                        self.rx_close_chan_rx = Some(rx);
                         break;
                     }
                 }
             }
         }
         let expected = self.rx_crypto.expected_next_size_len();
-        let size = ready!(self
+        let size_res = ready!(self
             .reader
             .poll_read_exact(cx, &mut *self.lower, expected, |buf| {
                 self.rx_crypto.on_size(buf)
-            }))??;
-        Poll::Ready(if size == 0 {
+            }))
+        .flatten();
+        if let Err(_) | Ok(0) = &size_res {
+            self.rx_close_chan_tx = None;
+        }
+        Poll::Ready(match size_res {
             // Required by the protocol
-            Err(FlowError::Eof)
-        } else {
-            Ok(SizeHint::AtLeast(size))
+            Ok(0) => Err(FlowError::Eof),
+            Ok(size) => Ok(SizeHint::AtLeast(size)),
+            Err(e) => Err(e),
         })
     }
 
@@ -95,6 +142,7 @@ impl<
         .flatten();
         let rx_buf = rx_buf_opt.take().unwrap();
         if let Err(e) = res {
+            self.rx_close_chan_tx = None;
             return Poll::Ready(Err((rx_buf, e)));
         }
         Poll::Ready(Ok(rx_buf))
@@ -118,6 +166,7 @@ impl<
     }
 
     fn commit_tx_buffer(&mut self, mut buffer: Buffer) -> FlowResult<()> {
+        // buffer may have zero length. See `poll_close_tx`.
         let (offset, pre_overhead_len, post_overhead_len) = self.tx_chunks;
         let payload_len = buffer.len() - pre_overhead_len - offset;
         buffer.resize(
@@ -136,6 +185,25 @@ impl<
     }
 
     fn poll_close_tx(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<()>> {
-        self.lower.poll_close_tx(cx)
+        // If `lower` is a WebSocket stream which does not support half close, closing it immediately
+        // will cause rx to terminate prematurely even with unsent data.
+        loop {
+            match self.tx_close_state {
+                TxCloseState::FlushingLastChunk => {
+                    // As required by the protocol, the last chunk with size 0 inside indicates Eof.
+                    ready!(self.lower.poll_flush_tx(cx))?;
+                    self.tx_close_state = TxCloseState::AwaitingRxClose;
+                }
+                TxCloseState::AwaitingRxClose => {
+                    let Some(close_rx) = &mut self.rx_close_chan_rx else {
+                        self.tx_close_state = TxCloseState::ClosingLower;
+                        continue;
+                    };
+                    let _ = ready!(Pin::new(close_rx).poll(cx)).ok();
+                    self.tx_close_state = TxCloseState::ClosingLower;
+                }
+                TxCloseState::ClosingLower => break self.lower.poll_close_tx(cx),
+            }
+        }
     }
 }

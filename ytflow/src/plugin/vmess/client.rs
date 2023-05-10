@@ -110,15 +110,9 @@ where
     };
 
     let reader = StreamReader::new(4096, initial_res);
-    Ok(Box::new(VMessClientStream {
-        lower: stream,
-        reader,
-        header_dec: Some(header_dec),
-        rx_crypto,
-        rx_buf: None,
-        tx_crypto,
-        tx_chunks: Default::default(),
-    }))
+    Ok(Box::new(VMessClientStream::new(
+        stream, reader, header_dec, rx_crypto, tx_crypto,
+    )))
 }
 
 impl<'a, RE: RequestHeaderEnc> StreamCreator<'a, RE>
