@@ -80,6 +80,7 @@ impl AsyncWrite for CompatStream {
         let mut tx_buf = ready!(inner.poll_tx_buffer(cx, len)).map_err(convert_error)?;
         tx_buf.extend_from_slice(buf);
         inner.commit_tx_buffer(tx_buf).map_err(convert_error)?;
+        let _ = inner.poll_flush_tx(cx);
         Poll::Ready(Ok(len.get()))
     }
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {

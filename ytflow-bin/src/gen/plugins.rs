@@ -120,6 +120,8 @@ pub enum PluginType {
         detailed_message = "simple-obfs TLS client."
     )]
     TlsObfsClient,
+    #[strum(props(prefix = "ws-client"), detailed_message = "WebSocket client.")]
+    WsClient,
     #[strum(
         props(prefix = "redirect"),
         detailed_message = "Change the destination of connections or datagrams."
@@ -271,6 +273,12 @@ impl PluginType {
                 PluginType::TlsObfsClient => cbor!({
                     "host" => "windowsupdate.microsoft.com",
                     "next" => name.clone() + "-redirect.tcp",
+                }),
+                PluginType::WsClient => cbor!({
+                    "host" => "windowsupdate.microsoft.com",
+                    "path" => "/",
+                    "headers" => {},
+                    "next" => name.clone() + "-tls.tcp",
                 }),
                 PluginType::Redirect => cbor!({
                     "dest" => DestinationAddr {

@@ -42,6 +42,12 @@ impl HostName {
     }
 }
 
+impl ToString for DestinationAddr {
+    fn to_string(&self) -> String {
+        format!("{}:{}", self.host.to_string(), self.port)
+    }
+}
+
 impl From<SocketAddr> for DestinationAddr {
     fn from(socket: SocketAddr) -> Self {
         Self {

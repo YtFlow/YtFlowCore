@@ -100,6 +100,7 @@ pub(super) fn create_factory_from_plugin(
         "vmess-client" => box_result(VMessClientFactory::parse(plugin)),
         "http-obfs-client" => box_result(HttpObfsClientFactory::parse(plugin)),
         "tls-obfs-client" => box_result(TlsObfsClientFactory::parse(plugin)),
+        "ws-client" => box_result(WsClientFactory::parse(plugin)),
         "redirect" => box_result(RedirectFactory::parse(plugin)),
         "socket" => box_result(SocketFactory::parse(plugin)),
         "netif" => box_result(NetifFactory::parse(plugin)),

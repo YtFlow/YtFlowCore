@@ -23,6 +23,7 @@ mod tls_obfs;
 mod trojan;
 mod vmess;
 mod vpntun;
+mod ws;
 
 pub use dns_server::*;
 pub use dyn_outbound::*;
@@ -49,6 +50,7 @@ pub use tls_obfs::*;
 pub use trojan::*;
 pub use vmess::*;
 pub use vpntun::*;
+pub use ws::*;
 
 use crate::data::PluginId;
 

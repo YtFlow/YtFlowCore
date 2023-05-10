@@ -10,8 +10,6 @@ use crate::flow::*;
 use super::protocol::body::{RxCrypto, TxCrypto};
 use super::protocol::header::{HeaderDecryptResult, ResponseHeaderDec};
 
-static COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-
 enum TxCloseState {
     FlushingLastChunk,
     AwaitingRxClose,
@@ -39,8 +37,6 @@ impl<D, RxC, TxC> VMessClientStream<D, RxC, TxC> {
         rx_crypto: RxC,
         tx_crypto: TxC,
     ) -> Self {
-        let cnt = COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        println!("vmess cnt {}", cnt + 1);
         Self {
             lower: stream,
             reader,

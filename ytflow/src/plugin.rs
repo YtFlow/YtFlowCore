@@ -21,3 +21,4 @@ pub mod system_resolver;
 pub mod tls;
 pub mod trojan;
 pub mod vmess;
+pub mod ws;

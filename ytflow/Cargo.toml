@@ -34,6 +34,7 @@ libc = "0.2"
 socket2 = { version = "0.4", features = ["all"] }
 
 # Protocol
+http = "0.2"
 httparse = "1"
 base64 = "0.21"
 getrandom = { version = "0.2", default-features = false, features = ["std"] }
@@ -43,6 +44,9 @@ trust-dns-resolver = { version = "0.20", default-features = false, features = [
 # Note: UWP build is only supported since OpenSSL 3.0
 openssl = "0.10"
 tokio-openssl = "0.6"
+tokio-tungstenite = { version = "0.18", default-features = false, features = [
+    "handshake",
+] }
 uuid = { version = "1", features = ["serde"] }
 
 # Crypto
