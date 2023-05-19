@@ -5,6 +5,7 @@ pub mod interop;
 pub mod runtime;
 
 pub mod exports {
+    pub use super::ytflow_get_version;
     use super::*;
     pub use config::ytflow_plugin_verify;
     #[cfg(unix)]
@@ -23,4 +24,23 @@ pub mod exports {
     pub use error::ytflow_result_free;
     pub use interop::ytflow_buffer_free;
     pub use runtime::{ytflow_runtime_free, ytflow_runtime_new};
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_get_version() -> *const std::os::raw::c_char {
+    use std::ffi::CString;
+    use std::os::raw::c_char;
+    use std::ptr::null_mut;
+    use std::sync::atomic::{AtomicPtr, Ordering};
+    static VERSION_CPTR: AtomicPtr<c_char> = AtomicPtr::new(null_mut());
+    let cptr = VERSION_CPTR.load(Ordering::Relaxed);
+    if !cptr.is_null() {
+        return cptr as _;
+    }
+    // Let it leak
+    VERSION_CPTR.store(
+        CString::new(env!("CARGO_PKG_VERSION")).unwrap().into_raw(),
+        Ordering::Relaxed,
+    );
+    ytflow_get_version()
 }

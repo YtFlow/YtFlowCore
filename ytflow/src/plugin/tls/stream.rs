@@ -89,8 +89,7 @@ impl StreamOutboundFactory for SslStreamFactory {
             }
         })
         .await
-        .map_err(|e| {
-            crate::log::debug_log(format!("{}", e));
+        .map_err(|_| {
             // TODO: log error
             FlowError::UnexpectedData
         })?;

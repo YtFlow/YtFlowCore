@@ -62,7 +62,6 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
                         udp_packet.payload_mut()[..buf.len()].copy_from_slice(&buf);
                         udp_packet.fill_checksum(&src_ip.into(), &(*dst_v4).into());
                         ip_packet.fill_checksum();
-                        debug_log(format!("Sending v4 udp from {:?} to {:?}", src_ip, dst_v4));
                         Ok(())
                     },
                 );
@@ -87,7 +86,6 @@ impl MultiplexedDatagramSession for IpStackDatagramSession {
                         udp_packet.set_len(8 + payload_len);
                         udp_packet.payload_mut()[..buf.len()].copy_from_slice(&buf);
                         udp_packet.fill_checksum(&src_ip.into(), &(*dst_v6).into());
-                        debug_log(format!("Sending v6 udp from {:?} to {:?}", src_ip, dst_v6));
                         Ok(())
                     },
                 );
