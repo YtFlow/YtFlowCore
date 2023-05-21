@@ -86,7 +86,14 @@ impl DatagramSessionHandler for MapBackDatagramSessionHandler {
         };
         self.back_mapper
             .map_back_host(&mut context.remote_peer.host);
-        next.on_session(session, context)
+        next.on_session(
+            Box::new(MapBackDatagramSession {
+                back_mapper: self.back_mapper.clone(),
+                lower: session,
+                local_forward_mapping: Default::default(),
+            }),
+            context,
+        )
     }
 }
 

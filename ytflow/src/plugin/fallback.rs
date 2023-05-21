@@ -72,6 +72,7 @@ impl StreamHandler for FallbackHandler {
         let context_clone = Box::new(FlowContext {
             local_peer: context.local_peer,
             remote_peer: context.remote_peer.clone(),
+            af_sensitive: context.af_sensitive,
         });
         let next = match self.next.upgrade() {
             Some(n) => n,

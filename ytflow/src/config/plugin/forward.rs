@@ -49,6 +49,7 @@ impl<'de> ForwardFactory<'de> {
 
 impl<'de> Factory for ForwardFactory<'de> {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        let stat = forward::StatHandle::default();
         let tcp_factory = Arc::new_cyclic(|weak| {
             set.stream_handlers
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
@@ -63,6 +64,7 @@ impl<'de> Factory for ForwardFactory<'de> {
             forward::StreamForwardHandler {
                 outbound: tcp_next,
                 request_timeout: self.request_timeout,
+                stat: stat.clone(),
             }
         });
         let udp_factory = Arc::new_cyclic(|weak| {
@@ -76,14 +78,22 @@ impl<'de> Factory for ForwardFactory<'de> {
                         Arc::downgrade(&(Arc::new(Null)))
                     }
                 };
-            forward::DatagramForwardHandler { outbound: udp_next }
+            forward::DatagramForwardHandler {
+                outbound: udp_next,
+                stat: stat.clone(),
+            }
         });
         set.fully_constructed
             .stream_handlers
             .insert(plugin_name.clone() + ".tcp", tcp_factory);
         set.fully_constructed
             .datagram_handlers
-            .insert(plugin_name + ".udp", udp_factory);
+            .insert(plugin_name.clone() + ".udp", udp_factory);
+        set.control_hub.create_plugin_control(
+            plugin_name,
+            "forward",
+            forward::Responder::new(stat),
+        );
         Ok(())
     }
 }

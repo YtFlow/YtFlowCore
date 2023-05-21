@@ -122,19 +122,23 @@ impl StreamOutboundFactory for NetifSelector {
 impl DatagramSessionFactory for NetifSelector {
     async fn bind(&self, context: Box<FlowContext>) -> FlowResult<Box<dyn DatagramSession>> {
         let preference = self.selection.load().1;
-        let netif = self.cached_netif.load();
+        let netif = self.cached_netif.load_full();
         crate::plugin::socket::dial_datagram_session(
             &context,
             self.me.upgrade().unwrap(),
             // A workaround for E0308 "one type is more general than the other"
             // https://github.com/rust-lang/rust/issues/70263
-            Some(|s: &mut _| sys::bind_socket_v4(&netif, s)).filter(|_| {
+            Some({
+                let netif = netif.clone();
+                move |s: &mut _| sys::bind_socket_v4(&netif, s)
+            })
+            .filter(|_| {
                 matches!(
                     preference,
                     FamilyPreference::Both | FamilyPreference::Ipv4Only,
                 )
             }),
-            Some(|s: &mut _| sys::bind_socket_v6(&netif, s)).filter(|_| {
+            Some(move |s: &mut _| sys::bind_socket_v6(&netif, s)).filter(|_| {
                 matches!(
                     preference,
                     FamilyPreference::Both | FamilyPreference::Ipv6Only,

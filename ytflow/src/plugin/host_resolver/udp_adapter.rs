@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::io;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, RwLock, Weak};
 use std::task::{Context, Poll};
 
@@ -20,7 +21,10 @@ enum SessionState {
     Ready(Box<dyn DatagramSession>),
 }
 
-pub struct FlowDatagramSocket(Mutex<Option<(u32, SessionState)>>);
+pub struct FlowDatagramSocket {
+    session_handle: Mutex<Option<(u32, SessionState)>>,
+    flushing: AtomicBool,
+}
 
 #[async_trait]
 impl UdpSocket for FlowDatagramSocket {
@@ -29,7 +33,10 @@ impl UdpSocket for FlowDatagramSocket {
 
     /// UdpSocket
     async fn bind(_addr: SocketAddr) -> io::Result<Self> {
-        Ok(FlowDatagramSocket(Mutex::new(None)))
+        Ok(FlowDatagramSocket {
+            session_handle: Mutex::new(None),
+            flushing: AtomicBool::new(false),
+        })
     }
 
     /// Poll once Receive data from the socket and returns the number of bytes read and the address from
@@ -39,7 +46,7 @@ impl UdpSocket for FlowDatagramSocket {
         cx: &mut Context<'_>,
         buf: &mut [u8],
     ) -> Poll<io::Result<(usize, SocketAddr)>> {
-        let mut guard = self.0.lock().unwrap();
+        let mut guard = self.session_handle.lock().unwrap();
         let (index, session) = loop {
             match &mut *guard {
                 None => {
@@ -80,7 +87,7 @@ impl UdpSocket for FlowDatagramSocket {
         buf: &[u8],
         target: SocketAddr,
     ) -> Poll<io::Result<usize>> {
-        let mut guard = self.0.lock().unwrap();
+        let mut guard = self.session_handle.lock().unwrap();
         if let (None, SocketAddr::V4(addrv4)) = (&*guard, target) {
             let index = u32::from_ne_bytes(addrv4.ip().octets());
             let factories_guard = UDP_FACTORIES.read().unwrap();
@@ -110,6 +117,7 @@ impl UdpSocket for FlowDatagramSocket {
                                     host: HostName::Ip((*addrv4.ip()).into()),
                                     port: 53,
                                 },
+                                af_sensitive: false,
                             }))
                             .await
                     }
@@ -142,21 +150,32 @@ impl UdpSocket for FlowDatagramSocket {
             }
         };
         ready!(session.as_mut().poll_send_ready(cx));
-        session.as_mut().send_to(
-            DestinationAddr {
-                host: HostName::Ip(target.ip()),
-                port: target.port(),
-            },
-            buf.to_vec(),
-        );
-        Poll::Ready(Ok(buf.len()))
+        if self.flushing.load(Ordering::Relaxed) {
+            self.flushing.store(false, Ordering::Relaxed);
+            Poll::Ready(Ok(buf.len()))
+        } else {
+            session.as_mut().send_to(
+                DestinationAddr {
+                    host: HostName::Ip(target.ip()),
+                    port: target.port(),
+                },
+                buf.to_vec(),
+            );
+            match session.as_mut().poll_send_ready(cx) {
+                Poll::Ready(()) => Poll::Ready(Ok(buf.len())),
+                Poll::Pending => {
+                    self.flushing.store(true, Ordering::Relaxed);
+                    Poll::Pending
+                }
+            }
+        }
     }
 }
 
 impl Drop for FlowDatagramSocket {
     fn drop(&mut self) {
         let sess = {
-            let mut guard = self.0.lock().unwrap();
+            let mut guard = self.session_handle.lock().unwrap();
             match guard.take() {
                 Some((_, sess)) => sess,
                 None => return,

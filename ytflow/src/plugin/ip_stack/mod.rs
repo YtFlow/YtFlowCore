@@ -128,8 +128,8 @@ type IpStack = Arc<Mutex<IpStackInner>>;
 struct IpStackInner {
     netif: Interface<'static, Device>,
     // TODO: (router) also record src ip
-    tcp_sockets: BTreeMap<u16, SocketHandle>,
-    udp_sockets: BTreeMap<u16, Sender<(DestinationAddr, Buffer)>>,
+    tcp_sockets: BTreeMap<SocketAddr, SocketHandle>,
+    udp_sockets: BTreeMap<SocketAddr, Sender<(DestinationAddr, Buffer)>>,
     tcp_next: Weak<dyn StreamHandler>,
     udp_next: Weak<dyn DatagramSessionHandler>,
 }
@@ -203,9 +203,8 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                     let (src_port, dst_port, is_syn) = (p.src_port(), p.dst_port(), p.syn());
                     process_tcp(
                         stack,
-                        smoltcp_addr_to_std(src_addr.into()),
+                        SocketAddr::new(smoltcp_addr_to_std(src_addr.into()), src_port),
                         dst_addr.into(),
-                        src_port,
                         dst_port,
                         is_syn,
                         ipv4_packet.into_inner(),
@@ -219,11 +218,9 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                     let (src_port, dst_port) = (p.src_port(), p.dst_port());
                     process_udp(
                         stack,
-                        smoltcp_addr_to_std(src_addr.into()),
+                        SocketAddr::new(smoltcp_addr_to_std(src_addr.into()), src_port),
                         dst_addr.into(),
-                        src_port,
                         dst_port,
-                        0,
                         p.payload_mut(),
                     );
                 }
@@ -236,7 +233,6 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                 Err(_) => return,
             };
             let (src_addr, dst_addr) = (ipv6_packet.src_addr(), ipv6_packet.dst_addr());
-            let flow_label = ipv6_packet.flow_label();
             match ipv6_packet.next_header() {
                 IpProtocol::Tcp => {
                     let p = match TcpPacket::new_checked(ipv6_packet.payload_mut()) {
@@ -246,9 +242,8 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                     let (src_port, dst_port, is_syn) = (p.src_port(), p.dst_port(), p.syn());
                     process_tcp(
                         stack,
-                        smoltcp_addr_to_std(src_addr.into()),
+                        SocketAddr::new(smoltcp_addr_to_std(src_addr.into()), src_port),
                         dst_addr.into(),
-                        src_port,
                         dst_port,
                         is_syn,
                         ipv6_packet.into_inner(),
@@ -262,11 +257,9 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                     let (src_port, dst_port) = (p.src_port(), p.dst_port());
                     process_udp(
                         stack,
-                        smoltcp_addr_to_std(src_addr.into()),
+                        SocketAddr::new(smoltcp_addr_to_std(src_addr.into()), src_port),
                         dst_addr.into(),
-                        src_port,
                         dst_port,
-                        flow_label,
                         p.payload_mut(),
                     );
                 }
@@ -279,9 +272,8 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
 
 fn process_tcp(
     stack: &IpStack,
-    src_addr: IpAddr,
+    src_addr: SocketAddr,
     dst_addr: smoltcp::wire::IpAddress,
-    src_port: u16,
     dst_port: u16,
     is_syn: bool,
     packet: Buffer,
@@ -298,7 +290,7 @@ fn process_tcp(
     dev.rx = Some(packet);
 
     let tcp_socket_count = tcp_sockets.len();
-    if let Entry::Vacant(vac) = tcp_sockets.entry(src_port) {
+    if let Entry::Vacant(vac) = tcp_sockets.entry(src_addr) {
         if !is_syn || tcp_socket_count >= 1 << 10 {
             return;
         }
@@ -324,11 +316,12 @@ fn process_tcp(
         let socket_handle = netif.add_socket(socket);
         vac.insert(socket_handle);
         let ctx = FlowContext {
-            local_peer: SocketAddr::new(src_addr, src_port),
+            local_peer: src_addr,
             remote_peer: DestinationAddr {
                 host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
                 port: dst_port,
             },
+            af_sensitive: false,
         };
         tokio::spawn({
             let stack = stack.clone();
@@ -337,7 +330,7 @@ fn process_tcp(
                     socket_entry: tcp_socket_entry::TcpSocketEntry {
                         socket_handle,
                         stack,
-                        local_port: src_port,
+                        local_endpoint: src_addr,
                         most_recent_scheduled_poll: Arc::new(AtomicI64::new(i64::MAX)),
                     },
                     rx_buf: None,
@@ -358,11 +351,9 @@ fn process_tcp(
 
 fn process_udp(
     stack: &IpStack,
-    src_addr: IpAddr,
+    src_addr: SocketAddr,
     dst_addr: smoltcp::wire::IpAddress,
-    src_port: u16,
     dst_port: u16,
-    flow_label: u32,
     payload: &mut [u8],
 ) {
     let mut guard = stack.lock().unwrap();
@@ -371,7 +362,7 @@ fn process_udp(
         udp_next,
         ..
     } = &mut *guard;
-    let tx = match udp_sockets.entry(src_port) {
+    let tx = match udp_sockets.entry(src_addr) {
         Entry::Occupied(ent) => ent.into_mut(),
         Entry::Vacant(vac) => {
             let next = match udp_next.upgrade() {
@@ -386,18 +377,17 @@ fn process_udp(
                         datagram::IpStackDatagramSession {
                             stack: stack_inner,
                             local_endpoint: src_addr.into(),
-                            local_port: src_port,
-                            flow_label,
                         },
                         rx.into_stream(),
                         120,
                     )),
                     Box::new(FlowContext {
-                        local_peer: SocketAddr::new(src_addr, src_port),
+                        local_peer: src_addr,
                         remote_peer: DestinationAddr {
                             host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
                             port: dst_port,
                         },
+                        af_sensitive: true,
                     }),
                 );
             });
@@ -411,7 +401,7 @@ fn process_udp(
         },
         payload.to_vec(),
     )) {
-        udp_sockets.remove(&src_port);
+        udp_sockets.remove(&src_addr);
     }
     // Drop packet when buffer is full
 }

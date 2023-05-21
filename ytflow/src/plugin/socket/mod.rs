@@ -1,5 +1,6 @@
 mod tcp;
 mod udp;
+mod udp_listener;
 
 use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
 use std::sync::Weak;
@@ -15,7 +16,8 @@ use tokio::{pin, select};
 use crate::flow::*;
 
 pub use tcp::{dial_stream, listen_tcp};
-pub use udp::{dial_datagram_session, listen_udp};
+pub use udp::dial_datagram_session;
+pub use udp_listener::listen_udp;
 
 // See https://datatracker.ietf.org/doc/html/rfc8305
 const CONN_ATTEMPT_DELAY: Duration = Duration::from_millis(250);

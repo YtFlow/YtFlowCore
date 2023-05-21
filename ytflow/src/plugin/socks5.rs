@@ -221,6 +221,7 @@ impl StreamHandler for Socks5Handler {
                     Err(_) => return,
                 };
             context.remote_peer = dest;
+            context.af_sensitive = false;
             next.on_stream(lower, initial_data, context)
         });
     }

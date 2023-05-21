@@ -3,7 +3,7 @@ use std::net::{IpAddr, SocketAddr};
 
 use serde::{de, Deserialize, Deserializer, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostName {
     DomainName(String),
     Ip(IpAddr),
@@ -61,6 +61,7 @@ impl From<SocketAddr> for DestinationAddr {
 pub struct FlowContext {
     pub local_peer: SocketAddr,
     pub remote_peer: DestinationAddr,
+    pub af_sensitive: bool,
 }
 
 impl<'de> Deserialize<'de> for HostName {

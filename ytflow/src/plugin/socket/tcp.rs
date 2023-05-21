@@ -46,6 +46,7 @@ pub fn listen_tcp(
                         Box::new(FlowContext {
                             local_peer: connector,
                             remote_peer,
+                            af_sensitive: false,
                         }),
                     )
                 }

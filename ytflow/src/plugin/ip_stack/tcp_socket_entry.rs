@@ -9,7 +9,7 @@ use super::*;
 
 pub(super) struct TcpSocketEntry {
     pub(super) socket_handle: SocketHandle,
-    pub(super) local_port: u16,
+    pub(super) local_endpoint: SocketAddr,
     pub(super) stack: Arc<Mutex<IpStackInner>>,
     pub(super) most_recent_scheduled_poll: Arc<AtomicI64>,
 }

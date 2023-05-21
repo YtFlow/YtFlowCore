@@ -171,10 +171,10 @@ impl Stream for IpStackStream {
 
 impl Drop for IpStackStream {
     fn drop(&mut self) {
-        let local_port = self.socket_entry.local_port;
+        let local_endpoint = self.socket_entry.local_endpoint;
         let mut socket_guard = self.socket_entry.lock();
         socket_guard.with_socket(|s| s.abort());
         socket_guard.poll();
-        socket_guard.guard.tcp_sockets.remove(&local_port);
+        socket_guard.guard.tcp_sockets.remove(&local_endpoint);
     }
 }
