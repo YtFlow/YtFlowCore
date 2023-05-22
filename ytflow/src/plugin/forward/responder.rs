@@ -23,7 +23,7 @@ impl Responder {
     pub fn new(stat: StatHandle) -> Self {
         Self {
             stat,
-            last_stat: Mutex::new(Default::default()),
+            last_stat: Mutex::new((StatInfo::default(), u32::MAX)),
         }
     }
 }
