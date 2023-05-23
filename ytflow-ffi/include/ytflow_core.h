@@ -32,6 +32,8 @@ struct FfiResult {
 
 extern "C" {
 
+const char *ytflow_get_version();
+
 FfiResult ytflow_plugin_verify(const char *plugin,
                                uint16_t plugin_version,
                                const uint8_t *param,
