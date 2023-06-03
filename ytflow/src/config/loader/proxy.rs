@@ -4,6 +4,7 @@ use crate::config::{
     factory::{AccessPointType, Demand, Descriptor},
     *,
 };
+use crate::resource::EmptyResourceRegistry;
 
 pub struct ProxyLoader<'f, I1, I2> {
     factories: HashMap<String, Box<dyn factory::Factory + 'f>>,
@@ -123,6 +124,7 @@ impl<'f, I1: IntoIterator<Item = &'f str> + 'f, I2: IntoIterator<Item = &'f str>
         let _enter_guard = rt_handle.enter();
         let mut partial_set = set::PartialPluginSet::new(
             factories.into_iter().map(|(k, v)| (k, Some(v))).collect(),
+            Box::new(EmptyResourceRegistry),
             db,
             set::PluginSet {
                 rt_handle: rt_handle_cloned,

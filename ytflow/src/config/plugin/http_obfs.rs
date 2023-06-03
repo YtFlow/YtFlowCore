@@ -33,6 +33,7 @@ impl<'de> HttpObfsServerFactory<'de> {
                 descriptor: name.to_string() + ".tcp",
                 r#type: AccessPointType::STREAM_HANDLER,
             }],
+            resources: vec![],
         })
     }
 }
@@ -52,6 +53,7 @@ impl<'de> HttpObfsClientFactory<'de> {
                 descriptor: name.to_string() + ".tcp",
                 r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
             }],
+            resources: vec![],
         })
     }
 }

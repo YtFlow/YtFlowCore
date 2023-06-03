@@ -43,6 +43,7 @@ impl<'de> ForwardFactory<'de> {
                     r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 },
             ],
+            resources: vec![],
         })
     }
 }

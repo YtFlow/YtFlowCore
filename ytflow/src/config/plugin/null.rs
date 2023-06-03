@@ -24,6 +24,7 @@ impl NullFactory {
                     r#type: AccessPointType::RESOLVER,
                 },
             ],
+            resources: vec![],
         })
     }
 }

@@ -55,6 +55,7 @@ impl<'de> DnsServerFactory<'de> {
             }))
             .collect(),
             factory: config,
+            resources: vec![],
         })
     }
 }

@@ -43,6 +43,7 @@ impl<'de> SocketFactory<'de> {
                 r#type: AccessPointType::STREAM_OUTBOUND_FACTORY
                     | AccessPointType::DATAGRAM_SESSION_FACTORY,
             }],
+            resources: vec![],
         })
     }
 }

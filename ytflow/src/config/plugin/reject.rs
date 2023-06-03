@@ -20,6 +20,7 @@ impl RejectFactory {
                     r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 },
             ],
+            resources: vec![],
         })
     }
 }

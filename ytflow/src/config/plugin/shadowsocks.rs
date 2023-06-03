@@ -81,6 +81,7 @@ impl<'de> ShadowsocksFactory<'de> {
                     r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                 },
             ],
+            resources: vec![],
         })
     }
 }

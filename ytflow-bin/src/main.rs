@@ -1,9 +1,12 @@
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use clap::{arg, value_parser, ArgMatches};
 use log::{error, info, warn};
+
+mod fs_resource_loader;
 
 fn main() -> Result<()> {
     let args = get_args();
@@ -15,6 +18,11 @@ fn get_args() -> ArgMatches {
     clap::command!()
         .arg(
             arg!(--"db-path" <PATH> "Path to the database file. If the file does not exist, an empty database will be created. If missing, an in-memory database will be used")
+                .value_parser(value_parser!(PathBuf))
+                .required(false)
+        )
+        .arg(
+            arg!(--"resource-root" <PATH> "Path to the root of the resource directory. Defaults to the current working directory")
                 .value_parser(value_parser!(PathBuf))
                 .required(false)
         )
@@ -43,7 +51,7 @@ fn init_log(args: &ArgMatches) {
         default_level
     };
 
-    let dispatch = fern::Dispatch::new()
+    let mut dispatch = fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(
                 "{}[{}][{}] {}",
@@ -56,12 +64,27 @@ fn init_log(args: &ArgMatches) {
         .level(level);
     #[cfg(not(debug_assertions))]
     if !is_verbose() {
-        let dispatch = dispatch.filter(|meta| meta.target().starts_with("ytflow_core"));
+        dispatch = dispatch.filter(|meta| meta.target().starts_with("ytflow_core"));
     }
+    // To keep the `mut` on `dispatch`
+    dispatch = dispatch.filter(|meta| !meta.target().starts_with("maxminddb::decoder"));
     dispatch
         .chain(std::io::stdout())
         .apply()
         .expect("Cannot set up logger");
+}
+
+fn init_resource_loader(args: &ArgMatches) -> Result<fs_resource_loader::FsResourceLoader> {
+    let resource_root = args
+        .get_one::<PathBuf>("resource-root")
+        .cloned()
+        .unwrap_or_else(|| {
+            std::env::current_dir().expect("Cannot get working directory for resources")
+        });
+    let loader = fs_resource_loader::FsResourceLoader::new(resource_root)
+        .context("Failed to initialize resource loader")?;
+    info!("Using resource root: {}", loader.root().display());
+    Ok(loader)
 }
 
 fn try_main(args: &ArgMatches) -> Result<()> {
@@ -120,7 +143,8 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         .map(From::from)
         .collect();
     use ytflow::config::loader::{ProfileLoadResult, ProfileLoader};
-    let (factory, load_errors) = ProfileLoader::parse_profile(entry_plugins.iter(), &all_plugins);
+    let (factory, required_resources, load_errors) =
+        ProfileLoader::parse_profile(entry_plugins.iter(), &all_plugins);
     if !load_errors.is_empty() {
         warn!(
             "{} errors detected from selected Profile:",
@@ -137,6 +161,29 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         .context("Error initializing Tokio runtime")?;
     let runtime_enter_guard = runtime.enter();
 
+    let resource_registry = if required_resources.is_empty() {
+        Box::new(ytflow::resource::EmptyResourceRegistry) as _
+    } else {
+        let resource_keys = required_resources
+            .iter()
+            .map(|r| r.key.to_string())
+            .collect::<BTreeSet<_>>();
+        let resource_len = resource_keys.len();
+        let mut loader =
+            ytflow::resource::DbFileResourceLoader::new_with_required_keys(resource_keys, &conn)
+                .context("Loading resource information from database")?;
+        info!("Loading {} resources...", resource_len);
+        runtime
+            .block_on(futures::future::join_all(
+                loader.load_required_files(&init_resource_loader(args)?),
+            ))
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()
+            .context("Loading resource from file system")?;
+        info!("Resources loaded");
+        Box::new(loader) as _
+    };
+
     if !args.get_flag("skip-grace") {
         info!("Starting YtFlow in 3 seconds...");
         std::thread::sleep(Duration::from_secs(3));
@@ -147,7 +194,7 @@ fn try_main(args: &ArgMatches) -> Result<()> {
         plugin_set,
         errors: load_errors,
         ..
-    } = factory.load_all(runtime.handle(), db.as_ref());
+    } = factory.load_all(runtime.handle(), resource_registry, db.as_ref());
     if !load_errors.is_empty() {
         warn!(
             "{} errors detected while loading plugins:",

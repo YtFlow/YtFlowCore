@@ -20,5 +20,6 @@ pub mod ffi;
 pub mod flow;
 pub mod log;
 pub mod plugin;
+pub mod resource;
 
 pub use tokio;

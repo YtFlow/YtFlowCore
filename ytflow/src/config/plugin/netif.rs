@@ -32,6 +32,7 @@ impl NetifFactory {
                     r#type: AccessPointType::RESOLVER,
                 },
             ],
+            resources: vec![],
         })
     }
 }

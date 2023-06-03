@@ -5,9 +5,10 @@ fn uwp_main() {
         Windows::Networking::HostName,
         Windows::Networking::Vpn::*,
         Windows::Networking::Sockets::{DatagramSocket, DatagramSocketInformation},
-        Windows::Storage::{ApplicationData, ApplicationDataContainer},
+        Windows::Storage::{ApplicationData, ApplicationDataContainer, StorageFolder},
         Windows::Storage::Streams::Buffer,
         Windows::Win32::System::WinRT::IBufferByteAccess,
+        Windows::Win32::System::WinRT::Storage::IStorageItemHandleAccess,
     );
 }
 

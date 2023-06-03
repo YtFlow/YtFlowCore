@@ -66,6 +66,7 @@ impl<'de> VMessClientFactory<'de> {
                 security,
                 tcp_next: config.tcp_next,
             },
+            resources: vec![],
         })
     }
 }

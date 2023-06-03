@@ -52,6 +52,7 @@ impl<'de> ResolveDestFactory<'de> {
                     r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 }))
                 .collect(),
+            resources: vec![],
         })
     }
 }

@@ -32,6 +32,7 @@ impl<'de> HostResolverFactory<'de> {
                 descriptor: name.to_string() + ".resolver",
                 r#type: AccessPointType::RESOLVER,
             }],
+            resources: vec![],
         })
     }
 }

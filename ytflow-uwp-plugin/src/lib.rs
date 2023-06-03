@@ -6,6 +6,8 @@ mod collections;
 #[cfg(target_vendor = "uwp")]
 mod error;
 #[cfg(target_vendor = "uwp")]
+mod storage_resource_loader;
+#[cfg(target_vendor = "uwp")]
 mod tun_plugin;
 #[cfg(target_vendor = "uwp")]
 mod vpn_plugin;

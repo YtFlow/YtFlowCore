@@ -33,6 +33,7 @@ impl<'de> IpStackFactory<'de> {
                 },
             ],
             provides: vec![],
+            resources: vec![],
         })
     }
 }

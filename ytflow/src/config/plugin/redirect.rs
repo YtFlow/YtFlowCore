@@ -41,6 +41,7 @@ impl<'de> RedirectFactory<'de> {
                 },
             ],
             factory: config,
+            resources: vec![],
         })
     }
 }

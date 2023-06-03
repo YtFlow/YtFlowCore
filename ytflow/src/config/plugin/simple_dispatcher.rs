@@ -59,6 +59,7 @@ impl<'de> SimpleDispatcherFactory<'de> {
                     r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 },
             ],
+            resources: vec![],
         })
     }
 }

@@ -14,6 +14,7 @@ impl SystemResolverFactory {
                 descriptor: plugin.name.to_string() + ".resolver",
                 r#type: AccessPointType::RESOLVER,
             }],
+            resources: vec![],
         })
     }
 }

@@ -50,6 +50,18 @@ pub enum LoadError {
         plugin: String,
         error: std::io::Error,
     },
+    #[error(r#"an error occurs while loading the resources for plugin {plugin:}: {error:}"#)]
+    Resource {
+        plugin: String,
+        error: crate::resource::ResourceError,
+    },
+    #[error(r#"plugin "{plugin:}" requires a resource "{resource_key:}" to have type "{expected:?}", but it is "{actual:}""#)]
+    ResourceTypeMismatch {
+        plugin: String,
+        resource_key: String,
+        expected: &'static [&'static str],
+        actual: String,
+    },
     #[error(r#"plugin "{plugin:}" required a database to work"#)]
     DatabaseRequired { plugin: String },
 }

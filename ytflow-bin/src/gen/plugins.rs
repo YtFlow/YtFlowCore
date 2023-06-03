@@ -80,6 +80,11 @@ pub enum PluginType {
     )]
     SimpleDispatcher,
     #[strum(
+        props(prefix = "rule-dispatcher"),
+        detailed_message = "Match the connection against rules defined in a resource, and use the handler of a corresponding action or fallback handler if there is no match."
+    )]
+    RuleDispatcher,
+    #[strum(
         props(prefix = "forward"),
         detailed_message = "Establish a new connection for each incoming connection, and forward data between them."
     )]
@@ -225,6 +230,30 @@ impl PluginType {
                     }).unwrap()],
                     "fallback_tcp" => name.clone() + "-forward.tcp",
                     "fallback_udp" => name.clone() + "-reject.udp",
+                }),
+                PluginType::RuleDispatcher => cbor!({
+                    "resolver" => "real-resolver.resolver",
+                    "source" => "Geoip.mmdb",
+                    "actions" => {
+                        "direct" => {
+                            "tcp" => "direct-forward.tcp",
+                            "udp" => "direct-forward.udp",
+                            "resolver" => "real-resolver.resolver",
+                        },
+                        "reject" => {
+                            "tcp" => "reject.tcp",
+                            "udp" => "reject.udp",
+                            "resolver" => "null.resolver",
+                        },
+                    },
+                    "rules" => {
+                        "cn" => "direct",
+                    },
+                    "fallback" => {
+                        "tcp" => "proxy-forward.tcp",
+                        "udp" => "proxy-forward.udp",
+                        "resolver" => "fakeip.resolver",
+                    },
                 }),
                 PluginType::Forward => cbor!({
                     "tcp_next" => name.clone() + "-shadowsocks-client.tcp",

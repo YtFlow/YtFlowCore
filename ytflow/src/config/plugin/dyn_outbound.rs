@@ -45,6 +45,7 @@ impl<'de> DynOutboundFactory<'de> {
                 config,
                 plugin_id: *id,
             },
+            resources: vec![],
         })
     }
 }

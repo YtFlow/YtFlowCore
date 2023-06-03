@@ -30,11 +30,17 @@ pub struct Descriptor<D: Deref<Target = str>> {
 
 pub type DemandDescriptor<'de> = Descriptor<&'de str>;
 pub type ProvideDescriptor = Descriptor<String>;
+#[derive(Debug, Clone, Serialize)]
+pub struct RequiredResource<'de> {
+    pub key: &'de str,
+    pub allowed_types: &'static [&'static str],
+}
 
 pub(super) struct ParsedPlugin<'de, F: Factory> {
     pub(super) factory: F,
     pub(super) requires: Vec<DemandDescriptor<'de>>,
     pub(super) provides: Vec<ProvideDescriptor>,
+    pub(super) resources: Vec<RequiredResource<'de>>,
 }
 
 pub(super) trait Factory {
@@ -66,11 +72,13 @@ pub(super) fn create_factory_from_plugin(
             factory,
             requires,
             provides,
+            resources,
         } = r?;
         Ok(ParsedPlugin {
             factory: Box::new(factory),
             requires,
             provides,
+            resources,
         })
     }
 
@@ -90,6 +98,7 @@ pub(super) fn create_factory_from_plugin(
         "http-obfs-server" => box_result(HttpObfsServerFactory::parse(plugin)),
         "resolve-dest" => box_result(ResolveDestFactory::parse(plugin)),
         "simple-dispatcher" => box_result(SimpleDispatcherFactory::parse(plugin)),
+        "rule-dispatcher" => box_result(RuleDispatcherFactory::parse(plugin)),
         "forward" => box_result(ForwardFactory::parse(plugin)),
         "dyn-outbound" => box_result(DynOutboundFactory::parse(plugin)),
         "shadowsocks-client" => box_result(ShadowsocksFactory::parse(plugin)),
@@ -125,6 +134,7 @@ pub(super) struct AccessPointResolver<'de> {
 pub(super) struct ParseResultCollection<'f> {
     pub(super) factories: HashMap<String, Box<dyn Factory + 'f>>,
     pub(super) errors: Vec<ConfigError>,
+    pub(super) resources: Vec<RequiredResource<'f>>,
 }
 
 impl<'de> AccessPointResolver<'de> {
@@ -181,7 +191,9 @@ impl<'de> AccessPointResolver<'de> {
             factory,
             requires,
             provides,
+            mut resources,
         } = parsed;
+        result_col.resources.append(&mut resources);
         provides
             .into_iter()
             .for_each(|p| self.provide(p, &mut result_col.errors));

@@ -58,6 +58,7 @@ impl<'de> Socks5ServerFactory<'de> {
                 // },
             ],
             factory: config,
+            resources: vec![],
         })
     }
 }
@@ -89,6 +90,7 @@ impl<'de> Socks5ClientFactory<'de> {
                 // },
             ],
             factory: config,
+            resources: vec![],
         })
     }
 }

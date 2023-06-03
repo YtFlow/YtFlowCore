@@ -33,6 +33,7 @@ impl<'de> TrojanFactory<'de> {
                 //     r#type: AccessPointType::DatagramSessionFactory,
                 // },
             ],
+            resources: vec![],
         })
     }
 }

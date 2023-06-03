@@ -12,6 +12,7 @@ pub mod obfs;
 pub mod redirect;
 pub mod reject;
 pub mod resolve_dest;
+pub mod rule_dispatcher;
 pub mod shadowsocks;
 pub mod simple_dispatcher;
 pub mod socket;

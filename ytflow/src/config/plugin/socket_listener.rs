@@ -34,6 +34,7 @@ impl<'de> SocketListenerFactory<'de> {
                 .collect(),
             factory: config,
             provides: vec![],
+            resources: vec![],
         })
     }
 }

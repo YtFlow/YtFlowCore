@@ -23,6 +23,7 @@ nanoid = "0.4"
 strum = "0.24"
 strum_macros = "0.24"
 cidr = { version = "0.2", features = ["serde"] }
+futures = { version = "0.3", default-features = false }
 
 # CLI
 clap = { version = "4", features = ["cargo"] }

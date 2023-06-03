@@ -1,4 +1,6 @@
+use crate::config::factory::RequiredResource;
 use crate::config::*;
+use crate::resource::ResourceRegistry;
 
 pub struct ProfileLoader<'f>(HashMap<String, Box<dyn factory::Factory + 'f>>);
 
@@ -12,7 +14,7 @@ impl<'f> ProfileLoader<'f> {
     pub fn parse_profile(
         entry_plugins: impl Iterator<Item = &'f Plugin>,
         all_plugins: &'f [Plugin],
-    ) -> (Self, Vec<ConfigError>) {
+    ) -> (Self, Vec<RequiredResource>, Vec<ConfigError>) {
         let res = factory::parse_plugins_recursively(
             |resolver, _| {
                 for entry_plugin in entry_plugins {
@@ -23,11 +25,12 @@ impl<'f> ProfileLoader<'f> {
             },
             all_plugins,
         );
-        (Self(res.factories), res.errors)
+        (Self(res.factories), res.resources, res.errors)
     }
     pub fn load_all(
         self,
         rt_handle: &tokio::runtime::Handle,
+        resource_registry: Box<dyn ResourceRegistry>,
         db: Option<&crate::data::Database>,
     ) -> ProfileLoadResult {
         use std::mem::ManuallyDrop;
@@ -36,6 +39,7 @@ impl<'f> ProfileLoader<'f> {
         let _enter_guard = rt_handle.enter();
         let mut partial_set = set::PartialPluginSet::new(
             self.0.into_iter().map(|(k, v)| (k, Some(v))).collect(),
+            resource_registry,
             db,
             set::PluginSet {
                 rt_handle: rt_handle_cloned,

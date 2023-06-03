@@ -10,9 +10,11 @@ use std::sync::{Arc, OnceLock};
 
 use crate::collections::SimpleHostNameVectorView;
 use crate::error::ConnectError;
+use crate::storage_resource_loader::StorageResourceLoader;
 
 use flume::{bounded, Receiver, Sender, TryRecvError};
 use windows::core::{implement, IInspectable, Interface, Result, HSTRING};
+use ytflow::resource::DbFileResourceLoader;
 use ytflow::tokio;
 
 use crate::bindings::Windows;
@@ -24,7 +26,9 @@ use crate::bindings::Windows::Networking::Vpn::{
     VpnPacketBufferList, VpnRoute, VpnRouteAssignment,
 };
 use crate::bindings::Windows::Storage::Streams::Buffer;
-use crate::bindings::Windows::Storage::{ApplicationData, ApplicationDataContainer};
+use crate::bindings::Windows::Storage::{
+    ApplicationData, ApplicationDataContainer, CreationCollisionOption,
+};
 use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
 
 static APP_SETTINGS: OnceLock<ApplicationDataContainer> = OnceLock::new();
@@ -286,7 +290,8 @@ impl VpnPlugIn {
         };
 
         use ytflow::config::loader::{ProfileLoadResult, ProfileLoader};
-        let (factory, errors) = ProfileLoader::parse_profile(entry_plugins.iter(), &all_plugins);
+        let (factory, required_resources, errors) =
+            ProfileLoader::parse_profile(entry_plugins.iter(), &all_plugins);
         if !errors.is_empty() {
             let it = std::iter::once(String::from("Failed to parse plugins: "));
             let it = it.chain(errors.iter().map(ToString::to_string));
@@ -323,7 +328,37 @@ impl VpnPlugIn {
             plugin_set: set,
             errors,
             control_hub,
-        } = factory.load_all(&rt_handle, Some(&db));
+        } = {
+            let conn = db.connect()?;
+            let resource_keys = required_resources
+                .iter()
+                .map(|r| r.key.to_string())
+                .collect();
+            let loader = DbFileResourceLoader::new_with_required_keys(resource_keys, &conn)?;
+            let resource_folder = ApplicationData::Current()
+                .unwrap()
+                .LocalFolder()
+                .unwrap()
+                .CreateFolderAsync(
+                    HSTRING::try_from("resource").unwrap(),
+                    CreationCollisionOption::OpenIfExists,
+                )
+                .unwrap()
+                .get()
+                .unwrap();
+            let loader = rt_handle.block_on(async move {
+                let mut loader = loader;
+                let res =
+                    futures::future::join_all(loader.load_required_files(&StorageResourceLoader {
+                        root: resource_folder,
+                    }))
+                    .await
+                    .into_iter()
+                    .collect::<std::result::Result<Vec<_>, _>>();
+                res.map(|_| loader)
+            })?;
+            factory.load_all(&rt_handle, Box::new(loader), Some(&db))
+        };
         let mut error_str = if errors.is_empty() {
             String::from("There must be exactly one vpn-tun entry plugin in a profile")
         } else {

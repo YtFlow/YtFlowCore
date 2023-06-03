@@ -36,6 +36,7 @@ impl VpnTunFactory {
                 descriptor: name.to_string() + ".tun",
                 r#type: AccessPointType::TUN,
             }],
+            resources: vec![],
         })
     }
 }

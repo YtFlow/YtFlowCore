@@ -5,6 +5,7 @@ use std::sync::{Arc, Weak};
 use super::*;
 use crate::data::Database;
 use crate::flow::*;
+use crate::resource::ResourceRegistry;
 
 pub struct PluginSet {
     pub(super) rt_handle: tokio::runtime::Handle,
@@ -20,6 +21,7 @@ pub struct PluginSet {
 pub(super) struct PartialPluginSet<'f> {
     pub(super) plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'f>>>,
     pub(super) db: Option<&'f Database>,
+    pub(super) resource_registry: Box<dyn ResourceRegistry>,
     pub(super) fully_constructed: PluginSet,
     pub(super) errors: Vec<LoadError>,
     pub(super) control_hub: crate::control::ControlHub,
@@ -66,11 +68,13 @@ macro_rules! impl_get_or_create {
 impl<'a> PartialPluginSet<'a> {
     pub(super) fn new(
         plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'a>>>,
+        resource_registry: Box<dyn ResourceRegistry>,
         db: Option<&'a Database>,
         fully_constructed: PluginSet,
     ) -> Self {
         Self {
             fully_constructed,
+            resource_registry,
             db,
             plugins,
             control_hub: Default::default(),

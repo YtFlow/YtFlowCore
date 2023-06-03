@@ -60,6 +60,7 @@ impl<'de> SwitchFactory<'de> {
                 },
             ],
             factory: config,
+            resources: vec![],
         })
     }
 }
