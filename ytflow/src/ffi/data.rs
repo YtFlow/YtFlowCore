@@ -5,7 +5,10 @@ use std::ptr::null_mut;
 
 use super::error::FfiResult;
 use super::interop::serialize_buffer;
-use crate::data::{Connection, Database, Plugin, Profile, Proxy, ProxyGroup};
+use crate::data::{
+    Connection, Database, Plugin, Profile, Proxy, ProxyGroup, Resource, ResourceGitHubRelease,
+    ResourceUrl,
+};
 
 #[no_mangle]
 #[cfg(windows)]
@@ -364,6 +367,142 @@ pub extern "C" fn ytflow_proxy_reorder(
             range_start_order,
             range_end_order,
             moves,
+            conn,
+        )
+        .map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_get_all(conn: *const Connection) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        Resource::query_all(conn).map(|r| serialize_buffer(&r))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_delete(resource_id: u32, conn: *const Connection) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        Resource::delete(resource_id, conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_create_with_url(
+    key: *const c_char,
+    r#type: *const c_char,
+    local_file: *const c_char,
+    url: *const c_char,
+    conn: *mut Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let key = unsafe { CStr::from_ptr(key) };
+        let r#type = unsafe { CStr::from_ptr(r#type) };
+        let local_file = unsafe { CStr::from_ptr(local_file) };
+        let url = unsafe { CStr::from_ptr(url) };
+        let conn = unsafe { &mut *conn };
+        Resource::create_with_url(
+            key.to_string_lossy().into_owned(),
+            r#type.to_string_lossy().into_owned(),
+            local_file.to_string_lossy().into_owned(),
+            url.to_string_lossy().into_owned(),
+            conn,
+        )
+        .map(|id| (id as _, 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_create_with_github_release(
+    key: *const c_char,
+    r#type: *const c_char,
+    local_file: *const c_char,
+    github_username: *const c_char,
+    github_repo: *const c_char,
+    asset_name: *const c_char,
+    conn: *mut Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let key = unsafe { CStr::from_ptr(key) };
+        let r#type = unsafe { CStr::from_ptr(r#type) };
+        let local_file = unsafe { CStr::from_ptr(local_file) };
+        let github_username = unsafe { CStr::from_ptr(github_username) };
+        let github_repo = unsafe { CStr::from_ptr(github_repo) };
+        let asset_name = unsafe { CStr::from_ptr(asset_name) };
+        let conn = unsafe { &mut *conn };
+        Resource::create_with_github_release(
+            key.to_string_lossy().into_owned(),
+            r#type.to_string_lossy().into_owned(),
+            local_file.to_string_lossy().into_owned(),
+            github_username.to_string_lossy().into_owned(),
+            github_repo.to_string_lossy().into_owned(),
+            asset_name.to_string_lossy().into_owned(),
+            conn,
+        )
+        .map(|id| (id as _, 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_url_query_by_resource_id(
+    resource_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        ResourceUrl::query_by_resource_id(resource_id, conn).map(|r| serialize_buffer(&r))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
+    resource_id: u32,
+    etag: *const c_char,
+    last_modified: *const c_char,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let etag = unsafe { CStr::from_ptr(etag) };
+        let last_modified = unsafe { CStr::from_ptr(last_modified) };
+        let conn = unsafe { &*conn };
+        ResourceUrl::update_retrieved_by_resource_id(
+            resource_id,
+            etag.to_string_lossy().into_owned(),
+            last_modified.to_string_lossy().into_owned(),
+            conn,
+        )
+        .map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_github_release_query_by_resource_id(
+    resource_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        ResourceGitHubRelease::query_by_resource_id(resource_id, conn).map(|r| serialize_buffer(&r))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_resource_github_release_update_retrieved_by_resource_id(
+    resource_id: u32,
+    git_tag: *const c_char,
+    release_title: *const c_char,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let git_tag = unsafe { CStr::from_ptr(git_tag) };
+        let release_title = unsafe { CStr::from_ptr(release_title) };
+        let conn = unsafe { &*conn };
+        ResourceGitHubRelease::update_retrieved_by_resource_id(
+            resource_id,
+            git_tag.to_string_lossy().into_owned(),
+            release_title.to_string_lossy().into_owned(),
             conn,
         )
         .map(|()| (null_mut(), 0))

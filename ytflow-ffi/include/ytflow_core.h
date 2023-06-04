@@ -9,6 +9,8 @@ namespace ytflow_core { struct Connection; }
 
 namespace ytflow_core {
 
+constexpr static const uintptr_t ACTION_LIMIT = 15;
+
 struct Database;
 
 struct Runtime;
@@ -132,6 +134,39 @@ FfiResult ytflow_proxy_reorder(uint32_t proxy_group_id,
                                int32_t range_end_order,
                                int32_t moves,
                                Connection *conn);
+
+FfiResult ytflow_resource_get_all(const Connection *conn);
+
+FfiResult ytflow_resource_delete(uint32_t resource_id, const Connection *conn);
+
+FfiResult ytflow_resource_create_with_url(const char *key,
+                                          const char *type,
+                                          const char *local_file,
+                                          const char *url,
+                                          Connection *conn);
+
+FfiResult ytflow_resource_create_with_github_release(const char *key,
+                                                     const char *type,
+                                                     const char *local_file,
+                                                     const char *github_username,
+                                                     const char *github_repo,
+                                                     const char *asset_name,
+                                                     Connection *conn);
+
+FfiResult ytflow_resource_url_query_by_resource_id(uint32_t resource_id, const Connection *conn);
+
+FfiResult ytflow_resource_url_update_retrieved_by_resource_id(uint32_t resource_id,
+                                                              const char *etag,
+                                                              const char *last_modified,
+                                                              const Connection *conn);
+
+FfiResult ytflow_resource_github_release_query_by_resource_id(uint32_t resource_id,
+                                                              const Connection *conn);
+
+FfiResult ytflow_resource_github_release_update_retrieved_by_resource_id(uint32_t resource_id,
+                                                                         const char *git_tag,
+                                                                         const char *release_title,
+                                                                         const Connection *conn);
 
 void ytflow_result_free(FfiResult *result);
 
