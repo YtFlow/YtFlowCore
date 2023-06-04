@@ -47,11 +47,7 @@ pub fn listen_udp(
                             rx.into_stream(),
                             120,
                         )),
-                        Box::new(FlowContext {
-                            local_peer: from,
-                            remote_peer: listen_addr.clone(),
-                            af_sensitive: true,
-                        }),
+                        Box::new(FlowContext::new_af_sensitive(from, listen_addr.clone())),
                     );
                 }
                 tx

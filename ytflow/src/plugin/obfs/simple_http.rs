@@ -125,7 +125,7 @@ impl StreamHandler for SimpleHttpHandler {
 impl StreamOutboundFactory for SimpleHttpOutbound {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = match self.next.upgrade() {

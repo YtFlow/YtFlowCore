@@ -147,7 +147,7 @@ impl StreamForwardHandler {
         request_timeout: u64,
         initial_data: Vec<u8>,
         stat: StatGuard,
-        context: Box<FlowContext>,
+        mut context: Box<FlowContext>,
     ) -> FlowResult<()> {
         let mut initial_uplink_state = ForwardState::AwatingSizeHint;
         let initial_data = if !initial_data.is_empty() {
@@ -172,7 +172,7 @@ impl StreamForwardHandler {
         // TODO: outbound handshake timeout
         let initial_data_ref = initial_data.as_deref().unwrap_or(&[]);
         let outbound = outbound_factory
-            .create_outbound(context, initial_data_ref)
+            .create_outbound(&mut context, initial_data_ref)
             .await;
         stat.0
             .inner

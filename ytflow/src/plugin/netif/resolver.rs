@@ -21,7 +21,7 @@ pub(super) struct NetifHostResolver {
 impl NetifHostResolver {
     pub fn new(selector: Weak<NetifSelector>) -> Self {
         Self {
-            inner: RwLock::new((HostResolver::new([]), 0, vec![], vec![])),
+            inner: RwLock::new((HostResolver::new([], []), 0, vec![], vec![])),
             selector,
         }
     }
@@ -95,7 +95,7 @@ fn create_host_resolver(
     }
 
     (
-        HostResolver::new(weak_udp_factories.into_iter()),
+        HostResolver::new(weak_udp_factories.into_iter(), []),
         vec![],
         udp_factories,
     )

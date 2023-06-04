@@ -43,11 +43,7 @@ pub fn listen_tcp(
                     next.on_stream(
                         Box::new(CompatFlow::new(stream, 4096)),
                         Buffer::new(),
-                        Box::new(FlowContext {
-                            local_peer: connector,
-                            remote_peer,
-                            af_sensitive: false,
-                        }),
+                        Box::new(FlowContext::new(connector, remote_peer)),
                     )
                 }
                 // TODO: log error
@@ -240,7 +236,7 @@ pub async fn dial_stream(
 impl StreamOutboundFactory for super::SocketOutboundFactory {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let Self {

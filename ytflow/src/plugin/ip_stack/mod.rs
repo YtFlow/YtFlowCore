@@ -315,14 +315,13 @@ fn process_tcp(
         socket.set_ack_delay(None);
         let socket_handle = netif.add_socket(socket);
         vac.insert(socket_handle);
-        let ctx = FlowContext {
-            local_peer: src_addr,
-            remote_peer: DestinationAddr {
+        let ctx = FlowContext::new(
+            src_addr,
+            DestinationAddr {
                 host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
                 port: dst_port,
             },
-            af_sensitive: false,
-        };
+        );
         tokio::spawn({
             let stack = stack.clone();
             async move {
@@ -381,14 +380,13 @@ fn process_udp(
                         rx.into_stream(),
                         120,
                     )),
-                    Box::new(FlowContext {
-                        local_peer: src_addr,
-                        remote_peer: DestinationAddr {
+                    Box::new(FlowContext::new_af_sensitive(
+                        src_addr,
+                        DestinationAddr {
                             host: HostName::Ip(smoltcp_addr_to_std(dst_addr)),
                             port: dst_port,
                         },
-                        af_sensitive: true,
-                    }),
+                    )),
                 );
             });
             vac.insert(tx)

@@ -97,8 +97,8 @@ impl WebSocketStreamOutboundFactory {
 impl StreamOutboundFactory for WebSocketStreamOutboundFactory {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
-        initial_data: &'_ [u8],
+        context: &mut FlowContext,
+        initial_data: &[u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = self.next.upgrade().ok_or(FlowError::UnexpectedData)?;
 
@@ -118,6 +118,7 @@ impl StreamOutboundFactory for WebSocketStreamOutboundFactory {
             .path_and_query(&self.path)
             .build()
             .map_err(|_| FlowError::NoOutbound)?;
+        context.application_layer_protocol = ["http/1.1"].into_iter().collect();
         let (lower, initial_res) = next.create_outbound(context, &[]).await?;
         let reader = StreamReader::new(4096, initial_res);
         self.websocket_handshake(lower, uri, reader, initial_data.into())

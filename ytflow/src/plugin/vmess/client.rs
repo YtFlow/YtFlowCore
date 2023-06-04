@@ -42,14 +42,14 @@ impl VMessStreamOutboundFactory {
 }
 
 struct StreamCreator<'a, RE> {
-    context: Box<FlowContext>,
+    context: &'a mut FlowContext,
     initial_data: &'a [u8],
     req_enc: RE,
     next: Arc<dyn StreamOutboundFactory>,
 }
 
 async fn create_client_stream<RE: RequestHeaderEnc, F: BodyCryptoFactory>(
-    context: Box<FlowContext>,
+    context: &mut FlowContext,
     initial_data: &'_ [u8],
     req_enc: RE,
     body_crypto_factory: F,
@@ -175,8 +175,8 @@ where
 impl VMessStreamOutboundFactory {
     async fn create_outbound_core(
         &self,
-        context: Box<FlowContext>,
-        initial_data: &'_ [u8],
+        context: &mut FlowContext,
+        initial_data: &[u8],
         next: Arc<dyn StreamOutboundFactory>,
     ) -> FlowResult<Box<dyn Stream>> {
         let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -209,8 +209,8 @@ impl VMessStreamOutboundFactory {
 impl StreamOutboundFactory for VMessStreamOutboundFactory {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
-        initial_data: &'_ [u8],
+        context: &mut FlowContext,
+        initial_data: &[u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = self.next.upgrade().ok_or(FlowError::UnexpectedData)?;
 

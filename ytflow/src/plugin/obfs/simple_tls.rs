@@ -44,7 +44,7 @@ impl SimpleTlsOutbound {
 impl StreamOutboundFactory for SimpleTlsOutbound {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = self.next.upgrade().ok_or(FlowError::UnexpectedData)?;

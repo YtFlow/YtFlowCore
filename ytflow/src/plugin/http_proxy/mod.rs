@@ -61,7 +61,7 @@ impl HttpProxyOutboundFactory {
 impl StreamOutboundFactory for HttpProxyOutboundFactory {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;

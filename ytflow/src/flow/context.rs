@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::net::{IpAddr, SocketAddr};
 
 use serde::{de, Deserialize, Deserializer, Serialize};
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostName {
@@ -62,6 +63,26 @@ pub struct FlowContext {
     pub local_peer: SocketAddr,
     pub remote_peer: DestinationAddr,
     pub af_sensitive: bool,
+    pub application_layer_protocol: SmallVec<[&'static str; 2]>,
+}
+
+impl FlowContext {
+    pub fn new(local_peer: SocketAddr, remote_peer: DestinationAddr) -> Self {
+        Self {
+            local_peer,
+            remote_peer,
+            af_sensitive: false,
+            application_layer_protocol: Default::default(),
+        }
+    }
+    pub fn new_af_sensitive(local_peer: SocketAddr, remote_peer: DestinationAddr) -> Self {
+        Self {
+            local_peer,
+            remote_peer,
+            af_sensitive: true,
+            application_layer_protocol: Default::default(),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for HostName {

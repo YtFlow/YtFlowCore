@@ -110,15 +110,13 @@ impl UdpSocket for FlowDatagramSocket {
                 SessionState::Binding(
                     async move {
                         factory
-                            .bind(Box::new(FlowContext {
-                                local_peer: target,
-                                // 让下一层 redirect，这里直接摆烂
-                                remote_peer: DestinationAddr {
+                            .bind(Box::new(FlowContext::new(
+                                target,
+                                DestinationAddr {
                                     host: HostName::Ip((*addrv4.ip()).into()),
                                     port: 53,
                                 },
-                                af_sensitive: false,
-                            }))
+                            )))
                             .await
                     }
                     .boxed(),

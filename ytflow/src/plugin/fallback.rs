@@ -73,6 +73,7 @@ impl StreamHandler for FallbackHandler {
             local_peer: context.local_peer,
             remote_peer: context.remote_peer.clone(),
             af_sensitive: context.af_sensitive,
+            application_layer_protocol: context.application_layer_protocol.clone(),
         });
         let next = match self.next.upgrade() {
             Some(n) => n,

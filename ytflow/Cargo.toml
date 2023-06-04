@@ -21,6 +21,7 @@ chrono = { version = "*", features = ["serde"] }
 memchr = "2"
 rand = "0.8"
 itertools = "0.10"
+tokio-util = "0.7"
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }
@@ -48,6 +49,7 @@ tokio-tungstenite = { version = "0.18", default-features = false, features = [
     "handshake",
 ] }
 uuid = { version = "1", features = ["serde"] }
+hyper = { version = "0.14", features = ["client", "http1", "http2"] }
 
 # Crypto
 cipher = "0.4"

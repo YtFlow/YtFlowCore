@@ -1,7 +1,8 @@
+pub mod doh_adapter;
 mod udp_adapter;
 
 use std::net::SocketAddr;
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 use async_trait::async_trait;
 use trust_dns_resolver::config::{
@@ -29,17 +30,34 @@ impl RuntimeProvider for FlowRuntime {
 pub struct HostResolver {
     inner: AsyncResolver<GenericConnection, GenericConnectionProvider<FlowRuntime>>,
     factory_ids: Vec<u32>,
+    _doh: Vec<Arc<doh_adapter::DohDatagramAdapterFactory>>,
 }
 
 impl HostResolver {
-    pub fn new(datagram_hosts: impl IntoIterator<Item = Weak<dyn DatagramSessionFactory>>) -> Self {
+    pub fn new(
+        datagram_hosts: impl IntoIterator<Item = Weak<dyn DatagramSessionFactory>>,
+        doh: impl IntoIterator<Item = doh_adapter::DohDatagramAdapterFactory>,
+    ) -> Self {
         let datagram_hosts = datagram_hosts.into_iter();
-        let size_hint = datagram_hosts.size_hint().1.unwrap_or(0);
+        let doh = doh.into_iter();
+        let size_hint = datagram_hosts.size_hint().1.unwrap_or(0) + doh.size_hint().1.unwrap_or(0);
+        let doh_factories = doh.map(|d| Arc::new(d)).collect::<Vec<_>>();
         let mut dns_configs = Vec::with_capacity(size_hint);
         let mut factory_ids = Vec::with_capacity(size_hint);
         {
             let mut guard = UDP_FACTORIES.write().unwrap();
             let (max_id, factories) = &mut *guard;
+            for factory in &doh_factories {
+                *max_id = max_id.wrapping_add(1);
+                factories.insert(*max_id, Arc::downgrade(factory) as _);
+                dns_configs.push(NameServerConfig {
+                    socket_addr: SocketAddr::new(max_id.to_ne_bytes().into(), 53),
+                    protocol: Protocol::Udp,
+                    tls_dns_name: None,
+                    trust_nx_responses: false,
+                });
+                factory_ids.push(*max_id);
+            }
             for factory in datagram_hosts {
                 *max_id = max_id.wrapping_add(1);
                 factories.insert(*max_id, factory);
@@ -61,7 +79,11 @@ impl HostResolver {
                 TokioHandle,
             )
             .unwrap();
-        Self { inner, factory_ids }
+        Self {
+            inner,
+            factory_ids,
+            _doh: doh_factories,
+        }
     }
 }
 

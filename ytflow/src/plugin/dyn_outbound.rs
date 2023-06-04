@@ -74,7 +74,7 @@ impl DynOutbound {
 impl StreamOutboundFactory for DynOutbound {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = (**self.current.load())

@@ -5,6 +5,7 @@ members = [
     "ytflow-ffi",
     "ytflow-uwp-plugin",
 ]
+resolver = "1"
 
 [patch.crates-io]
 mio = { git = "https://github.com/YtFlow/mio-noafd", branch = "noafd-v0.7-nobind" }

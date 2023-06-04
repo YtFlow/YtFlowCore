@@ -86,9 +86,9 @@ pub trait StreamHandler: Send + Sync {
 
 #[async_trait]
 pub trait StreamOutboundFactory: Send + Sync {
-    async fn create_outbound(
-        &self,
-        context: Box<FlowContext>,
-        initial_data: &'_ [u8],
+    async fn create_outbound<'s, 'a, 'b>(
+        &'s self,
+        context: &'a mut FlowContext,
+        initial_data: &'b [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)>;
 }

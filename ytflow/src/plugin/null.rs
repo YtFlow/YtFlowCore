@@ -8,8 +8,8 @@ pub struct Null;
 impl StreamOutboundFactory for Null {
     async fn create_outbound(
         &self,
-        _context: Box<FlowContext>,
-        _initial_data: &'_ [u8],
+        _context: &mut FlowContext,
+        _initial_data: &[u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         Err(FlowError::NoOutbound)
     }

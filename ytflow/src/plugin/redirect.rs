@@ -64,7 +64,7 @@ impl<R: PeerProvider> StreamHandler for StreamRedirectHandler<R> {
 impl<R: PeerProvider> StreamOutboundFactory for StreamRedirectOutboundFactory<R> {
     async fn create_outbound(
         &self,
-        mut context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = match self.next.upgrade() {

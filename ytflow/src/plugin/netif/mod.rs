@@ -90,7 +90,7 @@ impl NetifSelector {
 impl StreamOutboundFactory for NetifSelector {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
+        context: &mut FlowContext,
         initial_data: &'_ [u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let preference = self.selection.load().1;

@@ -142,7 +142,7 @@ async fn serve_handshake(
 }
 
 async fn perform_handshake(
-    context: Box<FlowContext>,
+    context: &mut FlowContext,
     auth_req: &Option<Buffer>,
     stream_factory: Arc<dyn StreamOutboundFactory>,
 ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
@@ -231,8 +231,8 @@ impl StreamHandler for Socks5Handler {
 impl StreamOutboundFactory for Socks5Outbound {
     async fn create_outbound(
         &self,
-        context: Box<FlowContext>,
-        initial_data: &'_ [u8],
+        context: &mut FlowContext,
+        initial_data: &[u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let next = match self.next.upgrade() {
             Some(next) => next,
