@@ -5,6 +5,7 @@ use serde::Serialize;
 use super::*;
 
 pub type ResourceId = super::Id<Resource>;
+pub type ResourceUrlId = super::Id<ResourceUrl>;
 pub type ResourceGitHubReleaseId = super::Id<ResourceGitHubRelease>;
 
 #[derive(Debug, Clone, Serialize)]
@@ -18,7 +19,14 @@ pub struct Resource {
     pub updated_at: NaiveDateTime,
 }
 
-// TODO: URL-typed resource
+#[derive(Debug, Clone, Serialize)]
+pub struct ResourceUrl {
+    pub id: ResourceUrlId,
+    pub url: String,
+    pub etag: Option<String>,
+    pub last_modified: Option<String>,
+    pub retrieved_at: Option<NaiveDateTime>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ResourceGitHubRelease {
@@ -40,6 +48,16 @@ fn map_resource_from_row(row: &Row) -> Result<Resource, SqError> {
         remote_type: row.get(4)?,
         created_at: row.get(5)?,
         updated_at: row.get(6)?,
+    })
+}
+
+fn map_resource_url_from_row(row: &Row) -> Result<ResourceUrl, SqError> {
+    Ok(ResourceUrl {
+        id: super::Id(row.get(0)?, Default::default()),
+        url: row.get(1)?,
+        etag: row.get(2)?,
+        last_modified: row.get(3)?,
+        retrieved_at: row.get(4)?,
     })
 }
 
@@ -80,6 +98,27 @@ impl Resource {
         Ok(ret)
     }
 
+    pub fn create_with_url(
+        key: String,
+        r#type: String,
+        local_file: String,
+        url: String,
+        conn: &mut super::Connection,
+    ) -> DataResult<u32> {
+        let tx = conn.transaction()?;
+        tx.execute(
+            r"INSERT INTO `yt_resources` (`key`, `type`, `local_file`, `remote_type`) VALUES (?, ?, ?, ?)",
+            params![key, r#type, local_file, "url"],
+        )?;
+        let resource_id = tx.last_insert_rowid() as u32;
+        tx.execute(
+            r"INSERT INTO `yt_resources_url` (`resource_id`, `url`) VALUES (?, ?)",
+            params![resource_id, url],
+        )?;
+        tx.commit()?;
+        Ok(resource_id)
+    }
+
     pub fn create_with_github_release(
         key: String,
         r#type: String,
@@ -105,6 +144,34 @@ impl Resource {
 
     pub fn delete(id: u32, conn: &super::Connection) -> DataResult<()> {
         conn.execute("DELETE FROM `yt_resources` WHERE `id` = ?", params![id])?;
+        Ok(())
+    }
+}
+
+impl ResourceUrl {
+    pub fn query_by_resource_id(
+        resource_id: u32,
+        conn: &super::Connection,
+    ) -> DataResult<Option<ResourceUrl>> {
+        Ok(conn
+            .query_row_and_then(
+                r"SELECT `id`, `url`, `etag`, `last_modified`, `retrieved_at`
+                FROM `yt_resources_url` WHERE `resource_id` = ?",
+                &[&resource_id],
+                map_resource_url_from_row,
+            )
+            .optional()?)
+    }
+    pub fn update_retrieved_by_resource_id(
+        resource_id: u32,
+        etag: String,
+        last_modified: String,
+        conn: &super::Connection,
+    ) -> DataResult<()> {
+        conn.execute(
+            r"UPDATE `yt_resources_url` SET `etag` = ?, `last_modified` = ?, `retrieved_at` = (strftime('%Y-%m-%d %H:%M:%f', 'now')) WHERE `resource_id` = ?",
+            params![etag, last_modified, resource_id],
+        )?;
         Ok(())
     }
 }

@@ -2,6 +2,9 @@ use serde::Serialize;
 
 use super::*;
 use crate::control::{PluginRequestError, PluginRequestResult, PluginResponder};
+use crate::data::PluginCache;
+
+pub const PLUGIN_CACHE_KEY_LAST_SELECT: &str = "last_select";
 
 #[derive(Clone, Serialize)]
 pub struct Choice {
@@ -16,6 +19,7 @@ pub struct Choice {
 pub struct Responder {
     pub choices: Vec<Choice>,
     pub switch: Arc<Switch>,
+    pub cache: PluginCache,
 }
 
 #[derive(Serialize)]
@@ -29,10 +33,11 @@ impl Responder {
         let new_choice = self.choices.get(idx as usize)?;
         let new_choice = CurrentChoice {
             idx,
-            tcp_next: new_choice.tcp_next.upgrade()?,
-            udp_next: new_choice.udp_next.upgrade()?,
+            tcp_next: new_choice.tcp_next.clone(),
+            udp_next: new_choice.udp_next.clone(),
         };
         let old_choice = self.switch.current_choice.swap(Arc::new(new_choice));
+        let _ = self.cache.set(PLUGIN_CACHE_KEY_LAST_SELECT, &idx).ok();
         Some(old_choice.idx)
     }
 }
