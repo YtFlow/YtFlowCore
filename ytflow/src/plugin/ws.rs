@@ -120,6 +120,7 @@ impl StreamOutboundFactory for WebSocketStreamOutboundFactory {
             .map_err(|_| FlowError::NoOutbound)?;
         context.application_layer_protocol = ["http/1.1"].into_iter().collect();
         let (lower, initial_res) = next.create_outbound(context, &[]).await?;
+        context.application_layer_protocol.clear();
         let reader = StreamReader::new(4096, initial_res);
         self.websocket_handshake(lower, uri, reader, initial_data.into())
             .await

@@ -124,18 +124,18 @@ impl TowerService<Uri> for FlowAdapterConnector {
                 SocketAddr::new(Ipv4Addr::new(0, 0, 0, 0).into(), 0),
                 remote_peer,
             );
-            ctx.application_layer_protocol.push("h2");
-            ctx.application_layer_protocol.push("http/1.1");
+            ctx.application_layer_protocol = ["h2", "http/1.1"].into_iter().collect();
             let (stream, inital_data) = next
                 .create_outbound(&mut ctx, &[])
                 .await
                 .map_err(|e| e.to_string())?;
+            let use_h2 = std::mem::take(&mut ctx.application_layer_protocol) == ["h2"].into();
             Ok(CompatStreamAdapter {
                 stream: CompatStream {
                     inner: stream,
                     reader: StreamReader::new(4096, inital_data),
                 },
-                use_h2: ctx.application_layer_protocol == ["h2"].into(),
+                use_h2,
             })
         })
     }
