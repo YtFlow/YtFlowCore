@@ -21,7 +21,7 @@ struct DohSpec<'a> {
 
 #[derive(Deserialize)]
 struct HostResolverConfig<'a> {
-    #[serde(borrow)]
+    #[serde(borrow, default)]
     doh: Vec<DohSpecConfig<'a>>,
     #[serde(borrow)]
     udp: Vec<&'a str>,
