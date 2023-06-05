@@ -66,21 +66,26 @@ fn connect_with_factory(
 
     let route_scope = VpnRouteAssignment::new()?;
     route_scope.SetExcludeLocalSubnets(true)?;
-    for route4 in &factory.ipv4_route {
-        route_scope
-            .Ipv4InclusionRoutes()?
-            .Append(VpnRoute::CreateVpnRoute(
-                HostName::CreateHostName(route4.inner.first_address().to_string())?,
-                route4.inner.network_length(),
-            )?)?;
+    // Adding routes without IP addr being set will cause the VPN platform to hang.
+    if ipv4.is_some() {
+        for route4 in &factory.ipv4_route {
+            route_scope
+                .Ipv4InclusionRoutes()?
+                .Append(VpnRoute::CreateVpnRoute(
+                    HostName::CreateHostName(route4.inner.first_address().to_string())?,
+                    route4.inner.network_length(),
+                )?)?;
+        }
     }
-    for route6 in &factory.ipv6_route {
-        route_scope
-            .Ipv6InclusionRoutes()?
-            .Append(VpnRoute::CreateVpnRoute(
-                HostName::CreateHostName(route6.inner.first_address().to_string())?,
-                route6.inner.network_length(),
-            )?)?;
+    if ipv6.is_some() {
+        for route6 in &factory.ipv6_route {
+            route_scope
+                .Ipv6InclusionRoutes()?
+                .Append(VpnRoute::CreateVpnRoute(
+                    HostName::CreateHostName(route6.inner.first_address().to_string())?,
+                    route6.inner.network_length(),
+                )?)?;
+        }
     }
 
     let dns_assignments = VpnDomainNameAssignment::new()?;
