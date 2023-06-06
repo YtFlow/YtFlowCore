@@ -464,16 +464,27 @@ pub extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
     conn: *const Connection,
 ) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
-        let etag = unsafe { CStr::from_ptr(etag) };
-        let last_modified = unsafe { CStr::from_ptr(last_modified) };
+        let etag = if etag.is_null() {
+            None
+        } else {
+            Some(
+                unsafe { CStr::from_ptr(etag) }
+                    .to_string_lossy()
+                    .into_owned(),
+            )
+        };
+        let last_modified = if last_modified.is_null() {
+            None
+        } else {
+            Some({
+                unsafe { CStr::from_ptr(last_modified) }
+                    .to_string_lossy()
+                    .into_owned()
+            })
+        };
         let conn = unsafe { &*conn };
-        ResourceUrl::update_retrieved_by_resource_id(
-            resource_id,
-            etag.to_string_lossy().into_owned(),
-            last_modified.to_string_lossy().into_owned(),
-            conn,
-        )
-        .map(|()| (null_mut(), 0))
+        ResourceUrl::update_retrieved_by_resource_id(resource_id, etag, last_modified, conn)
+            .map(|()| (null_mut(), 0))
     }))
 }
 

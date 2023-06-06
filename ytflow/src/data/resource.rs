@@ -164,8 +164,8 @@ impl ResourceUrl {
     }
     pub fn update_retrieved_by_resource_id(
         resource_id: u32,
-        etag: String,
-        last_modified: String,
+        etag: Option<String>,
+        last_modified: Option<String>,
         conn: &super::Connection,
     ) -> DataResult<()> {
         conn.execute(
