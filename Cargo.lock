@@ -2996,6 +2996,7 @@ dependencies = [
  "crc32fast",
  "ctr",
  "flume",
+ "foreign-types-shared",
  "fruity",
  "futures",
  "getrandom",

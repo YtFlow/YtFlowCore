@@ -45,6 +45,10 @@ impl SslStreamFactory {
         if skip_cert_check {
             builder.set_verify_callback(openssl::ssl::SslVerifyMode::NONE, |_, _| true);
         }
+        #[cfg(windows)]
+        if !skip_cert_check {
+            super::load_certs_windows::load(&mut builder);
+        }
         Self {
             ctx: builder.build(),
             sni,

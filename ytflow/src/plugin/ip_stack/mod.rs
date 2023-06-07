@@ -23,7 +23,6 @@ use smoltcp::wire::{
 use tokio::time::sleep_until;
 
 use crate::flow::*;
-use crate::log::debug_log;
 
 struct Device {
     tx: Option<TunBufferToken>,
@@ -409,7 +408,6 @@ fn schedule_repoll(
     poll_at: Instant,
     most_recent_scheduled_poll: Arc<AtomicI64>,
 ) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>> {
-    debug_log(format!("Scheduled repoll: {:?}", poll_at));
     let stack_cloned = stack.clone();
     Box::pin(async move {
         sleep_until(tokio::time::Instant::from_std(poll_at)).await;
