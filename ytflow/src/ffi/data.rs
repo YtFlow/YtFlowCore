@@ -6,8 +6,8 @@ use std::ptr::null_mut;
 use super::error::FfiResult;
 use super::interop::serialize_buffer;
 use crate::data::{
-    Connection, Database, Plugin, Profile, Proxy, ProxyGroup, Resource, ResourceGitHubRelease,
-    ResourceUrl,
+    Connection, DataError, Database, Plugin, Profile, Proxy, ProxyGroup, Resource,
+    ResourceGitHubRelease, ResourceUrl,
 };
 
 #[no_mangle]
@@ -370,6 +370,30 @@ pub extern "C" fn ytflow_proxy_reorder(
             conn,
         )
         .map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_batch_update_by_group(
+    proxy_group_id: u32,
+    new_proxies_buf: *const u8,
+    new_proxies_buf_len: usize,
+    conn: *mut Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let new_proxies_buf = if new_proxies_buf_len == 0 {
+            &[][..]
+        } else {
+            unsafe { std::slice::from_raw_parts(new_proxies_buf, new_proxies_buf_len) }
+        };
+        let new_proxies =
+            cbor4ii::serde::from_slice(new_proxies_buf).map_err(|e| DataError::InvalidData {
+                domain: "proxies update",
+                field: "proxies_buf",
+            })?;
+        let conn = unsafe { &mut *conn };
+        Proxy::batch_update_by_group(proxy_group_id.into(), new_proxies, conn)
+            .map(|()| (null_mut(), 0))
     }))
 }
 

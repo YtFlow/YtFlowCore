@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
+use itertools::{EitherOrBoth, Itertools};
 use rusqlite::{params, Error as SqError, OptionalExtension, Row};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::*;
 
@@ -16,6 +17,13 @@ pub struct Proxy {
     pub updated_at: NaiveDateTime,
 }
 
+#[derive(Clone, Deserialize)]
+pub struct ProxyInput {
+    pub name: String,
+    pub proxy: Vec<u8>,
+    pub proxy_version: u16,
+}
+
 fn map_from_row(row: &Row) -> Result<Proxy, SqError> {
     Ok(Proxy {
         id: super::Id(row.get(0)?, Default::default()),
@@ -25,6 +33,10 @@ fn map_from_row(row: &Row) -> Result<Proxy, SqError> {
         proxy_version: row.get(4)?,
         updated_at: row.get(5)?,
     })
+}
+
+fn are_proxies_equivalent(old: &Proxy, new: &ProxyInput) -> bool {
+    old.name == new.name && old.proxy == new.proxy && old.proxy_version == new.proxy_version
 }
 
 impl Proxy {
@@ -142,6 +154,50 @@ impl Proxy {
         // Move the proxies in the range back to the new position
         tx.prepare_cached("UPDATE `yt_proxies` SET `order_num` = `order_num` - ? WHERE `group_id` = ? AND `order_num` > ?")?
             .execute(params![max_ordernum - nearest_affected_ordernum + 1, &group_id.0, max_ordernum])?;
+
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn batch_update_by_group(
+        proxy_group_id: ProxyGroupId,
+        new_proxies: Vec<ProxyInput>,
+        conn: &mut Connection,
+    ) -> DataResult<()> {
+        let tx = conn.transaction()?;
+
+        let old_proxies = Self::query_all_by_group(proxy_group_id, &tx)?;
+        // Delete all proxies starting from the first proxy that is not in the new list, and then insert all new proxies from that point.
+        let mut zipped = old_proxies.iter().zip_longest(new_proxies.into_iter());
+        let mut proxy_to_insert_from = loop {
+            let mut proxy_to_insert_from = None;
+            let proxy_to_delete_from = match zipped.next() {
+                Some(EitherOrBoth::Both(old, new)) if are_proxies_equivalent(old, &new) => continue,
+                Some(EitherOrBoth::Both(old, new)) => {
+                    proxy_to_insert_from = Some(EitherOrBoth::Right(new));
+                    old
+                }
+                Some(EitherOrBoth::Left(old)) => old,
+                o @ None | o @ Some(EitherOrBoth::Right(_)) => break o,
+            };
+
+            tx.execute(
+                "DELETE FROM `yt_proxies` WHERE `group_id` = ?1 AND (
+                `order_num` > ?2 OR
+                (`order_num` = ?2 AND `id` >= ?3)
+            )",
+                params![
+                    &proxy_group_id.0,
+                    proxy_to_delete_from.order_num,
+                    proxy_to_delete_from.id.0
+                ],
+            )?;
+            break proxy_to_insert_from;
+        };
+        while let Some(EitherOrBoth::Right(new)) = proxy_to_insert_from {
+            Self::create(proxy_group_id, new.name, new.proxy, new.proxy_version, &tx)?;
+            proxy_to_insert_from = zipped.next();
+        }
 
         tx.commit()?;
         Ok(())
