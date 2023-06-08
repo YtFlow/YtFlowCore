@@ -6,8 +6,8 @@ use std::ptr::null_mut;
 use super::error::FfiResult;
 use super::interop::serialize_buffer;
 use crate::data::{
-    Connection, DataError, Database, Plugin, Profile, Proxy, ProxyGroup, Resource,
-    ResourceGitHubRelease, ResourceUrl,
+    Connection, DataError, Database, Plugin, Profile, Proxy, ProxyGroup, ProxySubscription,
+    Resource, ResourceGitHubRelease, ResourceUrl,
 };
 
 #[no_mangle]
@@ -263,6 +263,28 @@ pub extern "C" fn ytflow_proxy_group_create(
 }
 
 #[no_mangle]
+pub extern "C" fn ytflow_proxy_group_create_subscription(
+    name: *const c_char,
+    format: *const c_char,
+    url: *const c_char,
+    conn: *mut Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let name = unsafe { CStr::from_ptr(name) };
+        let format = unsafe { CStr::from_ptr(format) };
+        let url = unsafe { CStr::from_ptr(url) };
+        let conn = unsafe { &mut *conn };
+        ProxyGroup::create_subscription(
+            name.to_string_lossy().into_owned(),
+            format.to_string_lossy().into_owned(),
+            url.to_string_lossy().into_owned(),
+            conn,
+        )
+        .map(|id| (id as _, 0))
+    }))
+}
+
+#[no_mangle]
 pub extern "C" fn ytflow_proxy_group_rename(
     proxy_group_id: u32,
     name: *const c_char,
@@ -284,6 +306,49 @@ pub extern "C" fn ytflow_proxy_group_delete(
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         ProxyGroup::delete(proxy_group_id, conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_subscription_query_by_proxy_group_id(
+    proxy_group_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        ProxySubscription::query_by_proxy_group_id(proxy_group_id.into(), conn)
+            .map(|p| serialize_buffer(&p))
+    }))
+}
+
+#[no_mangle]
+pub extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
+    proxy_group_id: u32,
+    upload_bytes_used: *const u64,
+    download_bytes_used: *const u64,
+    bytes_remaining: *const u64,
+    expires_at: *const c_char,
+    conn: *const Connection,
+) -> FfiResult {
+    FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
+        let upload_bytes_used = unsafe { upload_bytes_used.as_ref().copied() };
+        let download_bytes_used = unsafe { download_bytes_used.as_ref().copied() };
+        let bytes_remaining = unsafe { bytes_remaining.as_ref().copied() };
+        let expires_at = if expires_at.is_null() {
+            None
+        } else {
+            Some(unsafe { CStr::from_ptr(expires_at).to_string_lossy().into_owned() })
+        };
+        let conn = unsafe { &*conn };
+        ProxySubscription::update_retrieved_by_proxy_group_id(
+            proxy_group_id.into(),
+            upload_bytes_used,
+            download_bytes_used,
+            bytes_remaining,
+            expires_at,
+            conn,
+        )
+        .map(|()| (null_mut(), 0))
     }))
 }
 
@@ -387,7 +452,7 @@ pub extern "C" fn ytflow_proxy_batch_update_by_group(
             unsafe { std::slice::from_raw_parts(new_proxies_buf, new_proxies_buf_len) }
         };
         let new_proxies =
-            cbor4ii::serde::from_slice(new_proxies_buf).map_err(|e| DataError::InvalidData {
+            cbor4ii::serde::from_slice(new_proxies_buf).map_err(|_| DataError::InvalidData {
                 domain: "proxies update",
                 field: "proxies_buf",
             })?;

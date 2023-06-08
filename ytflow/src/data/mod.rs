@@ -50,7 +50,7 @@ pub use plugin::{Plugin, PluginId};
 pub use plugin_cache::PluginCache;
 pub use profile::{Profile, ProfileId};
 pub use proxy::{Proxy, ProxyId, ProxyInput};
-pub use proxy_group::{ProxyGroup, ProxyGroupId};
+pub use proxy_group::{ProxyGroup, ProxyGroupId, ProxySubscription};
 pub use resource::{
     Resource, ResourceGitHubRelease, ResourceGitHubReleaseId, ResourceId, ResourceUrl,
     ResourceUrlId,

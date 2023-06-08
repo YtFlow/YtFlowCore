@@ -105,11 +105,26 @@ FfiResult ytflow_proxy_group_get_by_id(uint32_t proxy_group_id, const Connection
 
 FfiResult ytflow_proxy_group_create(const char *name, const char *type, const Connection *conn);
 
+FfiResult ytflow_proxy_group_create_subscription(const char *name,
+                                                 const char *format,
+                                                 const char *url,
+                                                 Connection *conn);
+
 FfiResult ytflow_proxy_group_rename(uint32_t proxy_group_id,
                                     const char *name,
                                     const Connection *conn);
 
 FfiResult ytflow_proxy_group_delete(uint32_t proxy_group_id, const Connection *conn);
+
+FfiResult ytflow_proxy_subscription_query_by_proxy_group_id(uint32_t proxy_group_id,
+                                                            const Connection *conn);
+
+FfiResult ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(uint32_t proxy_group_id,
+                                                                       const uint64_t *upload_bytes_used,
+                                                                       const uint64_t *download_bytes_used,
+                                                                       const uint64_t *bytes_remaining,
+                                                                       const char *expires_at,
+                                                                       const Connection *conn);
 
 FfiResult ytflow_proxy_get_by_proxy_group(uint32_t proxy_group_id, const Connection *conn);
 
@@ -134,6 +149,11 @@ FfiResult ytflow_proxy_reorder(uint32_t proxy_group_id,
                                int32_t range_end_order,
                                int32_t moves,
                                Connection *conn);
+
+FfiResult ytflow_proxy_batch_update_by_group(uint32_t proxy_group_id,
+                                             const uint8_t *new_proxies_buf,
+                                             uintptr_t new_proxies_buf_len,
+                                             Connection *conn);
 
 FfiResult ytflow_resource_get_all(const Connection *conn);
 
@@ -175,6 +195,10 @@ FfiResult ytflow_buffer_free(void *ptr, uintptr_t metadata);
 FfiResult ytflow_runtime_new();
 
 FfiResult ytflow_runtime_free(Runtime *runtime);
+
+#if defined(_WIN32)
+extern int X509_STORE_up_ref(void *v);
+#endif
 
 } // extern "C"
 
