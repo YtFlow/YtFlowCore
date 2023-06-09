@@ -23,3 +23,5 @@ pub mod tls;
 pub mod trojan;
 pub mod vmess;
 pub mod ws;
+
+pub(self) mod h2;

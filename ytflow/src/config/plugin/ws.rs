@@ -75,12 +75,12 @@ impl<'de> Factory for WsClientFactory<'de> {
                 }
             };
 
-            ws::WebSocketStreamOutboundFactory {
-                path: self.path.to_string(),
-                host: self.host.map(|s| s.to_owned()),
-                headers: std::mem::take(&mut self.headers),
+            ws::WebSocketStreamOutboundFactory::new(
+                self.host.map(|s| s.to_owned()),
+                self.path.to_string(),
+                std::mem::take(&mut self.headers),
                 next,
-            }
+            )
         });
         set.fully_constructed
             .stream_outbounds
