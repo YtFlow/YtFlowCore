@@ -122,7 +122,7 @@ FfiResult ytflow_proxy_subscription_query_by_proxy_group_id(uint32_t proxy_group
 FfiResult ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(uint32_t proxy_group_id,
                                                                        const uint64_t *upload_bytes_used,
                                                                        const uint64_t *download_bytes_used,
-                                                                       const uint64_t *bytes_remaining,
+                                                                       const uint64_t *bytes_total,
                                                                        const char *expires_at,
                                                                        const Connection *conn);
 

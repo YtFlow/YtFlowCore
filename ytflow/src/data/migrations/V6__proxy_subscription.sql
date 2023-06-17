@@ -6,7 +6,7 @@ CREATE TABLE `yt_proxy_subscriptions` (
     `update_frequency` VARCHAR(63),
     `upload_bytes_used` INTEGER,
     `download_bytes_used` INTEGER,
-    `bytes_remaining` INTEGER,
+    `bytes_total` INTEGER,
     `expires_at` TEXT,
     `additional_info` TEXT,
     `retrieved_at` TEXT

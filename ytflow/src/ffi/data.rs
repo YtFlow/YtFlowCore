@@ -326,14 +326,14 @@ pub extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
     proxy_group_id: u32,
     upload_bytes_used: *const u64,
     download_bytes_used: *const u64,
-    bytes_remaining: *const u64,
+    bytes_total: *const u64,
     expires_at: *const c_char,
     conn: *const Connection,
 ) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let upload_bytes_used = unsafe { upload_bytes_used.as_ref().copied() };
         let download_bytes_used = unsafe { download_bytes_used.as_ref().copied() };
-        let bytes_remaining = unsafe { bytes_remaining.as_ref().copied() };
+        let bytes_total = unsafe { bytes_total.as_ref().copied() };
         let expires_at = if expires_at.is_null() {
             None
         } else {
@@ -344,7 +344,7 @@ pub extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
             proxy_group_id.into(),
             upload_bytes_used,
             download_bytes_used,
-            bytes_remaining,
+            bytes_total,
             expires_at,
             conn,
         )

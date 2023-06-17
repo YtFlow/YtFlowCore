@@ -20,7 +20,7 @@ pub struct Proxy {
 #[derive(Clone, Deserialize)]
 pub struct ProxyInput {
     pub name: String,
-    pub proxy: Vec<u8>,
+    pub proxy: serde_bytes::ByteBuf,
     pub proxy_version: u16,
 }
 
@@ -36,7 +36,7 @@ fn map_from_row(row: &Row) -> Result<Proxy, SqError> {
 }
 
 fn are_proxies_equivalent(old: &Proxy, new: &ProxyInput) -> bool {
-    old.name == new.name && old.proxy == new.proxy && old.proxy_version == new.proxy_version
+    old.name == new.name && &old.proxy == &*new.proxy && old.proxy_version == new.proxy_version
 }
 
 impl Proxy {
@@ -195,7 +195,13 @@ impl Proxy {
             break proxy_to_insert_from;
         };
         while let Some(EitherOrBoth::Right(new)) = proxy_to_insert_from {
-            Self::create(proxy_group_id, new.name, new.proxy, new.proxy_version, &tx)?;
+            Self::create(
+                proxy_group_id,
+                new.name,
+                new.proxy.into_vec(),
+                new.proxy_version,
+                &tx,
+            )?;
             proxy_to_insert_from = zipped.next();
         }
 

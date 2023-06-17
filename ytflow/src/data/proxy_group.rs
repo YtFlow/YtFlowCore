@@ -20,7 +20,7 @@ pub struct ProxySubscription {
     pub url: String,
     pub upload_bytes_used: Option<u64>,
     pub download_bytes_used: Option<u64>,
-    pub bytes_remaining: Option<u64>,
+    pub bytes_total: Option<u64>,
     pub expires_at: Option<String>,
     pub retrieved_at: Option<NaiveDateTime>,
 }
@@ -43,7 +43,7 @@ fn map_subscription_from_row(row: &Row) -> Result<ProxySubscription, SqError> {
         url: row.get(1)?,
         upload_bytes_used: row.get(2)?,
         download_bytes_used: row.get(3)?,
-        bytes_remaining: row.get(4)?,
+        bytes_total: row.get(4)?,
         expires_at: row.get(5)?,
         retrieved_at: row.get(6)?,
     })
@@ -116,7 +116,7 @@ impl ProxySubscription {
     ) -> DataResult<ProxySubscription> {
         Ok(conn
             .query_row_and_then(
-                r"SELECT `format`, `url`, `upload_bytes_used`, `download_bytes_used`, `bytes_remaining`, `expires_at`, `retrieved_at`
+                r"SELECT `format`, `url`, `upload_bytes_used`, `download_bytes_used`, `bytes_total`, `expires_at`, `retrieved_at`
                 FROM `yt_proxy_subscriptions` WHERE `proxy_group_id` = ?",
                 &[&proxy_group_id],
                 map_subscription_from_row,
@@ -126,7 +126,7 @@ impl ProxySubscription {
         proxy_group_id: u32,
         upload_bytes_used: Option<u64>,
         download_bytes_used: Option<u64>,
-        bytes_remaining: Option<u64>,
+        bytes_total: Option<u64>,
         expires_at: Option<String>,
         conn: &super::Connection,
     ) -> DataResult<()> {
@@ -134,14 +134,14 @@ impl ProxySubscription {
             r"UPDATE `yt_proxy_subscriptions` SET
             `upload_bytes_used` = ?,
             `download_bytes_used` = ?,
-            `bytes_remaining` = ?,
+            `bytes_total` = ?,
             `expires_at` = ?,
             `retrieved_at` = (strftime('%Y-%m-%d %H:%M:%f', 'now'))
             WHERE `proxy_group_id` = ?",
             params![
                 upload_bytes_used,
                 download_bytes_used,
-                bytes_remaining,
+                bytes_total,
                 expires_at,
                 proxy_group_id
             ],
