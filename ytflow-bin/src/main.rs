@@ -63,7 +63,7 @@ fn init_log(args: &ArgMatches) {
         })
         .level(level);
     #[cfg(not(debug_assertions))]
-    if !is_verbose() {
+    if !is_verbose {
         dispatch = dispatch.filter(|meta| meta.target().starts_with("ytflow_core"));
     }
     // To keep the `mut` on `dispatch`
