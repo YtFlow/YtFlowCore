@@ -1,5 +1,4 @@
 #![allow(non_snake_case)]
-#![feature(once_cell)]
 
 #[cfg(target_vendor = "uwp")]
 mod collections;

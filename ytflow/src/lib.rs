@@ -6,7 +6,6 @@
 #![feature(ip)]
 #![feature(const_option)]
 #![feature(result_flattening)]
-#![feature(once_cell)]
 
 #[cfg(windows)]
 mod bindings {
