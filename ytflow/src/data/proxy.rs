@@ -194,7 +194,8 @@ impl Proxy {
             )?;
             break proxy_to_insert_from;
         };
-        while let Some(EitherOrBoth::Right(new)) = proxy_to_insert_from {
+        while let Some(EitherOrBoth::Right(new) | EitherOrBoth::Both(_, new)) = proxy_to_insert_from
+        {
             Self::create(
                 proxy_group_id,
                 new.name,
