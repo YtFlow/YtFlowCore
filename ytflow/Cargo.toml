@@ -50,7 +50,11 @@ tokio-tungstenite = { version = "0.18", default-features = false, features = [
     "handshake",
 ] }
 uuid = { version = "1", features = ["serde"] }
-hyper = { version = "0.14", features = ["client", "http1", "http2"] }
+hyper = { git = "https://github.com/YtFlow/hyper.git", branch = "0.14.x-h2-phdr", features = [
+    "client",
+    "http1",
+    "http2",
+] }
 
 # Crypto
 cipher = "0.4"
