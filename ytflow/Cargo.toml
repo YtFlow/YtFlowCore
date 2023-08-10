@@ -50,7 +50,7 @@ tokio-tungstenite = { version = "0.18", default-features = false, features = [
     "handshake",
 ] }
 uuid = { version = "1", features = ["serde"] }
-hyper = { git = "https://github.com/YtFlow/hyper.git", branch = "0.14.x-h2-phdr", features = [
+hyper = { git = "https://github.com/hyperium/hyper.git", branch = "0.14.x", features = [
     "client",
     "http1",
     "http2",
