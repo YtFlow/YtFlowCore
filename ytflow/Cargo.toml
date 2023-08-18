@@ -23,6 +23,11 @@ rand = "0.8"
 itertools = "0.10"
 tokio-util = "0.7"
 foreign-types-shared = "0.1"
+regex = { version = "1.9", default-features = false, features = [
+    "std",
+    "perf",
+] }
+aho-corasick = "1.0"
 
 # Container
 flume = { version = "0.10", default-features = false, features = ["async"] }

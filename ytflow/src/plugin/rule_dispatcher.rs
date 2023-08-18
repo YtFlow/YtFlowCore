@@ -12,6 +12,7 @@ mod set;
 use crate::flow::*;
 
 pub use builder::RuleDispatcherBuilder;
+pub use set::RuleSet;
 
 type ActionSet = SmallVec<[Action; 8]>;
 pub const ACTION_LIMIT: usize = 15;
@@ -57,15 +58,14 @@ pub struct RuleDispatcher {
 }
 
 struct AsyncMatchContext {
-    me: Arc<RuleDispatcher>,
-    src: SocketAddr,
+    src: Option<SocketAddr>,
     dst_domain: String,
-    dst_port: u16,
+    dst_port: Option<u16>,
     resolver: Arc<dyn Resolver>,
 }
 
 impl AsyncMatchContext {
-    async fn try_match(&self) -> FlowResult<&Action> {
+    async fn try_match<'m>(&self, me: &'m RuleDispatcher) -> FlowResult<&'m Action> {
         let (v4_res, v6_res) = join(
             self.resolver.resolve_ipv4(self.dst_domain.clone()),
             self.resolver.resolve_ipv6(self.dst_domain.clone()),
@@ -74,15 +74,14 @@ impl AsyncMatchContext {
         let dst_ip_v4 = v4_res.unwrap_or_default().first().copied();
         let dst_ip_v6 = v6_res.unwrap_or_default().first().copied();
         let dst_domain = Some(self.dst_domain.as_str());
-        let res = self
-            .me
+        let res = me
             .rule_set
             .r#match(self.src, dst_ip_v4, dst_ip_v6, dst_domain, self.dst_port)
-            .map(|id| self.me.actions.get(id.0 as usize));
+            .map(|id| me.actions.get(id.0 as usize));
         match res {
             Some(Some(a)) => Ok(a),
             Some(None) => Err(FlowError::NoOutbound),
-            None => Ok(&self.me.fallback),
+            None => Ok(&me.fallback),
         }
     }
 }
@@ -95,20 +94,22 @@ enum TryMatchResult<'a> {
 
 impl RuleDispatcher {
     fn try_match(&'_ self, context: &FlowContext) -> TryMatchResult<'_> {
-        let src = context.local_peer;
+        let src = Some(context.local_peer);
+        let dst_port = Some(context.remote_peer.port);
         let mut dst_ip_v4 = None;
         let mut dst_ip_v6 = None;
         let mut dst_domain = None;
         match (&context.remote_peer.host, &self.resolver) {
-            (HostName::DomainName(domain), Some(resolver)) if self.rule_set.should_resolve() => {
+            (HostName::DomainName(domain), Some(resolver))
+                if self.rule_set.should_resolve(src, domain, dst_port) =>
+            {
                 let Some(resolver) = resolver.upgrade() else {
                     return TryMatchResult::Err(FlowError::NoOutbound);
                 };
                 return TryMatchResult::NeedAsync(AsyncMatchContext {
-                    me: self.me.upgrade().unwrap(),
                     src,
                     dst_domain: domain.clone(),
-                    dst_port: context.remote_peer.port,
+                    dst_port,
                     resolver,
                 });
             }
@@ -118,13 +119,7 @@ impl RuleDispatcher {
         }
         let res = self
             .rule_set
-            .r#match(
-                src,
-                dst_ip_v4,
-                dst_ip_v6,
-                dst_domain,
-                context.remote_peer.port,
-            )
+            .r#match(src, dst_ip_v4, dst_ip_v6, dst_domain, dst_port)
             .map(|id| self.actions.get(id.0 as usize));
         match res {
             Some(Some(a)) => TryMatchResult::Matched(a),
@@ -140,8 +135,9 @@ impl RuleDispatcher {
         match self.try_match(&context) {
             TryMatchResult::Matched(a) => cb(context, a),
             TryMatchResult::NeedAsync(a) => {
+                let me = self.me.upgrade().unwrap();
                 tokio::spawn(async move {
-                    match a.try_match().await {
+                    match a.try_match(&me).await {
                         Ok(a) => cb(context, a),
                         Err(_) => {
                             // TODO: log error
@@ -153,6 +149,31 @@ impl RuleDispatcher {
             TryMatchResult::Err(_) => {
                 // TODO: log error
                 return;
+            }
+        }
+    }
+    async fn match_domain(&self, domain: &str) -> FlowResult<&Action> {
+        if let (Some(resolver), true) = (
+            self.resolver.as_ref(),
+            self.rule_set.should_resolve(None, domain, None),
+        ) {
+            AsyncMatchContext {
+                src: None,
+                dst_domain: domain.into(),
+                dst_port: None,
+                resolver: resolver.upgrade().ok_or(FlowError::NoOutbound)?,
+            }
+            .try_match(self)
+            .await
+        } else {
+            let res = self
+                .rule_set
+                .r#match(None, None, None, Some(domain), None)
+                .map(|id| self.actions.get(id.0 as usize));
+            match res {
+                Some(Some(a)) => Ok(a),
+                Some(None) => Err(FlowError::NoOutbound),
+                None => Ok(&self.fallback),
             }
         }
     }
@@ -181,28 +202,12 @@ impl DatagramSessionHandler for RuleDispatcher {
 #[async_trait]
 impl Resolver for RuleDispatcher {
     async fn resolve_ipv4(&self, domain: String) -> ResolveResultV4 {
-        let action = match self
-            .rule_set
-            .match_domain(&domain)
-            .map(|id| self.actions.get(id.0 as usize))
-        {
-            Some(Some(a)) => a,
-            Some(None) => return Err(FlowError::NoOutbound),
-            None => &self.fallback,
-        };
+        let action = self.match_domain(&domain).await?;
         let resolver = action.resolver.upgrade().ok_or(FlowError::NoOutbound)?;
         resolver.resolve_ipv4(domain).await
     }
     async fn resolve_ipv6(&self, domain: String) -> ResolveResultV6 {
-        let action = match self
-            .rule_set
-            .match_domain(&domain)
-            .map(|id| self.actions.get(id.0 as usize))
-        {
-            Some(Some(a)) => a,
-            Some(None) => return Err(FlowError::NoOutbound),
-            None => &self.fallback,
-        };
+        let action = self.match_domain(&domain).await?;
         let resolver = action.resolver.upgrade().ok_or(FlowError::NoOutbound)?;
         resolver.resolve_ipv6(domain).await
     }

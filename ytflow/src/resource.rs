@@ -8,6 +8,8 @@ use thiserror::Error;
 use crate::data::{self, Connection};
 
 pub const RESOURCE_TYPE_GEOIP_COUNTRY: &str = "geoip-country";
+pub const RESOURCE_TYPE_SURGE_DOMAINSET: &str = "surge-domain-set";
+pub const RESOURCE_TYPE_QUANX_FILTER: &str = "surge-quanx-filter";
 
 #[derive(Debug, Error)]
 pub enum ResourceError {

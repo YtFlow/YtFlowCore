@@ -99,6 +99,7 @@ pub(super) fn create_factory_from_plugin(
         "resolve-dest" => box_result(ResolveDestFactory::parse(plugin)),
         "simple-dispatcher" => box_result(SimpleDispatcherFactory::parse(plugin)),
         "rule-dispatcher" => box_result(RuleDispatcherFactory::parse(plugin)),
+        "list-dispatcher" => box_result(ListDispatcherFactory::parse(plugin)),
         "forward" => box_result(ForwardFactory::parse(plugin)),
         "dyn-outbound" => box_result(DynOutboundFactory::parse(plugin)),
         "shadowsocks-client" => box_result(ShadowsocksFactory::parse(plugin)),
