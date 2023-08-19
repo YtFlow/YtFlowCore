@@ -87,12 +87,9 @@ fn build_ac_from_line_segs<'s, S: Iterator<Item = &'s str>>(
                 .then_some((id, segs))
         })
         .filter_map(|(id, segs)| Some((id, QuanxDomainRule::parse_line(segs, action_map)?)))
-        .map(|(rule_id, QuanxDomainRule { domain, action })| {
-            push_id_range_handle_into_sorted(
-                rule_ranges,
-                rule_id as usize,
-                RuleHandle::new(action, rule_id),
-            );
+        .enumerate()
+        .map(|(ac_id, (rule_id, QuanxDomainRule { domain, action }))| {
+            push_id_range_handle_into_sorted(rule_ranges, ac_id, RuleHandle::new(action, rule_id));
             domain
         });
     AhoCorasick::builder().build(it).ok()

@@ -15,7 +15,7 @@ use crate::resource::{ResourceError, RESOURCE_TYPE_GEOIP_COUNTRY};
 
 static RULE_DISPATCHER_ALLOWED_RESOURCE_TYPES: [&str; 2] =
     [RESOURCE_TYPE_GEOIP_COUNTRY, RESOURCE_TYPE_QUANX_FILTER];
-static RULE_DISPATCHER_ALLOWED_LITERAL_RESOURCE_TYPES: [&str; 1] = [RESOURCE_TYPE_GEOIP_COUNTRY];
+static RULE_DISPATCHER_ALLOWED_LITERAL_RESOURCE_TYPES: [&str; 1] = [RESOURCE_TYPE_QUANX_FILTER];
 
 #[derive(Clone, Deserialize)]
 pub struct Action<'a> {
@@ -214,7 +214,7 @@ pub(super) fn validate_text<'t>(
     set: &mut PartialPluginSet<'_>,
 ) -> Cow<'t, str> {
     let ret = String::from_utf8_lossy(bytes);
-    if let Cow::Borrowed(_) = ret {
+    if let Cow::Owned(_) = ret {
         set.errors.push(LoadError::Resource {
             plugin: plugin_name.to_owned(),
             error: ResourceError::InvalidData,

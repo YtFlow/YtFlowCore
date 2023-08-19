@@ -85,6 +85,11 @@ pub enum PluginType {
     )]
     RuleDispatcher,
     #[strum(
+        props(prefix = "list-dispatcher"),
+        detailed_message = "Match the connection against a list of matchers defined in a resource, and use the handler of the action or fallback handler if there is no match."
+    )]
+    ListDispatcher,
+    #[strum(
         props(prefix = "forward"),
         detailed_message = "Establish a new connection for each incoming connection, and forward data between them."
     )]
@@ -233,7 +238,7 @@ impl PluginType {
                 }),
                 PluginType::RuleDispatcher => cbor!({
                     "resolver" => "real-resolver.resolver",
-                    "source" => "Geoip.mmdb",
+                    "source" => "geoip-country",
                     "actions" => {
                         "direct" => {
                             "tcp" => "direct-forward.tcp",
@@ -248,6 +253,20 @@ impl PluginType {
                     },
                     "rules" => {
                         "cn" => "direct",
+                    },
+                    "fallback" => {
+                        "tcp" => "proxy-forward.tcp",
+                        "udp" => "proxy-forward.udp",
+                        "resolver" => "fakeip.resolver",
+                    },
+                }),
+                PluginType::ListDispatcher => cbor!({
+                    "resolver" => "real-resolver.resolver",
+                    "source" => "china-list",
+                    "action" => {
+                        "tcp" => "direct-forward.tcp",
+                        "udp" => "direct-forward.udp",
+                        "resolver" => "real-resolver.resolver",
                     },
                     "fallback" => {
                         "tcp" => "proxy-forward.tcp",
