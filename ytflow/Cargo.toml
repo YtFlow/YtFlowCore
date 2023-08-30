@@ -135,7 +135,7 @@ nix = { version = "0.26", default-features = false, features = ["net"] }
 block2 = "=0.2.0-alpha.7"
 
 [dependencies.smoltcp]
-version = "0.8"
+version = "0.10"
 default-features = false
 features = [
     "std",
@@ -148,4 +148,5 @@ features = [
     "socket-tcp",
     "socket-udp",
     "async",
+    "iface-max-route-count-2"
 ]

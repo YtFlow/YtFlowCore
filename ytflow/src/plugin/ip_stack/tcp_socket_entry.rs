@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Instant;
 
 use smoltcp::iface::SocketHandle;
-use smoltcp::socket::TcpSocket;
+use smoltcp::socket::tcp::Socket as TcpSocket;
 
 use super::*;
 
@@ -31,7 +31,7 @@ pub(super) struct SocketEntryGuard<'s> {
 impl<'s> SocketEntryGuard<'s> {
     pub fn with_socket<R>(&mut self, f: impl FnOnce(&mut TcpSocket) -> R) -> R {
         let handle = self.entry.socket_handle;
-        let socket = self.guard.netif.get_socket::<TcpSocket<'static>>(handle);
+        let socket = self.guard.socket_set.get_mut::<TcpSocket<'static>>(handle);
         f(socket)
     }
 
@@ -43,8 +43,14 @@ impl<'s> SocketEntryGuard<'s> {
             most_recent_scheduled_poll,
             ..
         } = entry;
-        let _ = guard.netif.poll(now.into());
-        if let Some(delay) = guard.netif.poll_delay(now.into()) {
+        let IpStackInner {
+            netif,
+            dev,
+            socket_set,
+            ..
+        } = &mut **guard;
+        let _ = netif.poll(now.into(), dev, socket_set);
+        if let Some(delay) = netif.poll_delay(now.into(), socket_set) {
             let scheduled_poll_milli = (smoltcp::time::Instant::from(now) + delay).total_millis();
             if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed) {
                 return;

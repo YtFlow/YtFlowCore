@@ -12,13 +12,14 @@ use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
 use flume::{bounded, Sender, TrySendError};
-use smoltcp::iface::{Interface, InterfaceBuilder, Route, Routes, SocketHandle};
+use smoltcp::iface::{Config as InterfaceConfig, Interface, SocketHandle, SocketSet};
 use smoltcp::phy::{Checksum, ChecksumCapabilities, DeviceCapabilities, Medium};
-use smoltcp::socket::TcpSocket;
+use smoltcp::socket::tcp::Socket as TcpSocket;
 use smoltcp::storage::RingBuffer;
+use smoltcp::time::Instant as SmolInstant;
 use smoltcp::wire::{
-    IpAddress, IpCidr, IpEndpoint, IpProtocol, Ipv4Address, Ipv4Packet, Ipv6Address, Ipv6Packet,
-    TcpPacket, UdpPacket,
+    HardwareAddress, IpAddress, IpCidr, IpEndpoint, IpProtocol, Ipv4Address, Ipv4Packet,
+    Ipv6Address, Ipv6Packet, TcpPacket, UdpPacket,
 };
 use tokio::time::sleep_until;
 
@@ -30,10 +31,10 @@ struct Device {
     tun: Arc<dyn Tun>,
 }
 
-impl<'d> smoltcp::phy::Device<'d> for Device {
-    type RxToken = RxToken<'d>;
-    type TxToken = TxToken<'d>;
-    fn receive(&'d mut self) -> Option<(Self::RxToken, Self::TxToken)> {
+impl smoltcp::phy::Device for Device {
+    type RxToken<'d> = RxToken<'d>;
+    type TxToken<'d> = TxToken<'d>;
+    fn receive(&mut self, _: SmolInstant) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
         let Self { tx, rx, tun } = self;
         rx.as_ref()?;
         if tx.is_none() {
@@ -41,7 +42,7 @@ impl<'d> smoltcp::phy::Device<'d> for Device {
         };
         Some((RxToken(rx, &**tun), TxToken(tx, &**tun)))
     }
-    fn transmit(&'d mut self) -> Option<Self::TxToken> {
+    fn transmit(&mut self, _: SmolInstant) -> Option<Self::TxToken<'_>> {
         let Self { tx, tun, .. } = self;
         if tx.is_none() {
             *tx = Some(tun.get_tx_buffer()?);
@@ -75,9 +76,9 @@ impl Drop for Device {
 
 struct RxToken<'d>(&'d mut Option<Buffer>, &'d dyn Tun);
 impl<'d> smoltcp::phy::RxToken for RxToken<'d> {
-    fn consume<R, F>(self, _timestamp: smoltcp::time::Instant, f: F) -> smoltcp::Result<R>
+    fn consume<R, F>(self, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         let buf = self
             .0
@@ -100,14 +101,9 @@ impl<'d> smoltcp::phy::RxToken for RxToken<'d> {
 
 struct TxToken<'d>(&'d mut Option<TunBufferToken>, &'d dyn Tun);
 impl<'d> smoltcp::phy::TxToken for TxToken<'d> {
-    fn consume<R, F>(
-        self,
-        _timestamp: smoltcp::time::Instant,
-        len: usize,
-        f: F,
-    ) -> smoltcp::Result<R>
+    fn consume<R, F>(self, len: usize, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> smoltcp::Result<R>,
+        F: FnOnce(&mut [u8]) -> R,
     {
         let buf = self
             .0
@@ -125,7 +121,9 @@ impl<'d> smoltcp::phy::TxToken for TxToken<'d> {
 type IpStack = Arc<Mutex<IpStackInner>>;
 
 struct IpStackInner {
-    netif: Interface<'static, Device>,
+    netif: Interface,
+    dev: Device,
+    socket_set: SocketSet<'static>,
     // TODO: (router) also record src ip
     tcp_sockets: BTreeMap<SocketAddr, SocketHandle>,
     udp_sockets: BTreeMap<SocketAddr, Sender<(DestinationAddr, Buffer)>>,
@@ -138,38 +136,34 @@ pub fn run(
     tcp_next: Weak<dyn StreamHandler>,
     udp_next: Weak<dyn DatagramSessionHandler>,
 ) -> tokio::task::JoinHandle<()> {
-    let netif = InterfaceBuilder::new(
-        Device {
-            tx: None,
-            rx: None,
-            tun: tun.clone(),
-        },
-        Vec::with_capacity(64),
-    )
-    .ip_addrs(vec![IpCidr::new(
-        Ipv4Address::new(192, 168, 3, 1).into(),
-        0,
-    )])
-    .any_ip(true)
-    .routes(Routes::new(
-        [
-            (
-                IpCidr::new(Ipv4Address::UNSPECIFIED.into(), 0),
-                // TODO: Custom IP Address
-                Route::new_ipv4_gateway(Ipv4Address::new(192, 168, 3, 1)),
-            ),
-            (
-                IpCidr::new(Ipv6Address::UNSPECIFIED.into(), 0),
-                Route::new_ipv6_gateway(Ipv6Address::new(0xfd00, 0, 0, 0, 0, 0, 0, 2)),
-            ),
-        ]
-        .into_iter()
-        .collect::<BTreeMap<_, _>>(),
-    ))
-    .finalize();
+    let mut dev = Device {
+        tx: None,
+        rx: None,
+        tun: tun.clone(),
+    };
+    let mut netif = Interface::new(
+        InterfaceConfig::new(HardwareAddress::Ip),
+        &mut dev,
+        Instant::now().into(),
+    );
+    netif.set_any_ip(true);
+    netif.update_ip_addrs(|ips| {
+        ips.push(IpCidr::new(Ipv4Address::new(192, 168, 3, 1).into(), 0))
+            .expect("IPv4 address should not exceed capacity");
+    });
+    netif
+        .routes_mut()
+        .add_default_ipv4_route(Ipv4Address::new(192, 168, 3, 1))
+        .expect("IPv4 route should not exceed capacity");
+    netif
+        .routes_mut()
+        .add_default_ipv6_route(Ipv6Address::new(0xfd00, 0, 0, 0, 0, 0, 0, 2))
+        .expect("IPv6 route should not exceed capacity");
 
     let stack = Arc::new(Mutex::new(IpStackInner {
         netif,
+        dev,
+        socket_set: SocketSet::new(vec![]),
         tcp_sockets: BTreeMap::new(),
         udp_sockets: BTreeMap::new(),
         tcp_next,
@@ -193,7 +187,7 @@ fn process_packet(stack: &IpStack, packet: Buffer) {
                 Err(_) => return,
             };
             let (src_addr, dst_addr) = (ipv4_packet.src_addr(), ipv4_packet.dst_addr());
-            match ipv4_packet.protocol() {
+            match ipv4_packet.next_header() {
                 IpProtocol::Tcp => {
                     let p = match TcpPacket::new_checked(ipv4_packet.payload_mut()) {
                         Ok(p) => p,
@@ -282,10 +276,11 @@ fn process_tcp(
         netif,
         tcp_sockets,
         tcp_next,
+        dev,
+        socket_set,
         ..
     } = &mut *guard;
 
-    let dev = netif.device_mut();
     dev.rx = Some(packet);
 
     let tcp_socket_count = tcp_sockets.len();
@@ -312,7 +307,7 @@ fn process_tcp(
         // The default ACK delay (10ms) significantly reduces uplink throughput.
         // Maybe due to the delay when sending ACK packets?
         socket.set_ack_delay(None);
-        let socket_handle = netif.add_socket(socket);
+        let socket_handle = socket_set.add(socket);
         vac.insert(socket_handle);
         let ctx = FlowContext::new(
             src_addr,
@@ -341,7 +336,7 @@ fn process_tcp(
         });
     };
     let now = Instant::now();
-    let _ = netif.poll(now.into());
+    let _ = netif.poll(now.into(), dev, socket_set);
     // Polling the socket may wake a read/write waker. When a task polls the tx/rx
     // buffer from the corresponding stream, a delayed poll will be rescheduled.
     // Therefore, we don't have to poll the socket here.
@@ -418,8 +413,14 @@ fn schedule_repoll(
             return;
         }
         let mut stack_guard = stack.lock().unwrap();
-        let _ = stack_guard.netif.poll(poll_at.into());
-        if let Some(delay) = stack_guard.netif.poll_delay(poll_at.into()) {
+        let IpStackInner {
+            netif,
+            socket_set,
+            dev,
+            ..
+        } = &mut *stack_guard;
+        let _ = netif.poll(poll_at.into(), dev, socket_set);
+        if let Some(delay) = netif.poll_delay(poll_at.into(), socket_set) {
             let scheduled_poll_milli =
                 (smoltcp::time::Instant::from(Instant::now()) + delay).total_millis();
             if scheduled_poll_milli >= most_recent_scheduled_poll.load(Ordering::Relaxed) {
@@ -441,6 +442,5 @@ fn smoltcp_addr_to_std(addr: IpAddress) -> IpAddr {
     match addr {
         IpAddress::Ipv4(ip) => IpAddr::V4(ip.into()),
         IpAddress::Ipv6(ip) => IpAddr::V6(ip.into()),
-        _ => panic!("Cannot convert unknown smoltcp address to std address"),
     }
 }
