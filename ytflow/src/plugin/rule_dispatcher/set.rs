@@ -7,7 +7,7 @@ use regex::bytes::RegexSet;
 
 use super::{rules, ActionHandle, RuleHandle, RuleId};
 
-fn aggregate_rules(it: impl Iterator<Item = RuleHandle>) -> Option<RuleHandle> {
+fn reduce_rules(it: impl Iterator<Item = RuleHandle>) -> Option<RuleHandle> {
     it.min_by_key(|r| r.rule_id())
 }
 
@@ -45,7 +45,7 @@ impl RuleSet {
     ) -> bool {
         match (
             self.first_resolving_rule_id,
-            aggregate_rules(self.match_domain_impl(dst_domain).chain(self.r#final)),
+            reduce_rules(self.match_domain_impl(dst_domain).chain(self.r#final)),
         ) {
             (None, _) => false,
             (Some(_), None) => true,
@@ -70,7 +70,7 @@ impl RuleSet {
         };
         let min_rule_id_filter = |rule: &RuleHandle| rule.rule_id() >= min_rule_id;
         // TODO: customize aggregation strategy
-        let domain_res = aggregate_rules(
+        let domain_res = reduce_rules(
             dst_domain
                 .into_iter()
                 .flat_map(|domain| self.match_domain_impl(domain))
@@ -83,7 +83,7 @@ impl RuleSet {
                 .as_ref()
                 .into_iter()
                 .flat_map(|geoip| geoip.query(ip.into()));
-            aggregate_rules(ip_it.chain(geoip_it).filter(min_rule_id_filter))
+            reduce_rules(ip_it.chain(geoip_it).filter(min_rule_id_filter))
         });
         let v6_res = dst_ip_v6.and_then(|ip| {
             let ip_it = self.match_ipv6_impl(ip);
@@ -92,9 +92,9 @@ impl RuleSet {
                 .as_ref()
                 .into_iter()
                 .flat_map(|geoip| geoip.query(ip.into()));
-            aggregate_rules(ip_it.chain(geoip_it).filter(min_rule_id_filter))
+            reduce_rules(ip_it.chain(geoip_it).filter(min_rule_id_filter))
         });
-        let final_res = aggregate_rules(
+        let final_res = reduce_rules(
             v4_res
                 .into_iter()
                 .chain(v6_res)

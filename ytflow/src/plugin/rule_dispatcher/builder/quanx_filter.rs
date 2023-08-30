@@ -76,14 +76,16 @@ fn push_id_range_handle_into_sorted(
 
 fn build_ac_from_line_segs<'s, S: Iterator<Item = &'s str>>(
     lines: impl Iterator<Item = (RuleId, S)>,
-    rule_type: &str,
+    accepted_rule_types: &'static [&'static str],
     action_map: &BTreeMap<&str, ActionHandle>,
     rule_ranges: &mut Vec<IdRangeHandle>,
 ) -> Option<AhoCorasick> {
     let it = lines
         .filter_map(|(id, mut segs)| {
-            segs.next()?
-                .eq_ignore_ascii_case(rule_type)
+            let rule_type = segs.next()?;
+            accepted_rule_types
+                .into_iter()
+                .any(|r| rule_type.eq_ignore_ascii_case(r))
                 .then_some((id, segs))
         })
         .filter_map(|(id, segs)| Some((id, QuanxDomainRule::parse_line(segs, action_map)?)))
@@ -97,15 +99,17 @@ fn build_ac_from_line_segs<'s, S: Iterator<Item = &'s str>>(
 
 fn build_ip_rules_from_line_segs<'s, 'r, 'f: 'r, S: Iterator<Item = &'s str>, I>(
     lines: impl Iterator<Item = (RuleId, S)> + 'r,
-    rule_type: &'r str,
+    accepted_rule_types: &'static [&'static str],
     action_map: &'r BTreeMap<&str, ActionHandle>,
     mut set_parser: impl FnMut(&str) -> Option<I> + 'r,
     first_resolving_rule_id: &'f mut Option<RuleId>,
 ) -> impl Iterator<Item = (I, RuleHandle)> + 'r {
     lines
         .filter_map(|(id, mut segs)| {
-            segs.next()?
-                .eq_ignore_ascii_case(rule_type)
+            let rule_type = segs.next()?;
+            accepted_rule_types
+                .into_iter()
+                .any(|r| rule_type.eq_ignore_ascii_case(r))
                 .then_some((id, segs))
         })
         .filter_map(move |(id, segs)| {
@@ -147,16 +151,21 @@ impl RuleSet {
         let (mut full_rule_ranges, mut sub_rule_ranges, mut keyword_rule_ranges) =
             (vec![], vec![], vec![]);
         let (full_ac, sub_ac, keyword_ac) = (
-            build_ac_from_line_segs(lines.clone(), "host", action_map, &mut full_rule_ranges)?,
             build_ac_from_line_segs(
                 lines.clone(),
-                "host-suffix",
+                &["host", "domain"],
+                action_map,
+                &mut full_rule_ranges,
+            )?,
+            build_ac_from_line_segs(
+                lines.clone(),
+                &["host-suffix", "domain-suffix"],
                 action_map,
                 &mut sub_rule_ranges,
             )?,
             build_ac_from_line_segs(
                 lines.clone(),
-                "host-keyword",
+                &["host-keyword", "domain-keyword"],
                 action_map,
                 &mut keyword_rule_ranges,
             )?,
@@ -165,7 +174,7 @@ impl RuleSet {
         let mut first_resolving_rule_id = None;
         let mut ipv4_rules = build_ip_rules_from_line_segs(
             lines.clone(),
-            "ip-cidr",
+            &["ip-cidr"],
             action_map,
             |s| Ipv4Cidr::from_str(s).ok(),
             &mut first_resolving_rule_id,
@@ -174,7 +183,7 @@ impl RuleSet {
         ipv4_rules.sort_by_key(|(cidr, handle)| (*cidr, handle.rule_id()));
         let mut ipv6_rules = build_ip_rules_from_line_segs(
             lines.clone(),
-            "ip6-cidr",
+            &["ip6-cidr", "ip-cidr6"],
             action_map,
             |s| Ipv6Cidr::from_str(s).ok(),
             &mut first_resolving_rule_id,
@@ -183,7 +192,7 @@ impl RuleSet {
         ipv6_rules.sort_by_key(|(cidr, handle)| (*cidr, handle.rule_id()));
         let geoip_rule_it = build_ip_rules_from_line_segs(
             lines.clone(),
-            "geoip",
+            &["geoip"],
             action_map,
             |s| Some(s.to_ascii_uppercase()),
             &mut first_resolving_rule_id,
