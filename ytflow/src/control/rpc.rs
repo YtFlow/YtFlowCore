@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 use std::io;
 
-use cbor4ii::{
-    serde::{from_slice, to_writer},
-    EncodeError,
-};
+use cbor4ii::serde::{from_slice, to_writer, EncodeError};
 use futures::{
     sink::{Sink, SinkExt},
     stream::{TryStream, TryStreamExt},

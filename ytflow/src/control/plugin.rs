@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::convert::Infallible;
 
+use cbor4ii::serde::DecodeError;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_bytes::ByteBuf;
 use thiserror::Error;
@@ -14,13 +15,10 @@ pub enum PluginRequestError {
     #[error("Bad param")]
     #[serde(serialize_with = "serialize_bad_param")]
     #[serde(skip_deserializing)]
-    BadParam(#[from] cbor4ii::core::dec::Error<Infallible>),
+    BadParam(#[from] DecodeError<Infallible>),
 }
 
-fn serialize_bad_param<S>(
-    t: &cbor4ii::core::dec::Error<Infallible>,
-    s: S,
-) -> Result<S::Ok, S::Error>
+fn serialize_bad_param<S>(t: &DecodeError<Infallible>, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {

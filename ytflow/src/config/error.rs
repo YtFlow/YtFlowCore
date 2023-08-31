@@ -5,7 +5,7 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum ConfigError {
     #[error(r#"error parsing param for plugin "{0}": {1}"#)]
-    ParseParam(String, cbor4ii::core::dec::Error<Infallible>),
+    ParseParam(String, cbor4ii::serde::DecodeError<Infallible>),
     #[error(r#"config field "{field:}" for plugin "{plugin:}" is not valid"#)]
     InvalidParam { plugin: String, field: &'static str },
     #[error(r#"cannot find descriptor "{descriptor:}" from plugin "{initiator:}", or "{descriptor:}" failed to load previously"#)]

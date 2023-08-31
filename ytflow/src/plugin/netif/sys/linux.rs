@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::{Arc, Mutex};
 
 use futures::{StreamExt, TryStreamExt};
-use rtnetlink::sys::SocketAddr;
+use netlink_sys::SocketAddr;
 use rtnetlink::Handle;
 use tokio::task::JoinHandle;
 
@@ -39,8 +39,8 @@ pub struct NetifProvider {
 
 impl NetifProvider {
     pub fn new<C: Fn() + Send + 'static>(callback: C) -> Self {
-        use rtnetlink::packet::constants::*;
-        use rtnetlink::sys::AsyncSocket;
+        use netlink_packet_route::constants::*;
+        use netlink_sys::AsyncSocket;
 
         let (mut conn, handle, mut messages) =
             rtnetlink::new_connection().expect("Cannot create rtnetlink socket");
@@ -113,9 +113,9 @@ impl Drop for NetifProvider {
 }
 
 async fn receive_netifs(handle: &Handle) -> Vec<(Netif, Recommended)> {
-    use rtnetlink::packet::address::Nla as AddrNla;
-    use rtnetlink::packet::link::nlas::Nla as LinkNla;
-    use rtnetlink::packet::{AF_INET, AF_INET6, ARPHRD_ETHER, IFF_LOWER_UP, IFF_UP};
+    use netlink_packet_route::address::Nla as AddrNla;
+    use netlink_packet_route::constants::*;
+    use netlink_packet_route::link::nlas::Nla as LinkNla;
 
     let mut addr_stream = handle.address().get().execute();
     let mut addr_dict: BTreeMap<u32, (Vec<Ipv4Addr>, Vec<Ipv6Addr>)> = BTreeMap::new();

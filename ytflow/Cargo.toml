@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 
 # Primitive
-bitflags = "1"
+bitflags = { version = "2", features = ["serde"] }
 async-trait = "0.1"
 futures = { version = "0.3", default-features = false, features = [
     "std",
@@ -20,9 +20,9 @@ pin-project-lite = "0.2"
 chrono = { version = "*", features = ["serde"] }
 memchr = "2"
 rand = "0.8"
-itertools = "0.10"
+itertools = "0.11"
 tokio-util = "0.7"
-foreign-types-shared = "0.1"
+foreign-types-shared = "0.3"
 regex = { version = "1.9", default-features = false, features = [
     "std",
     "perf",
@@ -30,15 +30,15 @@ regex = { version = "1.9", default-features = false, features = [
 aho-corasick = "1.0"
 
 # Container
-flume = { version = "0.10", default-features = false, features = ["async"] }
+flume = { version = "0.11", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union", "serde"] }
-lru = "0.9"
+lru = "0.11"
 arc-swap = "1"
 cidr = { version = "0.2", features = ["serde"] }
 
 # FFI
 libc = "0.2"
-socket2 = { version = "0.4", features = ["all"] }
+socket2 = { version = "0.5", features = ["all"] }
 
 # Protocol
 http = "0.2"
@@ -51,7 +51,7 @@ trust-dns-resolver = { version = "0.20", default-features = false, features = [
 # Note: UWP build is only supported since OpenSSL 3.0
 openssl = "0.10"
 tokio-openssl = "0.6"
-tokio-tungstenite = { version = "0.18", default-features = false, features = [
+tokio-tungstenite = { version = "0.20", default-features = false, features = [
     "handshake",
 ] }
 uuid = { version = "1", features = ["serde"] }
@@ -85,7 +85,7 @@ serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 refinery = { version = "0.8", features = ["rusqlite"] }
 refinery-core = "0.8"
-cbor4ii = { version = "0.2", features = ["use_std", "serde1-value"] }
+cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
 maxminddb = "0.23"
 
 [target.'cfg(windows)'.dependencies]
@@ -122,8 +122,10 @@ tokio = { version = "1", features = [
 rusqlite = { version = "0.28", features = ["chrono"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-rtnetlink = "0.11"
-zbus_systemd = { version = "0.0.8", features = ["resolve1"] }
+rtnetlink = "0.13"
+netlink-sys = "0.8"
+netlink-packet-route = "0.17"
+zbus_systemd = { version = "0.0.10", features = ["resolve1"] }
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 fruity = { version = "0.3", features = [

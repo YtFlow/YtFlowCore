@@ -9,7 +9,7 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [build-dependencies]
-cbindgen = { version = "0.24", default-features = false }
+cbindgen = { version = "0.25", default-features = false }
 
 [dependencies]
 ytflow = { path = "../ytflow" }

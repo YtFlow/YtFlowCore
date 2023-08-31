@@ -11,7 +11,8 @@ pub(super) use super::set::*;
 use super::*;
 
 bitflags! {
-    #[derive(Deserialize, Serialize)]
+    #[repr(transparent)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
     pub struct AccessPointType: u8 {
         const STREAM_HANDLER           = 0b00000001;
         const DATAGRAM_SESSION_HANDLER = 0b00000010;
