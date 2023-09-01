@@ -201,7 +201,7 @@ dependencies = [
  "polling",
  "rustix 0.37.23",
  "slab",
- "socket2 0.4.9",
+ "socket2",
  "waker-fn",
 ]
 
@@ -901,7 +901,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6f339eb8adc052cd2ca78910fda869aefa38d22d5cb648e6485e4d3fc06f3b1"
 dependencies = [
- "foreign-types-shared 0.1.1",
+ "foreign-types-shared",
 ]
 
 [[package]]
@@ -909,12 +909,6 @@ name = "foreign-types-shared"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
-
-[[package]]
-name = "foreign-types-shared"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
 
 [[package]]
 name = "form_urlencoded"
@@ -1341,7 +1335,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bd302af1b90f2463a98fa5ad469fc212c8e3175a41c3068601bfa2727591c5be"
 dependencies = [
- "socket2 0.4.9",
+ "socket2",
  "widestring",
  "winapi",
 ]
@@ -2352,16 +2346,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "socket2"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2538b18701741680e0322a2302176d3253a35388e2e62f172f64f4f16605f877"
-dependencies = [
- "libc",
- "windows-sys 0.48.0",
-]
-
-[[package]]
 name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3208,7 +3192,7 @@ dependencies = [
  "crc32fast",
  "ctr",
  "flume",
- "foreign-types-shared 0.3.1",
+ "foreign-types-shared",
  "fruity",
  "futures",
  "getrandom",
@@ -3243,7 +3227,7 @@ dependencies = [
  "sha3",
  "smallvec",
  "smoltcp",
- "socket2 0.5.3",
+ "socket2",
  "subtle",
  "thiserror",
  "tokio",

@@ -22,7 +22,7 @@ memchr = "2"
 rand = "0.8"
 itertools = "0.11"
 tokio-util = "0.7"
-foreign-types-shared = "0.3"
+foreign-types-shared = "0.1"
 regex = { version = "1.9", default-features = false, features = [
     "std",
     "perf",
@@ -38,7 +38,7 @@ cidr = { version = "0.2", features = ["serde"] }
 
 # FFI
 libc = "0.2"
-socket2 = { version = "0.5", features = ["all"] }
+socket2 = { version = "0.4", features = ["all"] }
 
 # Protocol
 http = "0.2"
