@@ -23,11 +23,7 @@ impl RuleSet {
         &'a self,
         mut domain: &'a str,
     ) -> impl Iterator<Item = RuleHandle> + 'a {
-        // Safety: given domain is a valid UTF-8 sequence, it should also
-        // be a valid UTF-8 sequence after stripping the trailing dot.
-        if let Some(rem) = domain.as_bytes().strip_suffix(&[b'.']) {
-            domain = unsafe { std::str::from_utf8_unchecked(rem) };
-        }
+        domain = domain.strip_suffix('.').unwrap_or(domain);
         let full_it = self
             .dst_domain_full
             .iter()
