@@ -13,7 +13,7 @@ If you are looking for the UWP app powered by YtFlowCore, please head over to [Y
 - Supports common proxy protocols: Shadowsocks, Trojan, VMess, SOCKS5 and HTTP.
 - Flexible outbound transports: simple-obfs, WebSocket, TLS etc.
 - DNS resolvers at your option: libc resolver, classic DNS over UDP, DNS over HTTPS.
-- GeoIP based split routing.
+- Rule-based split routing modules: GeoIP, Surge domain set, Quantumult X filter.
 - Runs on Linux, macOS and Universal Windows Platform.
 
 ## Usage
