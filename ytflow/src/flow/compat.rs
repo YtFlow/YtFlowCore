@@ -98,7 +98,7 @@ impl AsyncWrite for CompatStream {
     }
 }
 
-impl<S: AsyncRead + AsyncWrite + Send + Sync + Unpin + 'static> Stream for CompatFlow<S> {
+impl<S: AsyncRead + AsyncWrite + Send + Unpin + 'static> Stream for CompatFlow<S> {
     // Read
     fn poll_request_size(&mut self, _cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>> {
         Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }))

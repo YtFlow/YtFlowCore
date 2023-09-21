@@ -28,9 +28,6 @@ struct WebSocketStream<S> {
     ws: TokioWebSocketStream<S>,
 }
 
-// Safety: only methods with receiver &mut self are used.
-unsafe impl<S> Sync for WebSocketStream<S> {}
-
 #[derive(Clone, Default)]
 enum H2ProbeState {
     #[default]

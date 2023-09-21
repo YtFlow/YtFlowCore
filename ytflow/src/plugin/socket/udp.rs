@@ -71,9 +71,6 @@ pub(super) enum ResolvingAddr {
     Ready((Option<Ipv4Addr>, Option<Ipv6Addr>, u16)),
 }
 
-// Safety: ResolvingAddr is never shared between threads.
-unsafe impl Sync for ResolvingAddr {}
-
 pub(super) enum MaybeBoundSocket<BindFn> {
     Disabled,
     Unbound(BindFn),

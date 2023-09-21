@@ -95,9 +95,6 @@ struct DatagramForwardSession {
     reverse_mapping: BTreeMap<IpAddr, String>,
 }
 
-// TODO: 为啥？
-unsafe impl Sync for DatagramForwardSession {}
-
 impl DatagramSession for DatagramForwardSession {
     fn poll_recv_from(&mut self, cx: &mut Context) -> Poll<Option<(DestinationAddr, Buffer)>> {
         if let Some(mut fut) = self.resolving.take() {

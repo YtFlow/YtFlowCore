@@ -33,7 +33,7 @@ impl Default for SizeHint {
     }
 }
 
-pub trait Stream: Send + Sync {
+pub trait Stream: Send {
     // Read
     fn poll_request_size(&mut self, cx: &mut Context<'_>) -> Poll<FlowResult<SizeHint>>;
     fn commit_rx_buffer(&mut self, buffer: Buffer) -> Result<(), (Buffer, FlowError)>;
