@@ -28,18 +28,19 @@ impl<'de> ResolveDestFactory<'de> {
         }
         Ok(ParsedPlugin {
             factory: config.clone(),
-            requires: config
-                .tcp_next
-                .iter()
-                .map(|t| Descriptor {
-                    descriptor: *t,
-                    r#type: AccessPointType::STREAM_HANDLER,
-                })
-                .chain(config.udp_next.iter().map(|u| Descriptor {
-                    descriptor: *u,
-                    r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
-                }))
-                .collect(),
+            requires: std::iter::once(Descriptor {
+                descriptor: config.resolver,
+                r#type: AccessPointType::RESOLVER,
+            })
+            .chain(config.tcp_next.iter().map(|t| Descriptor {
+                descriptor: *t,
+                r#type: AccessPointType::STREAM_HANDLER,
+            }))
+            .chain(config.udp_next.iter().map(|u| Descriptor {
+                descriptor: *u,
+                r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
+            }))
+            .collect(),
             provides: config
                 .tcp_next
                 .iter()
