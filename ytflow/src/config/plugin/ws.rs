@@ -35,10 +35,16 @@ impl<'de> WsClientFactory<'de> {
         let mut headers = HeaderMap::with_capacity(config.headers.len());
         for (k, v) in config.headers {
             let Ok(header) = HeaderName::from_bytes(k.as_bytes()) else {
-                return Err(ConfigError::InvalidParam { plugin: name.clone(), field: "headers_header" });
+                return Err(ConfigError::InvalidParam {
+                    plugin: name.clone(),
+                    field: "headers_header",
+                });
             };
             let Ok(value) = HeaderValue::from_str(v) else {
-                return Err(ConfigError::InvalidParam { plugin: name.clone(), field: "headers_value" });
+                return Err(ConfigError::InvalidParam {
+                    plugin: name.clone(),
+                    field: "headers_value",
+                });
             };
             headers.insert(header, value);
         }

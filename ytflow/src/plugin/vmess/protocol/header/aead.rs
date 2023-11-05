@@ -183,7 +183,10 @@ impl ResponseHeaderDec for AeadRequestDec {
         // TODO: cmd bytes
         let Some(size_chunk) = data.get_mut(..HEADER_SIZE_LEN + AEAD_TAG_LEN) else {
             return HeaderDecryptResult::Incomplete {
-                total_required: HEADER_SIZE_LEN + AEAD_TAG_LEN + self.anticipated_res_size + AEAD_TAG_LEN,
+                total_required: HEADER_SIZE_LEN
+                    + AEAD_TAG_LEN
+                    + self.anticipated_res_size
+                    + AEAD_TAG_LEN,
             };
         };
         let (chunk, chunk_tag) = size_chunk.split_at_mut(HEADER_SIZE_LEN);
@@ -199,7 +202,8 @@ impl ResponseHeaderDec for AeadRequestDec {
         let size = u16::from_be_bytes([chunk[0], chunk[1]]) as usize;
         self.anticipated_res_size = size;
 
-        let Some(chunk) = data[HEADER_SIZE_LEN + AEAD_TAG_LEN..].get_mut(..size + AEAD_TAG_LEN) else {
+        let Some(chunk) = data[HEADER_SIZE_LEN + AEAD_TAG_LEN..].get_mut(..size + AEAD_TAG_LEN)
+        else {
             return HeaderDecryptResult::Incomplete {
                 total_required: HEADER_SIZE_LEN + AEAD_TAG_LEN + size + AEAD_TAG_LEN,
             };

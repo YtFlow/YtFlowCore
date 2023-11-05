@@ -143,13 +143,16 @@ pub async fn retrieve_all_link_dns_servers() -> HashMap<String, Vec<IpAddr>> {
         return Default::default();
     };
     // TODO: handle errors
-    let Ok(res) = conn.call_method(
-        Some("org.freedesktop.NetworkManager"),
-        "/org/freedesktop/NetworkManager/DnsManager",
-        Some("org.freedesktop.DBus.Properties"),
-        "Get",
-        &("org.freedesktop.NetworkManager.DnsManager", "Configuration"),
-    ).await else {
+    let Ok(res) = conn
+        .call_method(
+            Some("org.freedesktop.NetworkManager"),
+            "/org/freedesktop/NetworkManager/DnsManager",
+            Some("org.freedesktop.DBus.Properties"),
+            "Get",
+            &("org.freedesktop.NetworkManager.DnsManager", "Configuration"),
+        )
+        .await
+    else {
         return Default::default();
     };
     let body: Structure = res.body().unwrap();

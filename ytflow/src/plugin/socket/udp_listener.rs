@@ -80,7 +80,9 @@ impl MultiplexedDatagramSession for InboundUdpSession {
     }
 
     fn send_to(&mut self, src: DestinationAddr, buf: Buffer) {
-        let HostName::Ip(ip) = &src.host else { return; };
+        let HostName::Ip(ip) = &src.host else {
+            return;
+        };
         self.tx_buf = Some((SocketAddr::new(*ip, src.port), buf));
     }
 }
