@@ -45,9 +45,11 @@ impl HostResolver {
         let mut dns_configs = Vec::with_capacity(size_hint);
         let mut factory_ids = Vec::with_capacity(size_hint);
         {
-            let mut guard = UDP_FACTORIES.write().unwrap();
-            let (max_id, factories) = &mut *guard;
+            // The iterator may recursively create new HostResolvers.
+            // Holding the lock across iterations may cause deadlock.
             for factory in &doh_factories {
+                let mut guard = UDP_FACTORIES.write().unwrap();
+                let (max_id, factories) = &mut *guard;
                 *max_id = max_id.wrapping_add(1);
                 factories.insert(*max_id, Arc::downgrade(factory) as _);
                 dns_configs.push(NameServerConfig {
@@ -59,6 +61,8 @@ impl HostResolver {
                 factory_ids.push(*max_id);
             }
             for factory in datagram_hosts {
+                let mut guard = UDP_FACTORIES.write().unwrap();
+                let (max_id, factories) = &mut *guard;
                 *max_id = max_id.wrapping_add(1);
                 factories.insert(*max_id, factory);
                 dns_configs.push(NameServerConfig {
