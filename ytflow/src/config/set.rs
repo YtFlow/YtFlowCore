@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::mem::ManuallyDrop;
 use std::sync::{Arc, Weak};
 
@@ -19,7 +19,7 @@ pub struct PluginSet {
 }
 
 pub(super) struct PartialPluginSet<'f> {
-    pub(super) plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'f>>>,
+    pub(super) plugins: BTreeMap<String, Option<Box<dyn super::factory::Factory + 'f>>>,
     pub(super) db: Option<&'f Database>,
     pub(super) resource_registry: Box<dyn ResourceRegistry>,
     pub(super) fully_constructed: PluginSet,
@@ -67,7 +67,7 @@ macro_rules! impl_get_or_create {
 
 impl<'a> PartialPluginSet<'a> {
     pub(super) fn new(
-        plugins: HashMap<String, Option<Box<dyn super::factory::Factory + 'a>>>,
+        plugins: BTreeMap<String, Option<Box<dyn super::factory::Factory + 'a>>>,
         resource_registry: Box<dyn ResourceRegistry>,
         db: Option<&'a Database>,
         fully_constructed: PluginSet,

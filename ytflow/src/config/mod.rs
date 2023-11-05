@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 mod error;
 pub mod factory;
 mod human_repr;

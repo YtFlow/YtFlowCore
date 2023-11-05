@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use crate::config::{
@@ -7,9 +8,9 @@ use crate::config::{
 use crate::resource::EmptyResourceRegistry;
 
 pub struct ProxyLoader<'f, I1, I2> {
-    factories: HashMap<String, Box<dyn factory::Factory + 'f>>,
-    preset_stream_outbounds: HashMap<&'static str, Arc<dyn StreamOutboundFactory>>,
-    preset_datagram_outbounds: HashMap<&'static str, Arc<dyn DatagramSessionFactory>>,
+    factories: BTreeMap<String, Box<dyn factory::Factory + 'f>>,
+    preset_stream_outbounds: BTreeMap<&'static str, Arc<dyn StreamOutboundFactory>>,
+    preset_datagram_outbounds: BTreeMap<&'static str, Arc<dyn DatagramSessionFactory>>,
     required_stream_outbounds: I1,
     required_datagram_outbounds: I2,
 }
@@ -17,8 +18,8 @@ pub struct ProxyLoader<'f, I1, I2> {
 pub struct ProxyLoadResult<'f> {
     pub plugin_set: set::PluginSet,
     pub errors: Vec<LoadError>,
-    pub required_stream_outbounds: HashMap<&'f str, Arc<dyn StreamOutboundFactory>>,
-    pub required_datagram_outbounds: HashMap<&'f str, Arc<dyn DatagramSessionFactory>>,
+    pub required_stream_outbounds: BTreeMap<&'f str, Arc<dyn StreamOutboundFactory>>,
+    pub required_datagram_outbounds: BTreeMap<&'f str, Arc<dyn DatagramSessionFactory>>,
 }
 
 impl<
@@ -28,8 +29,8 @@ impl<
     > ProxyLoader<'f, I1, I2>
 {
     pub fn parse_with_preset_outbounds(
-        preset_stream_outbounds: HashMap<&'static str, Arc<dyn StreamOutboundFactory>>,
-        preset_datagram_outbounds: HashMap<&'static str, Arc<dyn DatagramSessionFactory>>,
+        preset_stream_outbounds: BTreeMap<&'static str, Arc<dyn StreamOutboundFactory>>,
+        preset_datagram_outbounds: BTreeMap<&'static str, Arc<dyn DatagramSessionFactory>>,
         required_stream_outbounds: I1,
         required_datagram_outbounds: I2,
         all_plugins: &'f [Plugin],

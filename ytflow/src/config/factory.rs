@@ -1,4 +1,5 @@
 use std::collections::hash_map::{Entry, HashMap};
+use std::collections::BTreeMap;
 use std::ops::Deref;
 pub(super) use std::sync::Arc;
 
@@ -134,7 +135,7 @@ pub(super) struct AccessPointResolver<'de> {
 
 #[derive(Default)]
 pub(super) struct ParseResultCollection<'f> {
-    pub(super) factories: HashMap<String, Box<dyn Factory + 'f>>,
+    pub(super) factories: BTreeMap<String, Box<dyn Factory + 'f>>,
     pub(super) errors: Vec<ConfigError>,
     pub(super) resources: Vec<RequiredResource<'f>>,
 }

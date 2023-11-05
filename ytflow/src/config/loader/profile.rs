@@ -1,8 +1,10 @@
+use std::collections::{BTreeMap, HashMap};
+
 use crate::config::factory::RequiredResource;
 use crate::config::*;
 use crate::resource::ResourceRegistry;
 
-pub struct ProfileLoader<'f>(HashMap<String, Box<dyn factory::Factory + 'f>>);
+pub struct ProfileLoader<'f>(BTreeMap<String, Box<dyn factory::Factory + 'f>>);
 
 pub struct ProfileLoadResult {
     pub plugin_set: set::PluginSet,

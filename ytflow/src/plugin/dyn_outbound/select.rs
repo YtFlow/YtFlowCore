@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use itertools::Itertools;
@@ -80,8 +80,8 @@ impl super::DynOutbound {
         } = cbor4ii::serde::from_slice(&proxy).map_err(|_| SelectError::ProxyParseError)?;
         let plugins = plugins.into_iter().map(|p| p.into()).collect_vec();
 
-        let mut preset_stream_outbounds = HashMap::new();
-        let mut preset_datagram_outbounds = HashMap::new();
+        let mut preset_stream_outbounds = BTreeMap::new();
+        let mut preset_datagram_outbounds = BTreeMap::new();
         preset_stream_outbounds.insert(
             "$out.tcp".into(),
             self.tcp_next.upgrade().ok_or(SelectError::NoOutbound)?,

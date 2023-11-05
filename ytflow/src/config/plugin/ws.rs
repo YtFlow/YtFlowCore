@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use http::{HeaderMap, HeaderName, HeaderValue};
 use serde::Deserialize;
 
@@ -16,7 +18,7 @@ pub struct WsClientConfig<'a> {
     #[serde(default = "default_path")]
     path: &'a str,
     #[serde(borrow)]
-    headers: HashMap<&'a str, &'a str>,
+    headers: BTreeMap<&'a str, &'a str>,
     next: &'a str,
 }
 
