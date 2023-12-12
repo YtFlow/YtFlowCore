@@ -292,6 +292,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin + Send + 'static> Stream for WebSocketStr
         cx: &mut Context<'_>,
         size: NonZeroUsize,
     ) -> Poll<FlowResult<Buffer>> {
+        ready!(self.ws.poll_flush_unpin(cx)).map_err(ws_stream_err_to_flow_err)?;
         ready!(self.ws.poll_ready_unpin(cx)).map_err(ws_stream_err_to_flow_err)?;
         Poll::Ready(Ok(Buffer::with_capacity(size.get())))
     }
