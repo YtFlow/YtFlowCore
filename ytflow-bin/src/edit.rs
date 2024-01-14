@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 use std::io;
 use std::path::PathBuf;
 
@@ -16,7 +14,7 @@ mod gen;
 mod views;
 use ytflow::data::{Connection, Database};
 
-fn main() -> Result<()> {
+pub fn main() -> Result<()> {
     let args = get_args();
     let conn = get_db_conn(&args)?;
     run_tui(conn)?;

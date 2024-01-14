@@ -10,9 +10,10 @@ use tui::{
 };
 
 use super::{InputRequest, NavChoice, BG, FG};
+use crate::edit;
 use ytflow::data::{Proxy, ProxyGroup, ProxyGroupId};
 
-pub fn run_proxy_group_view(ctx: &mut crate::AppContext, id: ProxyGroupId) -> Result<NavChoice> {
+pub fn run_proxy_group_view(ctx: &mut edit::AppContext, id: ProxyGroupId) -> Result<NavChoice> {
     let proxy_group = ProxyGroup::query_by_id(id.0 as _, &ctx.conn)
         .context("Could not query selected proxy group")?
         .ok_or_else(|| anyhow!("Profile not found"))?;
@@ -229,7 +230,7 @@ struct EditProxy {
     pub plugins: Vec<EditPlugin>,
 }
 
-fn edit_proxy(ctx: &mut crate::AppContext, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
+fn edit_proxy(ctx: &mut edit::AppContext, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
     use serde_bytes::ByteBuf;
 
     use super::utils::open_editor_and_verify_for_cbor;

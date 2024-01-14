@@ -9,6 +9,7 @@ use tui::{
 };
 
 use super::{bg_rev, InputRequest, NavChoice, BG};
+use crate::edit;
 use ytflow::data::proxy_group::{ProxyGroup, PROXY_GROUP_TYPE_MANUAL};
 
 thread_local! {
@@ -23,7 +24,7 @@ fn state_index_to_type(index: usize) -> Option<&'static str> {
     }
 }
 
-pub fn run_new_proxy_group_view(ctx: &mut crate::AppContext) -> Result<NavChoice> {
+pub fn run_new_proxy_group_view(ctx: &mut edit::AppContext) -> Result<NavChoice> {
     if SHOULD_RETURN.with(|c| c.replace(false)) {
         return Ok(NavChoice::Back);
     }

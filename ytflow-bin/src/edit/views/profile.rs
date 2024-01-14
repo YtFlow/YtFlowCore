@@ -8,9 +8,10 @@ use tui::{
 };
 
 use super::{utils::open_editor_for_cbor_bytes, InputRequest, NavChoice, BG, FG};
+use crate::edit;
 use ytflow::data::{Plugin, Profile, ProfileId};
 
-pub fn run_profile_view(ctx: &mut crate::AppContext, id: ProfileId) -> Result<NavChoice> {
+pub fn run_profile_view(ctx: &mut edit::AppContext, id: ProfileId) -> Result<NavChoice> {
     let profile = Profile::query_by_id(id.0 as _, &ctx.conn)
         .context("Could not query selected profile")?
         .ok_or_else(|| anyhow!("Profile not found"))?;

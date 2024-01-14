@@ -7,10 +7,11 @@ use tui::{
 };
 
 use super::{NavChoice, BG, FG};
+use crate::edit;
 use ytflow::data::{Plugin, ProfileId};
 
 pub fn run_plugin_type_view(
-    ctx: &mut crate::AppContext,
+    ctx: &mut edit::AppContext,
     profile_id: ProfileId,
     plugin: &mut Option<Plugin>,
 ) -> Result<NavChoice> {
@@ -20,10 +21,10 @@ pub fn run_plugin_type_view(
         Some(p) => format!("Choose a new type for Plugin {}", &p.name),
         None => "Choose a type for the new plugin".into(),
     };
-    let type_names: Vec<_> = crate::gen::plugins::PluginType::iter()
+    let type_names: Vec<_> = edit::gen::plugins::PluginType::iter()
         .map(|t| ListItem::new(t.to_string()))
         .collect();
-    let type_descs: Vec<_> = crate::gen::plugins::PluginType::iter()
+    let type_descs: Vec<_> = edit::gen::plugins::PluginType::iter()
         .map(|t| t.get_detailed_message().expect("Missing detailed message"))
         .collect();
     let mut select_confirm = false;
@@ -76,7 +77,7 @@ pub fn run_plugin_type_view(
 
         if select_confirm {
             loop {
-                let plugin_type = crate::gen::plugins::PluginType::iter()
+                let plugin_type = edit::gen::plugins::PluginType::iter()
                     .nth(type_state.selected().unwrap())
                     .unwrap();
                 let new_plugin = plugin_type.gen_default();

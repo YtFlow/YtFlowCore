@@ -3241,7 +3241,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "ytflow-bin"
+name = "ytflow-ffi"
+version = "0.6.2"
+dependencies = [
+ "cbindgen",
+ "ytflow",
+]
+
+[[package]]
+name = "ytflow-shared-lib"
 version = "0.6.2"
 dependencies = [
  "anyhow",
@@ -3265,14 +3273,6 @@ dependencies = [
  "strum_macros",
  "tui",
  "tui-input",
- "ytflow",
-]
-
-[[package]]
-name = "ytflow-ffi"
-version = "0.6.2"
-dependencies = [
- "cbindgen",
  "ytflow",
 ]
 

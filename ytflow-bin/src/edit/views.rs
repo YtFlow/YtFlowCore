@@ -38,7 +38,7 @@ pub struct InputRequest {
     desc: String,
     initial_value: String,
     max_len: usize,
-    action: Box<dyn FnMut(&mut crate::AppContext, String) -> Result<()>>,
+    action: Box<dyn FnMut(&mut super::AppContext, String) -> Result<()>>,
 }
 
 pub enum NavChoice {

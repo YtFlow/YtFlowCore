@@ -8,7 +8,7 @@ use log::{error, info, warn};
 
 mod fs_resource_loader;
 
-fn main() -> Result<()> {
+pub fn main() -> Result<()> {
     let args = get_args();
     init_log(&args);
     try_main(&args)

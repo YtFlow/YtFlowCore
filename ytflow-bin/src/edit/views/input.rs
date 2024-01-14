@@ -7,8 +7,9 @@ use tui::{
 };
 
 use super::{InputRequest, NavChoice, FG};
+use crate::edit;
 
-pub fn run_input_view(ctx: &mut crate::AppContext, req: &mut InputRequest) -> Result<NavChoice> {
+pub fn run_input_view(ctx: &mut edit::AppContext, req: &mut InputRequest) -> Result<NavChoice> {
     use tui_input::backend::crossterm as input_backend;
     use tui_input::StateChanged;
 

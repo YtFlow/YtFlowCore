@@ -7,9 +7,10 @@ use tui::{
 };
 
 use super::{bg_rev, NavChoice, BG};
-use crate::gen::profiles as gen_profiles;
+use crate::edit;
+use edit::gen::profiles as gen_profiles;
 
-pub fn run_new_profile_view(ctx: &mut crate::AppContext) -> Result<NavChoice> {
+pub fn run_new_profile_view(ctx: &mut edit::AppContext) -> Result<NavChoice> {
     let mut template_state = ListState::default();
     template_state.select(Some(0));
     loop {

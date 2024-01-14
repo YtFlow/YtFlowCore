@@ -9,6 +9,7 @@ use tui::{
 };
 
 use super::{bg_rev, InputRequest, NavChoice, BG};
+use crate::edit;
 use ytflow::data::{Profile, ProxyGroup};
 
 const CATEGORY_ITEM_COUNT: usize = 3;
@@ -45,7 +46,7 @@ thread_local! {
     static MAIN_VIEW_STATES: RefCell<MainViewStates> = Default::default();
 }
 
-pub fn run_main_view(ctx: &mut crate::AppContext) -> Result<NavChoice> {
+pub fn run_main_view(ctx: &mut edit::AppContext) -> Result<NavChoice> {
     MAIN_VIEW_STATES.with(|states| {
         let mut states = states.borrow_mut();
         run_main_view_with_states(ctx, &mut states)
@@ -53,7 +54,7 @@ pub fn run_main_view(ctx: &mut crate::AppContext) -> Result<NavChoice> {
 }
 
 fn run_main_view_with_states(
-    ctx: &mut crate::AppContext,
+    ctx: &mut edit::AppContext,
     states: &mut MainViewStates,
 ) -> Result<NavChoice> {
     let mut profiles = Profile::query_all(&ctx.conn).context("Could not query all profiles")?;

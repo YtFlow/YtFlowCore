@@ -8,9 +8,8 @@ use tui::{
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 
-use crate::views::InputRequest;
-
-use super::{NavChoice, BG, FG};
+use super::{InputRequest, NavChoice, BG, FG};
+use crate::edit;
 use ytflow::data::{Proxy, ProxyGroupId};
 
 thread_local! {
@@ -19,7 +18,7 @@ thread_local! {
 }
 
 pub fn run_proxy_type_view(
-    ctx: &mut crate::AppContext,
+    ctx: &mut edit::AppContext,
     proxy_group_id: ProxyGroupId,
 ) -> Result<NavChoice> {
     use strum::IntoEnumIterator;
@@ -27,7 +26,7 @@ pub fn run_proxy_type_view(
         return Ok(NavChoice::Back);
     }
 
-    let type_names: Vec<_> = crate::gen::proxy_types::ProxyType::iter()
+    let type_names: Vec<_> = edit::gen::proxy_types::ProxyType::iter()
         .map(|t| ListItem::new(t.to_string()))
         .collect();
     let mut type_state = ListState::default();
@@ -56,7 +55,7 @@ pub fn run_proxy_type_view(
                 (KeyCode::Char('q') | KeyCode::Esc, _) => break,
                 (KeyCode::Enter, Some(idx)) => {
                     SHOULD_RETURN.with(|c| c.set(true));
-                    let proxy_type = crate::gen::proxy_types::ProxyType::iter()
+                    let proxy_type = edit::gen::proxy_types::ProxyType::iter()
                         .nth(idx)
                         .expect("Cannot find corresponding proxy type");
                     return Ok(NavChoice::InputView(InputRequest {

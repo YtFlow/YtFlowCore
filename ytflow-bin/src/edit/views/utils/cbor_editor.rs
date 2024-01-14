@@ -1,6 +1,9 @@
+use ::edit::{edit_bytes_with_builder, Builder as EditorBuilder};
 use anyhow::{Context, Result};
 use base64::prelude::*;
 use cbor4ii::core::Value as CborValue;
+
+use crate::edit;
 
 /// Map CBOR bytes to string or base64 encoded string for
 /// later converting back.
@@ -91,7 +94,7 @@ fn unescape_cbor_buf(val: &mut CborValue) -> std::result::Result<(), String> {
 }
 
 pub fn open_editor_and_verify_for_cbor<T>(
-    ctx: &mut crate::AppContext,
+    ctx: &mut edit::AppContext,
     mut val: CborValue,
     mut verify_fn: impl FnMut(CborValue) -> Result<T>,
 ) -> Result<Option<T>> {
@@ -105,9 +108,9 @@ pub fn open_editor_and_verify_for_cbor<T>(
     let mut edit_buf = CANCEL_SAFEWORD.to_vec();
     edit_buf.extend_from_slice(&json_buf);
     let ret = loop {
-        let input_buf = edit::edit_bytes_with_builder(
+        let input_buf = edit_bytes_with_builder(
             &edit_buf,
-            edit::Builder::new()
+            EditorBuilder::new()
                 .prefix("ytflow-editor-param-")
                 .suffix(".json"),
         )
@@ -143,7 +146,7 @@ pub fn open_editor_and_verify_for_cbor<T>(
 }
 
 pub fn open_editor_for_cbor_bytes(
-    ctx: &mut crate::AppContext,
+    ctx: &mut edit::AppContext,
     input_bytes: &[u8],
 ) -> Result<Option<Vec<u8>>> {
     let val: CborValue =
