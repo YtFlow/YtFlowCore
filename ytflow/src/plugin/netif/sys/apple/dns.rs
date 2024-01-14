@@ -1,5 +1,6 @@
 use std::io;
 use std::net::{SocketAddrV4, SocketAddrV6};
+use std::sync::Weak;
 
 use fruity::core::Arc as ObjcArc;
 use libc::sockaddr;
@@ -8,6 +9,8 @@ use tokio::sync::oneshot::{self, Receiver};
 
 use super::ffi::{self, DNSServiceErrorType};
 use super::*;
+use crate::flow::*;
+use crate::plugin::netif::NetifSelector;
 
 pub struct Resolver {
     dispatch_queue: ObjcArc<DispatchQueue>,

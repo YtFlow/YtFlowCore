@@ -8,7 +8,7 @@ pub use dns::Resolver;
 
 use std::ffi::{c_char, CStr, CString};
 use std::io;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use block2::ConcreteBlock;
 use fruity::core::Arc as ObjcArc;
@@ -17,7 +17,6 @@ use fruity::objc::NSObject;
 use serde::Serialize;
 
 use self::ffi::nw_interface_get_name;
-
 use crate::flow::FlowResult;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
