@@ -209,6 +209,7 @@ impl Resolver {
 mod tests {
     use super::*;
     use crate::plugin::netif::sys::Netif;
+    use crate::plugin::netif::{FamilyPreference, SelectionMode};
 
     #[tokio::test]
     async fn test_lookup() {

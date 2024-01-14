@@ -202,7 +202,7 @@ pub async fn retrieve_all_link_dns_servers() -> HashMap<String, Vec<IpAddr>> {
 mod tests {
     use super::*;
     use crate::plugin::netif::sys::Netif;
-    use crate::plugin::netif::{FamilyPreference, NetifSelector, SelectionMode};
+    use crate::plugin::netif::{FamilyPreference, SelectionMode};
 
     #[tokio::test]
     async fn test_lookup() {

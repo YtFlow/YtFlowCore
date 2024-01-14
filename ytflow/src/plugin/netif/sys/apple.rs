@@ -142,6 +142,8 @@ fn retrieve_localized_if_name(bsd_name: &CStr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Weak;
+
     use super::*;
 
     #[test]
