@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use futures::{StreamExt, TryStreamExt};
 use netlink_sys::SocketAddr;
 use rtnetlink::Handle;
+use serde::Serialize;
 use tokio::task::JoinHandle;
 
 use crate::flow::FlowResult;

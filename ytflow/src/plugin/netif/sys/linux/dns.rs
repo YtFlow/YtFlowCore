@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io;
 use std::str::FromStr;
+use std::sync::Weak;
 
 use libc::{AF_INET, AF_INET6};
 use thiserror::Error;
@@ -9,9 +10,10 @@ use zbus_systemd::resolve1::ManagerProxy;
 use zbus_systemd::zbus::{self, Connection};
 use zbus_systemd::zvariant::{Array, Structure, Value};
 
-use crate::plugin::netif::resolver::NetifHostResolver;
-
 use super::*;
+use crate::flow::*;
+use crate::plugin::netif::resolver::NetifHostResolver;
+use crate::plugin::netif::NetifSelector;
 
 static DBUS_SESSION_CONN: OnceCell<zbus::Result<Connection>> = OnceCell::const_new();
 static DBUS_SYSTEM_CONN: OnceCell<zbus::Result<Connection>> = OnceCell::const_new();
