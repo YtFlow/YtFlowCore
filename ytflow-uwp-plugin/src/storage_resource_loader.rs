@@ -2,15 +2,16 @@ use std::fs;
 use std::io;
 use std::os::windows::io::FromRawHandle;
 
-use windows::core::{Interface, HSTRING};
+use windows::core::{ComInterface, HSTRING};
+use windows::Storage::StorageFolder;
+use windows::Win32::System::WinRT::Storage::{
+    IStorageItemHandleAccess, HANDLE_ACCESS_OPTIONS, HANDLE_OPTIONS, HANDLE_SHARING_OPTIONS,
+};
 use ytflow::resource::{FileResourceLoader, ResourceError, ResourceResult};
 
-use crate::bindings::Windows::Storage::StorageFolder;
-use crate::bindings::Windows::Win32::System::WinRT::Storage::IStorageItemHandleAccess;
-
-const HAO_READ: u32 = 0x120089;
-const HSO_SHARE_READ: u32 = 0x1;
-const HO_NONE: u32 = 0;
+const HAO_READ: HANDLE_ACCESS_OPTIONS = HANDLE_ACCESS_OPTIONS(0x120089);
+const HSO_SHARE_READ: HANDLE_SHARING_OPTIONS = HANDLE_SHARING_OPTIONS(0x1);
+const HO_NONE: HANDLE_OPTIONS = HANDLE_OPTIONS(0);
 
 pub(crate) struct StorageResourceLoader {
     pub(crate) root: StorageFolder,
@@ -28,7 +29,7 @@ impl FileResourceLoader for StorageResourceLoader {
     fn load_file(&self, local_name: &str) -> ResourceResult<fs::File> {
         let storage_file = self
             .root
-            .GetFileAsync(HSTRING::try_from(local_name).unwrap())
+            .GetFileAsync(&local_name.into())
             .map_err(hresult_to_resource)?
             .get()
             .map_err(hresult_to_resource)?;

@@ -151,12 +151,17 @@ tokio = { version = "=1.16.1", features = [
     "macros",
 ] }
 rusqlite = { version = "0.28", features = ["chrono", "winsqlite3"] }
-windows = { version = "0.28", features = ["alloc", "std"] }
+windows = { version = "0.52", features = [
+    "Foundation",
+    "Networking_Connectivity",
+    "Security_Cryptography_Certificates",
+    "Foundation_Collections",
+    "Storage",
+    "Storage_Streams",
+    "Win32_System_WinRT",
+] }
 # Keep winapi as dependency
 ipconfig = { version = "=0.3.1", default-features = false, optional = true }
-
-[target.'cfg(windows)'.build-dependencies]
-windows = { version = "0.28", features = ["alloc", "std", "build"] }
 
 [target.'cfg(not(windows))'.dependencies]
 tokio = { version = "1", features = [

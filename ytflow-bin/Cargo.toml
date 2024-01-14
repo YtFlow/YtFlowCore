@@ -1,40 +1,19 @@
 [package]
-name = "ytflow-shared-lib"
+name = "ytflow-bin"
 version = "0.6.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-crate-type = ["cdylib"]
+[[bin]]
+name = "ytflow-core"
+path = "src/core.rs"
+
+[[bin]]
+name = "ytflow-edit"
+path = "src/edit.rs"
 
 [dependencies]
-ytflow = { path = "../ytflow", features = ["plugins"] }
-anyhow = "1"
-fern = { version = "0.6", features = ["colored"] }
-log = "0.4"
-chrono = "0.4"
-nanoid = "0.4"
-strum = "0.25"
-strum_macros = "0.25"
-cidr = { version = "0.2", features = ["serde"] }
-futures = { version = "0.3", default-features = false }
 
-# CLI
-clap = { version = "4", features = ["cargo"] }
-ctrlc = "3"
-edit = "0.1"
-
-# Data
-cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
-ciborium = "0.2"
-serde = { version = "1", features = ["derive"] }
-serde_bytes = "0.11"
-serde_json = { version = "1", features = ["alloc"] }
-base64 = "0.21"
-
-# TUI
-tui = { version = "0.19", default-features = false, features = ['crossterm'] }
-# tui 0.16.0 still uses crossterm 0.20, which crashes on Windows Terminal
-crossterm = "0.27"
-tui-input = "0.8"
+[build-dependencies]
+ytflow-bin-shared = { path = "../ytflow-bin-shared", artifact = "cdylib" }

@@ -5,11 +5,10 @@ use foreign_types_shared::ForeignType;
 use openssl::ssl::SslConnectorBuilder;
 use openssl::x509::store::{X509Store, X509StoreBuilder};
 use openssl::x509::X509;
-use windows::core::Interface;
-
-use crate::bindings::Windows::Security::Cryptography::Certificates;
-use crate::bindings::Windows::Storage::Streams::IBuffer;
-use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
+use windows::core::ComInterface;
+use windows::Security::Cryptography::Certificates;
+use windows::Storage::Streams::IBuffer;
+use windows::Win32::System::WinRT::IBufferByteAccess;
 
 static CERT_STORE: OnceLock<X509Store> = OnceLock::new();
 
@@ -25,8 +24,8 @@ pub(crate) fn query_slice_from_ibuffer_mut(buf: &mut IBuffer) -> &mut [u8] {
 
 fn load_store() -> X509Store {
     let cert_query = Certificates::CertificateQuery::new().unwrap();
-    cert_query.SetStoreName("ROOT").unwrap();
-    let all_certs = Certificates::CertificateStores::FindAllWithQueryAsync(cert_query)
+    cert_query.SetStoreName(&"ROOT".into()).unwrap();
+    let all_certs = Certificates::CertificateStores::FindAllWithQueryAsync(&cert_query)
         .unwrap()
         .get()
         .unwrap();

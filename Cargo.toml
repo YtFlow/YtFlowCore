@@ -2,6 +2,7 @@
 members = [
     "ytflow",
     "ytflow-bin",
+    "ytflow-bin-shared",
     "ytflow-ffi",
     "ytflow-uwp-plugin",
 ]

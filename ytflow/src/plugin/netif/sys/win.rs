@@ -1,9 +1,9 @@
 use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
 
 use serde::{Serialize, Serializer};
+use windows::Foundation::EventRegistrationToken;
+use windows::Networking::Connectivity::*;
 
-use crate::bindings::Windows::Foundation::EventRegistrationToken;
-use crate::bindings::Windows::Networking::Connectivity::*;
 use crate::flow::{FlowError, FlowResult};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
@@ -96,7 +96,7 @@ impl NetifProvider {
             cb_cloned()
         });
         let event_token = NetworkInformation::NetworkStatusChanged(
-            NetworkStatusChangedEventHandler::new(move |_sender| {
+            &NetworkStatusChangedEventHandler::new(move |_sender| {
                 callback();
                 Ok(())
             }),

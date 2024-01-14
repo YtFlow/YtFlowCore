@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 
 #[cfg(target_vendor = "uwp")]
-mod collections;
-#[cfg(target_vendor = "uwp")]
 mod error;
 #[cfg(target_vendor = "uwp")]
 mod storage_resource_loader;
@@ -10,11 +8,6 @@ mod storage_resource_loader;
 mod tun_plugin;
 #[cfg(target_vendor = "uwp")]
 mod vpn_plugin;
-
-#[cfg(target_vendor = "uwp")]
-mod bindings {
-    windows::core::include_bindings!();
-}
 
 /// Creates a new instance of Windows.Networking.Vpn.IVpnPlugIn.
 /// Returns 0 on success, otherwise failure.
@@ -26,7 +19,7 @@ extern "C" fn CreateVpnPlugIn(plugin_out: *mut *mut std::ffi::c_void) -> i32 {
         ytflow::log::debug_log(format!("PANIC: {:?}", info));
         default_hook(info);
     }));
-    use crate::bindings::Windows::Networking::Vpn::IVpnPlugIn;
+    use windows::Networking::Vpn::IVpnPlugIn;
 
     let plugin: IVpnPlugIn = crate::vpn_plugin::VpnPlugIn::new().into();
     unsafe { *plugin_out = std::mem::transmute(plugin) };

@@ -7,11 +7,6 @@
 #![feature(const_option)]
 #![feature(result_flattening)]
 
-#[cfg(windows)]
-mod bindings {
-    windows::core::include_bindings!();
-}
-
 pub mod config;
 #[cfg(feature = "plugins")]
 pub mod control;

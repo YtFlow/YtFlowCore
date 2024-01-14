@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, UnsafeCell};
 use std::ffi::OsString;
 use std::mem::ManuallyDrop;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
@@ -8,28 +8,25 @@ use std::slice::from_raw_parts_mut;
 use std::string::ToString;
 use std::sync::{Arc, OnceLock};
 
-use crate::collections::SimpleHostNameVectorView;
 use crate::error::ConnectError;
 use crate::storage_resource_loader::StorageResourceLoader;
 
-use flume::{bounded, Receiver, Sender, TryRecvError};
-use windows::core::{implement, IInspectable, Interface, Result, HSTRING};
 use ytflow::resource::DbFileResourceLoader;
 use ytflow::tokio;
 
-use crate::bindings::Windows;
-use crate::bindings::Windows::Foundation::Collections::IVectorView;
-use crate::bindings::Windows::Networking::HostName;
-use crate::bindings::Windows::Networking::Sockets::DatagramSocket;
-use crate::bindings::Windows::Networking::Vpn::{
-    VpnChannel, VpnDomainNameAssignment, VpnDomainNameInfo, VpnDomainNameType, VpnPacketBuffer,
-    VpnPacketBufferList, VpnRoute, VpnRouteAssignment,
+use flume::{bounded, Receiver, Sender, TryRecvError};
+use windows::core::{ComInterface, IInspectable, Result, HSTRING};
+use windows::Foundation::Collections::{IIterable, IVectorView};
+use windows::Networking::HostName;
+use windows::Networking::Sockets::DatagramSocket;
+use windows::Networking::Vpn::{
+    IVpnPlugIn_Impl, VpnChannel, VpnDomainNameAssignment, VpnDomainNameInfo, VpnDomainNameType,
+    VpnPacketBuffer, VpnPacketBufferList, VpnRoute, VpnRouteAssignment,
 };
-use crate::bindings::Windows::Storage::Streams::Buffer;
-use crate::bindings::Windows::Storage::{
-    ApplicationData, ApplicationDataContainer, CreationCollisionOption,
-};
-use crate::bindings::Windows::Win32::System::WinRT::IBufferByteAccess;
+use windows::Storage::Streams::Buffer;
+use windows::Storage::{ApplicationData, ApplicationDataContainer, CreationCollisionOption};
+use windows::Win32::System::WinRT::IBufferByteAccess;
+use windows_implement::implement;
 
 static APP_SETTINGS: OnceLock<ApplicationDataContainer> = OnceLock::new();
 
@@ -53,16 +50,18 @@ fn connect_with_factory(
         .ipv4
         .as_ref()
         .map(ToString::to_string)
-        .map(HostName::CreateHostName)
+        .map(|s| HostName::CreateHostName(&s.into()))
         .transpose()?
-        .map(|h| IVectorView::from(SimpleHostNameVectorView(vec![h].into())));
+        .map(|h| IVectorView::try_from(vec![Some(h)]))
+        .transpose()?;
     let ipv6 = factory
         .ipv6
         .as_ref()
         .map(ToString::to_string)
-        .map(HostName::CreateHostName)
+        .map(|s| HostName::CreateHostName(&s.into()))
         .transpose()?
-        .map(|h| IVectorView::from(SimpleHostNameVectorView(vec![h].into())));
+        .map(|h| IVectorView::try_from(vec![Some(h)]))
+        .transpose()?;
 
     let route_scope = VpnRouteAssignment::new()?;
     route_scope.SetExcludeLocalSubnets(true)?;
@@ -71,8 +70,8 @@ fn connect_with_factory(
         for route4 in &factory.ipv4_route {
             route_scope
                 .Ipv4InclusionRoutes()?
-                .Append(VpnRoute::CreateVpnRoute(
-                    HostName::CreateHostName(route4.inner.first_address().to_string())?,
+                .Append(&VpnRoute::CreateVpnRoute(
+                    &HostName::CreateHostName(&route4.inner.first_address().to_string().into())?,
                     route4.inner.network_length(),
                 )?)?;
         }
@@ -81,8 +80,8 @@ fn connect_with_factory(
         for route6 in &factory.ipv6_route {
             route_scope
                 .Ipv6InclusionRoutes()?
-                .Append(VpnRoute::CreateVpnRoute(
-                    HostName::CreateHostName(route6.inner.first_address().to_string())?,
+                .Append(&VpnRoute::CreateVpnRoute(
+                    &HostName::CreateHostName(&route6.inner.first_address().to_string().into())?,
                     route6.inner.network_length(),
                 )?)?;
         }
@@ -93,27 +92,27 @@ fn connect_with_factory(
         .dns
         .iter()
         .map(ToString::to_string)
-        .map(HostName::CreateHostName)
+        .map(|s| HostName::CreateHostName(&s.into()).map(Some))
         .collect();
     let proxy: Result<Vec<_>> = factory
         .web_proxy
         .iter()
-        .map(|s| HostName::CreateHostName(&**s))
+        .map(|s| HostName::CreateHostName(&s.into()).map(Some))
         .collect();
     let dnsinfo = VpnDomainNameInfo::CreateVpnDomainNameInfo(
-        ".",
+        &".".into(),
         VpnDomainNameType::Suffix,
-        IVectorView::<_>::from(SimpleHostNameVectorView(dns_hosts?.into())),
-        IVectorView::<_>::from(SimpleHostNameVectorView(proxy?.into())),
+        &IIterable::<HostName>::try_from(dns_hosts?)?,
+        &IIterable::<HostName>::try_from(proxy?)?,
     )?;
-    dns_assignments.DomainNameList()?.Append(dnsinfo)?;
+    dns_assignments.DomainNameList()?.Append(&dnsinfo)?;
 
     channel.StartWithMainTransport(
-        ipv4,
-        ipv6,
+        ipv4.as_ref(),
+        ipv6.as_ref(),
         None,
-        route_scope,
-        dns_assignments,
+        &route_scope,
+        &dns_assignments,
         1512,
         3,
         false,
@@ -129,8 +128,8 @@ async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()
     s.bind(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0))?;
     let port = HSTRING::try_from(s.local_addr()?.port().to_string()).unwrap();
     let _ = APP_SETTINGS.get().unwrap().Values()?.Insert(
-        "YTFLOW_CORE_RPC_PORT",
-        IInspectable::try_from(port).unwrap(),
+        &"YTFLOW_CORE_RPC_PORT".into(),
+        &IInspectable::try_from(port).unwrap(),
     );
     let listener = s.listen(128)?;
     let task = || async {
@@ -200,8 +199,8 @@ impl VpnPlugInInner {
     }
 }
 
-#[implement(Windows::Networking::Vpn::IVpnPlugIn)]
-pub struct VpnPlugIn(VpnPlugInInner);
+#[implement(windows::Networking::Vpn::IVpnPlugIn)]
+pub struct VpnPlugIn(UnsafeCell<VpnPlugInInner>);
 
 #[allow(non_snake_case)]
 impl VpnPlugIn {
@@ -210,19 +209,22 @@ impl VpnPlugIn {
         Self(Default::default())
     }
 
-    fn connect_core(&mut self, channel: &VpnChannel) -> std::result::Result<(), ConnectError> {
-        self.0 = Default::default();
+    fn connect_core(&self, channel: &VpnChannel) -> std::result::Result<(), ConnectError> {
+        let inner = unsafe { &mut *self.0.get() };
+        *inner = Default::default();
 
         let transport = DatagramSocket::new()?;
         channel.AssociateTransport(&transport, None)?;
-        let lo_host = HostName::CreateHostName("127.0.0.1")?;
-        transport.BindEndpointAsync(lo_host.clone(), "")?.get()?;
+        let lo_host = HostName::CreateHostName(&"127.0.0.1".into())?;
+        transport
+            .BindEndpointAsync(&lo_host, &HSTRING::new())?
+            .get()?;
         let b_transport =
             UdpSocket::bind(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0))).unwrap();
         transport
             .ConnectAsync(
-                lo_host.clone(),
-                b_transport.local_addr().unwrap().port().to_string(),
+                &lo_host.clone(),
+                &b_transport.local_addr().unwrap().port().to_string().into(),
             )?
             .get()?;
         let transport_port = transport
@@ -245,7 +247,7 @@ impl VpnPlugIn {
                     .get()
                     .unwrap()
                     .Values()?
-                    .Lookup("YTFLOW_DB_PATH")?,
+                    .Lookup(&"YTFLOW_DB_PATH".into())?,
             )?
             .as_wide(),
         )
@@ -285,7 +287,7 @@ impl VpnPlugIn {
             .get()
             .unwrap()
             .Values()?
-            .Lookup("YTFLOW_PROFILE_ID")?
+            .Lookup(&"YTFLOW_PROFILE_ID".into())?
             .try_into()
             .unwrap_or(0);
         let (entry_plugins, all_plugins) = match load_plugins(profile_id as _, &conn) {
@@ -344,10 +346,7 @@ impl VpnPlugIn {
                 .unwrap()
                 .LocalFolder()
                 .unwrap()
-                .CreateFolderAsync(
-                    HSTRING::try_from("resource").unwrap(),
-                    CreationCollisionOption::OpenIfExists,
-                )
+                .CreateFolderAsync(&"resource".into(), CreationCollisionOption::OpenIfExists)
                 .unwrap()
                 .get()
                 .unwrap();
@@ -377,7 +376,7 @@ impl VpnPlugIn {
                 let (tx_buf_rx, rx_buf_tx, vpn_tun_factory) = vpn_items;
                 match connect_with_factory(&transport, &vpn_tun_factory, &channel) {
                     Ok(()) => {
-                        self.0 = VpnPlugInInner::Running {
+                        *inner = VpnPlugInInner::Running {
                             tx_buf_rx: tx_buf_rx,
                             runtime: Runtime {
                                 rx_buf_tx: ManuallyDrop::new(rx_buf_tx),
@@ -404,29 +403,33 @@ impl VpnPlugIn {
             };
         }
     }
+}
 
-    fn Connect(&mut self, channel: &Option<VpnChannel>) -> Result<()> {
+impl IVpnPlugIn_Impl for VpnPlugIn {
+    fn Connect(&self, channel: Option<&VpnChannel>) -> Result<()> {
         let channel = channel.as_ref().unwrap();
         if let Err(crate::error::ConnectError(e)) = self.connect_core(channel) {
             let err_msg = format!("{}", e);
             APP_SETTINGS.get().unwrap().Values()?.Insert(
-                "YTFLOW_CORE_ERROR_LOAD",
-                IInspectable::try_from(HSTRING::from(&err_msg))?,
+                &"YTFLOW_CORE_ERROR_LOAD".into(),
+                &IInspectable::try_from(HSTRING::from(&err_msg))?,
             )?;
-            channel.TerminateConnection(err_msg)?;
+            channel.TerminateConnection(&err_msg.into())?;
         }
         Ok(())
     }
-    fn Disconnect(&mut self, _channel: &Option<VpnChannel>) -> Result<()> {
+    fn Disconnect(&self, _channel: Option<&VpnChannel>) -> Result<()> {
         // Don't .Stop() the channel because there may be some inflight tx buffers remaining,
         // which will block the VPN background task, leading to the whole process being killed.
         // .Stop() until all buffers are drained in Decapsulate.
-        self.0.request_stop();
+        unsafe {
+            (*self.0.get()).request_stop();
+        }
         Ok(())
     }
     fn GetKeepAlivePayload(
         &self,
-        _channel: &Option<VpnChannel>,
+        _channel: Option<&VpnChannel>,
         keepAlivePacket: &mut Option<VpnPacketBuffer>,
     ) -> Result<()> {
         *keepAlivePacket = None;
@@ -434,12 +437,12 @@ impl VpnPlugIn {
     }
     fn Encapsulate(
         &self,
-        _channel: &Option<VpnChannel>,
-        packets: &Option<VpnPacketBufferList>,
-        _encapulatedPackets: &Option<VpnPacketBufferList>,
+        _channel: Option<&VpnChannel>,
+        packets: Option<&VpnPacketBufferList>,
+        _encapulatedPackets: Option<&VpnPacketBufferList>,
     ) -> Result<()> {
         let packets = packets.as_ref().unwrap().clone();
-        let rx_buf_tx = if let VpnPlugInInner::Running { runtime, .. } = &self.0 {
+        let rx_buf_tx = if let VpnPlugInInner::Running { runtime, .. } = unsafe { &*self.0.get() } {
             &runtime.rx_buf_tx
         } else {
             return Ok(());
@@ -458,19 +461,21 @@ impl VpnPlugIn {
             if let Err(_) = rx_buf_tx.send(buf) {
                 return Ok(());
             }
-            packets.Append(vpn_buffer)?;
+            packets.Append(&vpn_buffer)?;
         }
         Ok(())
     }
     fn Decapsulate(
-        &mut self,
-        channel: &Option<VpnChannel>,
-        _encapBuffer: &Option<VpnPacketBuffer>,
-        decapsulatedPackets: &Option<VpnPacketBufferList>,
-        _controlPacketsToSend: &Option<VpnPacketBufferList>,
+        &self,
+        channel: Option<&VpnChannel>,
+        _encapBuffer: Option<&VpnPacketBuffer>,
+        decapsulatedPackets: Option<&VpnPacketBufferList>,
+        _controlPacketsToSend: Option<&VpnPacketBufferList>,
     ) -> Result<()> {
+        let inner = unsafe { &mut *self.0.get() };
+
         let decapsulatedPackets = decapsulatedPackets.as_ref().unwrap().clone();
-        let tx_buf_rx = match &self.0 {
+        let tx_buf_rx = match inner {
             VpnPlugInInner::NotRunning => return Ok(()),
             VpnPlugInInner::Running { tx_buf_rx, .. } => tx_buf_rx,
             VpnPlugInInner::Stopping { tx_buf_rx } => tx_buf_rx,
@@ -480,10 +485,10 @@ impl VpnPlugIn {
             match tx_buf_rx.try_recv() {
                 Ok(buf) => {
                     idle_loop_count = 0;
-                    decapsulatedPackets.Append(buf)?;
+                    decapsulatedPackets.Append(&buf)?;
                 }
                 Err(TryRecvError::Disconnected) => {
-                    self.0 = VpnPlugInInner::NotRunning;
+                    *inner = VpnPlugInInner::NotRunning;
                     let _ = channel.as_ref().unwrap().Stop();
                     return Ok(());
                 }
