@@ -1,13 +1,12 @@
+#[cfg(feature = "plugins")]
 use std::sync::Weak;
 
 use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
+#[cfg(feature = "plugins")]
 use crate::flow::*;
-use crate::plugin::null::Null;
-use crate::plugin::reject::RejectHandler;
-use crate::plugin::resolve_dest;
 
 #[derive(Clone, Deserialize)]
 pub struct ResolveDestFactory<'a> {
@@ -58,6 +57,7 @@ impl<'de> ResolveDestFactory<'de> {
     }
 }
 
+#[cfg(feature = "plugins")]
 fn create_tcp<
     T: StreamHandler + 'static,
     C: FnOnce(Weak<dyn StreamHandler>, Weak<dyn Resolver>) -> T,
@@ -70,6 +70,9 @@ fn create_tcp<
     create_val: C,
     after_weak: A,
 ) {
+    use crate::plugin::null::Null;
+    use crate::plugin::reject::RejectHandler;
+
     let tcp_next = match tcp_next {
         Some(tcp_next) => tcp_next,
         None => {
@@ -104,6 +107,7 @@ fn create_tcp<
         .insert(plugin_name + ".tcp", factory as _);
 }
 
+#[cfg(feature = "plugins")]
 fn create_udp<
     T: DatagramSessionHandler + 'static,
     C: FnOnce(Weak<dyn DatagramSessionHandler>, Weak<dyn Resolver>) -> T,
@@ -116,6 +120,9 @@ fn create_udp<
     create_val: C,
     after_weak: A,
 ) {
+    use crate::plugin::null::Null;
+    use crate::plugin::reject::RejectHandler;
+
     let udp_next = match udp_next {
         Some(udp_next) => udp_next,
         None => {
@@ -152,7 +159,10 @@ fn create_udp<
 }
 
 impl<'de> Factory for ResolveDestFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::resolve_dest;
+
         create_tcp(
             self.resolver,
             self.tcp_next,

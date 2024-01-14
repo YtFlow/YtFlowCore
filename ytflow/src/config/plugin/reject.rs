@@ -1,6 +1,5 @@
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::reject;
 
 pub struct RejectFactory {}
 
@@ -26,7 +25,10 @@ impl RejectFactory {
 }
 
 impl Factory for RejectFactory {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::reject;
+
         set.fully_constructed.stream_handlers.insert(
             plugin_name.clone() + ".tcp",
             Arc::new(reject::RejectHandler),

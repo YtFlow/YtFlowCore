@@ -1,8 +1,9 @@
 use super::rule_dispatcher::*;
 use crate::config::factory::*;
 use crate::config::*;
+#[cfg(feature = "plugins")]
 use crate::plugin::rule_dispatcher as rd;
-use crate::resource::{ResourceError, RESOURCE_TYPE_SURGE_DOMAINSET};
+use crate::resource::RESOURCE_TYPE_SURGE_DOMAINSET;
 
 static LIST_DISPATCHER_ALLOWED_RESOURCE_TYPES: [&str; 1] = [RESOURCE_TYPE_SURGE_DOMAINSET];
 
@@ -15,6 +16,7 @@ pub struct ListDispatcherConfig<'a> {
     pub(super) fallback: Action<'a>,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct ListDispatcherFactory<'a> {
     config: ListDispatcherConfig<'a>,
 }
@@ -76,12 +78,15 @@ impl<'de> ListDispatcherFactory<'de> {
     }
 }
 
+#[cfg(feature = "plugins")]
 fn load_rule_set(
     source: ResourceSource<'_>,
     action: rd::ActionHandle,
     plugin_name: &str,
     set: &mut PartialPluginSet,
 ) -> rd::RuleSet {
+    use crate::resource::ResourceError;
+
     let resource_key;
     let resource_type;
     match source {
@@ -161,6 +166,7 @@ fn load_rule_set(
 }
 
 impl<'de> Factory for ListDispatcherFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         let mut builder = rd::RuleDispatcherBuilder::default();
         let plugin = Arc::new_cyclic(|weak| {

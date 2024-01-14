@@ -1,6 +1,6 @@
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::{null::Null, vmess};
+use crate::plugin::vmess;
 
 fn default_security() -> &'static str {
     "auto"
@@ -16,6 +16,7 @@ pub struct VMessClientConfig<'a> {
     tcp_next: &'a str,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct VMessClientFactory<'a> {
     user_id: uuid::Uuid,
     alter_id: u16,
@@ -72,7 +73,10 @@ impl<'de> VMessClientFactory<'de> {
 }
 
 impl<'de> Factory for VMessClientFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);

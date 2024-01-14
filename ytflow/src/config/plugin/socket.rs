@@ -4,8 +4,6 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null::Null;
-use crate::plugin::socket;
 
 fn default_bind_addr_v4() -> Option<HumanRepr<SocketAddrV4>> {
     Some(HumanRepr {
@@ -19,6 +17,7 @@ fn default_bind_addr_v6() -> Option<HumanRepr<SocketAddrV6>> {
     })
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 pub struct SocketFactory<'a> {
     resolver: &'a str,
@@ -49,7 +48,11 @@ impl<'de> SocketFactory<'de> {
 }
 
 impl<'de> Factory for SocketFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::socket;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone(), weak.clone() as _);

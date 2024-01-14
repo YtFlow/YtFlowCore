@@ -18,7 +18,7 @@ use serde::Serialize;
 
 use self::ffi::nw_interface_get_name;
 
-use super::super::*;
+use crate::flow::FlowResult;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct Netif {

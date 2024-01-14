@@ -2,9 +2,9 @@ use std::net::{IpAddr, SocketAddrV4, SocketAddrV6};
 
 use serde::{Serialize, Serializer};
 
-use super::super::*;
 use crate::bindings::Windows::Foundation::EventRegistrationToken;
 use crate::bindings::Windows::Networking::Connectivity::*;
+use crate::flow::{FlowError, FlowResult};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct Netif {

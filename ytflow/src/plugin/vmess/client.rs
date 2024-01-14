@@ -13,8 +13,9 @@ use super::protocol::header::{
     AeadRequestEnc, AesCfbRequestEnc, RequestHeader, RequestHeaderEnc, VMESS_HEADER_CMD_TCP,
     VMESS_HEADER_OPT_SHAKE, VMESS_HEADER_OPT_STD,
 };
-use super::protocol::{SupportedSecurity, USER_ID_LEN};
+use super::protocol::USER_ID_LEN;
 use super::stream::VMessClientStream;
+use super::SupportedSecurity;
 use crate::flow::*;
 
 pub struct VMessStreamOutboundFactory {

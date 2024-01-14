@@ -1,11 +1,13 @@
-use std::collections::{BTreeMap, HashMap};
+#[cfg(feature = "plugins")]
+use crate::resource::ResourceRegistry;
+use std::collections::BTreeMap;
 
 use crate::config::factory::RequiredResource;
 use crate::config::*;
-use crate::resource::ResourceRegistry;
 
 pub struct ProfileLoader<'f>(BTreeMap<String, Box<dyn factory::Factory + 'f>>);
 
+#[cfg(feature = "plugins")]
 pub struct ProfileLoadResult {
     pub plugin_set: set::PluginSet,
     pub errors: Vec<LoadError>,
@@ -29,12 +31,14 @@ impl<'f> ProfileLoader<'f> {
         );
         (Self(res.factories), res.resources, res.errors)
     }
+    #[cfg(feature = "plugins")]
     pub fn load_all(
         self,
         rt_handle: &tokio::runtime::Handle,
         resource_registry: Box<dyn ResourceRegistry>,
         db: Option<&crate::data::Database>,
     ) -> ProfileLoadResult {
+        use std::collections::HashMap;
         use std::mem::ManuallyDrop;
 
         let rt_handle_cloned = rt_handle.clone();

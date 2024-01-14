@@ -1,15 +1,10 @@
-use std::sync::Arc;
-
-use arc_swap::ArcSwap;
 use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::data::{PluginCache, PluginId};
-use crate::plugin::reject::RejectHandler;
-use crate::plugin::switch;
-use crate::plugin::switch::responder::PLUGIN_CACHE_KEY_LAST_SELECT;
+use crate::data::PluginId;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
 struct Choice<'a> {
     name: String,
@@ -24,6 +19,7 @@ struct SwitchConfig<'a> {
     choices: Vec<Choice<'a>>,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct SwitchFactory<'a> {
     config: SwitchConfig<'a>,
     plugin_id: Option<PluginId>,
@@ -78,7 +74,15 @@ impl<'de> SwitchFactory<'de> {
 }
 
 impl<'de> Factory for SwitchFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use arc_swap::ArcSwap;
+
+        use crate::data::PluginCache;
+        use crate::plugin::reject::RejectHandler;
+        use crate::plugin::switch;
+        use crate::plugin::switch::responder::PLUGIN_CACHE_KEY_LAST_SELECT;
+
         let db = set
             .db
             .as_deref()

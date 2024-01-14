@@ -5,8 +5,6 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null::Null;
-use crate::plugin::ws;
 
 fn default_path() -> &'static str {
     "/"
@@ -22,6 +20,7 @@ pub struct WsClientConfig<'a> {
     next: &'a str,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct WsClientFactory<'a> {
     host: Option<&'a str>,
     path: &'a str,
@@ -71,7 +70,11 @@ impl<'de> WsClientFactory<'de> {
 }
 
 impl<'de> Factory for WsClientFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::ws;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);

@@ -2,9 +2,9 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::reject::RejectHandler;
 use crate::plugin::simple_dispatcher as sd;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 pub struct Rule<'a> {
     src: sd::Condition,
@@ -65,7 +65,10 @@ impl<'de> SimpleDispatcherFactory<'de> {
 }
 
 impl<'de> Factory for SimpleDispatcherFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::reject::RejectHandler;
+
         let udp_factory = Arc::new_cyclic(|weak| {
             set.datagram_handlers
                 .insert(plugin_name.clone() + ".udp", weak.clone() as _);
@@ -82,7 +85,7 @@ impl<'de> Factory for SimpleDispatcherFactory<'de> {
                         Arc::downgrade(&(Arc::new(RejectHandler) as _))
                     }
                 };
-                let mut ret = sd::SimpleStreamDispatcher {
+                let mut ret = sd::stream::SimpleStreamDispatcher {
                     rules: Vec::with_capacity(self.rules.iter().filter(|r| !r.is_udp).count()),
                     fallback,
                 };
@@ -115,7 +118,7 @@ impl<'de> Factory for SimpleDispatcherFactory<'de> {
                         Arc::downgrade(&(Arc::new(RejectHandler) as _))
                     }
                 };
-            let mut ret = sd::SimpleDatagramDispatcher {
+            let mut ret = sd::datagram::SimpleDatagramDispatcher {
                 rules: Vec::with_capacity(self.rules.iter().filter(|r| r.is_udp).count()),
                 fallback,
             };

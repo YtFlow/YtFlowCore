@@ -10,7 +10,7 @@ use netlink_sys::SocketAddr;
 use rtnetlink::Handle;
 use tokio::task::JoinHandle;
 
-use super::super::*;
+use crate::flow::FlowResult;
 pub use dns::Resolver;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]

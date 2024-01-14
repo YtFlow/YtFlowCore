@@ -3,9 +3,8 @@ use serde::Deserialize;
 use crate::config::factory::*;
 use crate::config::*;
 use crate::flow::*;
-use crate::plugin::null::Null;
-use crate::plugin::redirect;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 pub struct RedirectFactory<'a> {
     dest: DestinationAddr,
@@ -47,7 +46,11 @@ impl<'de> RedirectFactory<'de> {
 }
 
 impl<'de> Factory for RedirectFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::redirect;
+
         let tcp_factory = Arc::new_cyclic(|tcp_weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", tcp_weak.clone() as _);

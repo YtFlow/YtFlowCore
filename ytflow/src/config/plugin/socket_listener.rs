@@ -2,7 +2,6 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::{reject::RejectHandler, socket};
 
 #[derive(Deserialize)]
 pub struct SocketListenerFactory<'a> {
@@ -40,7 +39,11 @@ impl<'de> SocketListenerFactory<'de> {
 }
 
 impl<'de> Factory for SocketListenerFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::reject::RejectHandler;
+        use crate::plugin::socket;
+
         if !self.tcp_listen.is_empty() {
             let tcp_next = set
                 .get_or_create_stream_handler(plugin_name.clone(), self.tcp_next)

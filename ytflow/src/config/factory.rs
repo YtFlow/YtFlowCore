@@ -8,7 +8,8 @@ pub(super) use serde::{Deserialize, Serialize};
 
 pub(super) use super::param::*;
 pub(super) use super::plugin::Plugin;
-pub(super) use super::set::*;
+#[cfg(feature = "plugins")]
+pub(super) use super::set::PartialPluginSet;
 use super::*;
 
 bitflags! {
@@ -46,10 +47,12 @@ pub(super) struct ParsedPlugin<'de, F: Factory> {
 }
 
 pub(super) trait Factory {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet<'_>) -> LoadResult<()>;
 }
 
 impl<'de, 'f> Factory for Box<dyn Factory + 'f> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         (&mut **self).load(plugin_name, set)
     }

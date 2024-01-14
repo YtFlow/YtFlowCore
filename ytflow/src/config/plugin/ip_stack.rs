@@ -2,8 +2,6 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::ip_stack;
-use crate::plugin::reject::RejectHandler;
 
 #[derive(Clone, Deserialize)]
 pub struct IpStackFactory<'a> {
@@ -39,7 +37,11 @@ impl<'de> IpStackFactory<'de> {
 }
 
 impl<'de> Factory for IpStackFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::ip_stack;
+        use crate::plugin::reject::RejectHandler;
+
         let tun = set.get_or_create_tun(plugin_name.clone(), self.tun)?;
         let tcp_next = set
             .get_or_create_stream_handler(plugin_name.clone(), self.tcp_next)

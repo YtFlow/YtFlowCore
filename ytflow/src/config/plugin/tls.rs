@@ -2,9 +2,8 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null::Null;
-use crate::plugin::tls;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
 pub struct TlsFactory<'a> {
     sni: Option<&'a str>,
@@ -36,7 +35,11 @@ impl<'de> TlsFactory<'de> {
 }
 
 impl<'de> Factory for TlsFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::tls;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);

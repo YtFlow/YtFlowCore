@@ -1,8 +1,12 @@
 use crate::config::factory::*;
 use crate::config::*;
-use crate::data::{DataResult, PluginCache, PluginId};
-use crate::plugin::{dyn_outbound, null::Null};
+use crate::data::PluginId;
+#[cfg(feature = "plugins")]
+use crate::data::{DataResult, PluginCache};
+#[cfg(feature = "plugins")]
+use crate::plugin::dyn_outbound;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct DynOutboundFactory<'a> {
     config: DynOutboundConfig<'a>,
     plugin_id: Option<PluginId>,
@@ -50,6 +54,7 @@ impl<'de> DynOutboundFactory<'de> {
     }
 }
 
+#[cfg(feature = "plugins")]
 fn init_plugin(plugin: &dyn_outbound::DynOutbound, cache: &PluginCache) -> DataResult<()> {
     plugin.load_proxies()?;
     let last_selection = cache
@@ -61,7 +66,10 @@ fn init_plugin(plugin: &dyn_outbound::DynOutbound, cache: &PluginCache) -> DataR
 }
 
 impl<'de> Factory for DynOutboundFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+
         let db = set
             .db
             .as_deref()

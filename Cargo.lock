@@ -3171,7 +3171,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "aes-gcm",
  "aho-corasick",
@@ -3242,7 +3242,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-bin"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "anyhow",
  "base64",
@@ -3270,7 +3270,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-ffi"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "cbindgen",
  "ytflow",
@@ -3278,7 +3278,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-uwp-plugin"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "flume",
  "futures",

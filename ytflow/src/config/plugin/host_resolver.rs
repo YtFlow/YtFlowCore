@@ -6,7 +6,6 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::host_resolver;
 
 #[derive(Deserialize)]
 struct DohSpecConfig<'a> {
@@ -14,6 +13,7 @@ struct DohSpecConfig<'a> {
     next: &'a str,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 struct DohSpec<'a> {
     url: Uri,
     next: &'a str,
@@ -29,6 +29,7 @@ struct HostResolverConfig<'a> {
     tcp: Vec<&'a str>,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct HostResolverFactory<'a> {
     doh: Vec<DohSpec<'a>>,
     udp: Vec<&'a str>,
@@ -91,7 +92,10 @@ impl<'de> HostResolverFactory<'de> {
 }
 
 impl<'de> Factory for HostResolverFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::host_resolver;
+
         let mut errors = vec![];
         let factory = Arc::new_cyclic(|weak| {
             set.resolver

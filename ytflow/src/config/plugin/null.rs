@@ -1,6 +1,5 @@
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null;
 
 pub struct NullFactory {}
 
@@ -30,7 +29,10 @@ impl NullFactory {
 }
 
 impl Factory for NullFactory {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null;
+
         set.fully_constructed
             .stream_outbounds
             .insert(plugin_name.clone() + ".tcp", Arc::new(null::Null));

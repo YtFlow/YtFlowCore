@@ -3,9 +3,8 @@ use serde_bytes::Bytes;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null::Null;
-use crate::plugin::trojan;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 pub struct TrojanFactory<'a> {
     password: &'a Bytes,
@@ -39,7 +38,11 @@ impl<'de> TrojanFactory<'de> {
 }
 
 impl<'de> Factory for TrojanFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::trojan;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);

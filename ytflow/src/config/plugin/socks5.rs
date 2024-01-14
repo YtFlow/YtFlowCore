@@ -3,8 +3,8 @@ use serde_bytes::Bytes;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::{null::Null, reject::RejectHandler, socks5};
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 struct Socks5Info<'a> {
     #[serde(borrow)]
@@ -13,6 +13,7 @@ struct Socks5Info<'a> {
     pass: &'a Bytes,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
 pub struct Socks5ServerFactory<'a> {
     tcp_next: &'a str,
@@ -22,6 +23,7 @@ pub struct Socks5ServerFactory<'a> {
     socks5: Option<Socks5Info<'a>>,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
 pub struct Socks5ClientFactory<'a> {
     tcp_next: &'a str,
@@ -96,7 +98,11 @@ impl<'de> Socks5ClientFactory<'de> {
 }
 
 impl<'de> Factory for Socks5ServerFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::reject::RejectHandler;
+        use crate::plugin::socks5;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_handlers
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
@@ -121,7 +127,11 @@ impl<'de> Factory for Socks5ServerFactory<'de> {
 }
 
 impl<'de> Factory for Socks5ClientFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::socks5;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);

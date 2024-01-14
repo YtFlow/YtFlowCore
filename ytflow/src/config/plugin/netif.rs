@@ -38,6 +38,7 @@ impl NetifFactory {
 }
 
 impl Factory for NetifFactory {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         let netif = netif::NetifSelector::new(self.selection.clone(), self.family_preference);
         set.control_hub.create_plugin_control(

@@ -5,6 +5,7 @@ use crate::config::{
     factory::{AccessPointType, Demand, Descriptor},
     *,
 };
+use crate::flow::*;
 use crate::resource::EmptyResourceRegistry;
 
 pub struct ProxyLoader<'f, I1, I2> {
@@ -103,6 +104,7 @@ impl<
     }
 }
 
+#[cfg(feature = "plugins")]
 impl<'f, I1: IntoIterator<Item = &'f str> + 'f, I2: IntoIterator<Item = &'f str> + 'f>
     ProxyLoader<'f, I1, I2>
 {

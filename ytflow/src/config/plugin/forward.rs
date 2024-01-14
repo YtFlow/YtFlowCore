@@ -2,13 +2,12 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::forward;
-use crate::plugin::null::Null;
 
 fn default_request_timeout() -> u64 {
     100
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 pub struct ForwardFactory<'a> {
     #[serde(default = "default_request_timeout")]
@@ -49,7 +48,11 @@ impl<'de> ForwardFactory<'de> {
 }
 
 impl<'de> Factory for ForwardFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::forward;
+        use crate::plugin::null::Null;
+
         let stat = forward::StatHandle::default();
         let tcp_factory = Arc::new_cyclic(|weak| {
             set.stream_handlers

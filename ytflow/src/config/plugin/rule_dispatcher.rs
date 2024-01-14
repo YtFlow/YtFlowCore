@@ -1,17 +1,18 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+#[cfg(feature = "plugins")]
 use std::sync::Weak;
 
 use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
+#[cfg(feature = "plugins")]
 use crate::flow::*;
-use crate::plugin::null::Null;
-use crate::plugin::reject::RejectHandler;
 use crate::plugin::rule_dispatcher as rd;
-use crate::resource::RESOURCE_TYPE_QUANX_FILTER;
-use crate::resource::{ResourceError, RESOURCE_TYPE_GEOIP_COUNTRY};
+#[cfg(feature = "plugins")]
+use crate::resource::ResourceError;
+use crate::resource::{RESOURCE_TYPE_GEOIP_COUNTRY, RESOURCE_TYPE_QUANX_FILTER};
 
 static RULE_DISPATCHER_ALLOWED_RESOURCE_TYPES: [&str; 2] =
     [RESOURCE_TYPE_GEOIP_COUNTRY, RESOURCE_TYPE_QUANX_FILTER];
@@ -44,6 +45,7 @@ pub struct RuleDispatcherConfig<'a> {
     pub(super) fallback: Action<'a>,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 pub struct RuleDispatcherFactory<'a> {
     config: RuleDispatcherConfig<'a>,
 }
@@ -153,11 +155,14 @@ impl<'de> RuleDispatcherFactory<'de> {
     }
 }
 
+#[cfg(feature = "plugins")]
 pub(super) fn load_resolver(
     resolver: &str,
     set: &mut PartialPluginSet,
     plugin_name: &str,
 ) -> Weak<dyn Resolver> {
+    use crate::plugin::null::Null;
+
     match set.get_or_create_resolver(plugin_name.to_string(), resolver) {
         Ok(resolver) => resolver,
         Err(e) => {
@@ -167,11 +172,15 @@ pub(super) fn load_resolver(
     }
 }
 
+#[cfg(feature = "plugins")]
 pub(super) fn load_action(
     action: &Action,
     set: &mut PartialPluginSet,
     plugin_name: &str,
 ) -> rd::Action {
+    use crate::plugin::null::Null;
+    use crate::plugin::reject::RejectHandler;
+
     let Action { tcp, udp, resolver } = action;
     let tcp_next = tcp
         .as_ref()
@@ -208,6 +217,7 @@ pub(super) fn load_action(
     }
 }
 
+#[cfg(feature = "plugins")]
 pub(super) fn validate_text<'t>(
     bytes: &'t [u8],
     plugin_name: &str,
@@ -223,6 +233,7 @@ pub(super) fn validate_text<'t>(
     ret
 }
 
+#[cfg(feature = "plugins")]
 fn load_additional_geoip_db(
     source: &ResourceSource<'_>,
     plugin_name: &str,
@@ -271,6 +282,7 @@ fn load_additional_geoip_db(
     }
 }
 
+#[cfg(feature = "plugins")]
 fn load_rule_set(
     source: ResourceSource<'_>,
     additional_geoip_db: Option<&ResourceSource<'_>>,
@@ -387,6 +399,7 @@ fn load_rule_set(
 }
 
 impl<'de> Factory for RuleDispatcherFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         let mut builder = rd::RuleDispatcherBuilder::default();
         let plugin = Arc::new_cyclic(|weak| {

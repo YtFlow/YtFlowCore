@@ -4,10 +4,8 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::dns_server;
-use crate::plugin::null::Null;
-use crate::plugin::reject::RejectHandler;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
 pub struct DnsServerFactory<'a> {
     /// For cross-platform consistency, use a fixed-width type
@@ -61,7 +59,12 @@ impl<'de> DnsServerFactory<'de> {
 }
 
 impl<'de> Factory for DnsServerFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::dns_server;
+        use crate::plugin::null::Null;
+        use crate::plugin::reject::RejectHandler;
+
         let mut err = None;
         let factory = Arc::new_cyclic(|weak| {
             set.datagram_handlers

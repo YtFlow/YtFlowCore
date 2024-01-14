@@ -6,9 +6,10 @@ mod surge_domainset;
 
 use crate::flow::Resolver;
 
+use super::dispatcher::ActionSet;
 use super::rules::GeoIpSet;
 use super::set::RuleSet;
-use super::{Action, ActionHandle, ActionSet, RuleDispatcher, RuleHandle, RuleId, ACTION_LIMIT};
+use super::{Action, ActionHandle, RuleDispatcher, RuleHandle, RuleId, ACTION_LIMIT};
 
 #[derive(Default)]
 pub struct RuleDispatcherBuilder {

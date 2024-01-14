@@ -14,7 +14,7 @@ name = "ytflow-edit"
 path = "src/edit.rs"
 
 [dependencies]
-ytflow = { path = "../ytflow" }
+ytflow = { path = "../ytflow", features = ["plugins"] }
 anyhow = "1"
 fern = { version = "0.6", features = ["colored"] }
 log = "0.4"

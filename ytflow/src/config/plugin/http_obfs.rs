@@ -2,15 +2,15 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null::Null;
+#[cfg(feature = "plugins")]
 use crate::plugin::obfs::simple_http;
-use crate::plugin::reject::RejectHandler;
 
 #[derive(Deserialize)]
 pub struct HttpObfsServerFactory<'a> {
     next: &'a str,
 }
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
 pub struct HttpObfsClientFactory<'a> {
     host: &'a str,
@@ -59,7 +59,10 @@ impl<'de> HttpObfsClientFactory<'de> {
 }
 
 impl<'de> Factory for HttpObfsServerFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::reject::RejectHandler;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_handlers
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
@@ -81,7 +84,10 @@ impl<'de> Factory for HttpObfsServerFactory<'de> {
 }
 
 impl<'de> Factory for HttpObfsClientFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);

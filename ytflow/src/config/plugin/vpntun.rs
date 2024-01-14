@@ -41,6 +41,7 @@ impl VpnTunFactory {
     }
 }
 impl Factory for VpnTunFactory {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
         let tun = (ON_VPNTUN.with(|cb| cb.borrow_mut().take())).ok_or_else(|| {
             ConfigError::TooManyPlugin {

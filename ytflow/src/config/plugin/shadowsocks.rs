@@ -2,8 +2,7 @@ use serde_bytes::Bytes;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::null::Null;
-use crate::plugin::shadowsocks::{self, SupportedCipher};
+use crate::plugin::shadowsocks::SupportedCipher;
 
 #[allow(dead_code)]
 pub struct ShadowsocksFactory<'de> {
@@ -87,7 +86,11 @@ impl<'de> ShadowsocksFactory<'de> {
 }
 
 impl<'de> Factory for ShadowsocksFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::null::Null;
+        use crate::plugin::shadowsocks::factory;
+
         struct FactoryReceiver<'set, 'de, 'f, 'r> {
             plugin_name: String,
             set: &'set mut PartialPluginSet<'f>,
@@ -95,8 +98,8 @@ impl<'de> Factory for ShadowsocksFactory<'de> {
             udp_next: &'de str,
             result: &'r mut LoadResult<()>,
         }
-        impl<'set, 'de, 'f, 'r> shadowsocks::ReceiveFactory for FactoryReceiver<'set, 'de, 'f, 'r> {
-            fn receive_factory<F: shadowsocks::CreateFactory>(self, factory: F) {
+        impl<'set, 'de, 'f, 'r> factory::ReceiveFactory for FactoryReceiver<'set, 'de, 'f, 'r> {
+            fn receive_factory<F: factory::CreateFactory>(self, factory: F) {
                 let tcp_ap = self.plugin_name.clone() + ".tcp";
                 let tcp_factory = Arc::new_cyclic(|weak| {
                     self.set
@@ -136,7 +139,7 @@ impl<'de> Factory for ShadowsocksFactory<'de> {
             }
         }
         let mut res = Ok(());
-        shadowsocks::create_factory(
+        factory::create_factory(
             self.cipher,
             self.password,
             FactoryReceiver {

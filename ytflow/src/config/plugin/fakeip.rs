@@ -2,8 +2,8 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::fakeip;
 
+#[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Clone, Deserialize)]
 pub struct FakeIpFactory<'a> {
     prefix_v4: [u8; 2],
@@ -32,7 +32,10 @@ impl<'de> FakeIpFactory<'de> {
 }
 
 impl<'de> Factory for FakeIpFactory<'de> {
+    #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::plugin::fakeip;
+
         let resolver = Arc::new(fakeip::FakeIp::new(self.prefix_v4, self.prefix_v6));
         set.fully_constructed
             .resolver

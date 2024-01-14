@@ -1,4 +1,7 @@
 mod profile;
+#[cfg(feature = "plugins")]
 pub(crate) mod proxy;
 
-pub use profile::{ProfileLoadResult, ProfileLoader};
+#[cfg(feature = "plugins")]
+pub use profile::ProfileLoadResult;
+pub use profile::ProfileLoader;

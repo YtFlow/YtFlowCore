@@ -1,46 +1,19 @@
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use async_trait::async_trait;
 use futures::ready;
 
 use super::crypto::*;
 use super::util::{parse_dest, write_dest};
 use crate::flow::*;
 
-pub struct ShadowsocksDatagramSessionFactory<C: ShadowCrypto>
+pub struct ShadowsocksDatagramSession<C: ShadowCrypto>
 where
     [(); C::KEY_LEN]:,
 {
     pub(super) key: Arc<[u8; C::KEY_LEN]>,
-    pub(super) next: Weak<dyn DatagramSessionFactory>,
+    pub(super) lower: Box<dyn DatagramSession>,
     pub(super) crypto_phantom: std::marker::PhantomData<C>,
-}
-
-struct ShadowsocksDatagramSession<C: ShadowCrypto>
-where
-    [(); C::KEY_LEN]:,
-{
-    key: Arc<[u8; C::KEY_LEN]>,
-    lower: Box<dyn DatagramSession>,
-    crypto_phantom: std::marker::PhantomData<C>,
-}
-
-#[async_trait]
-impl<C: ShadowCrypto> DatagramSessionFactory for ShadowsocksDatagramSessionFactory<C>
-where
-    [(); C::KEY_LEN]:,
-    [(); C::IV_LEN]:,
-    [(); C::POST_CHUNK_OVERHEAD]:,
-{
-    async fn bind(&self, context: Box<FlowContext>) -> FlowResult<Box<dyn DatagramSession>> {
-        let next = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
-        Ok(Box::new(ShadowsocksDatagramSession::<C> {
-            key: self.key.clone(),
-            lower: next.bind(context).await?,
-            crypto_phantom: std::marker::PhantomData,
-        }))
-    }
 }
 
 impl<C: ShadowCrypto> DatagramSession for ShadowsocksDatagramSession<C>

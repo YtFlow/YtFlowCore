@@ -13,6 +13,7 @@ mod bindings {
 }
 
 pub mod config;
+#[cfg(feature = "plugins")]
 pub mod control;
 pub mod data;
 pub mod ffi;
