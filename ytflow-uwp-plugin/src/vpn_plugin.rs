@@ -407,7 +407,7 @@ impl VpnPlugIn {
 
 impl IVpnPlugIn_Impl for VpnPlugIn {
     fn Connect(&self, channel: Option<&VpnChannel>) -> Result<()> {
-        let channel = channel.as_ref().unwrap();
+        let channel = channel.unwrap();
         if let Err(crate::error::ConnectError(e)) = self.connect_core(channel) {
             let err_msg = format!("{}", e);
             APP_SETTINGS.get().unwrap().Values()?.Insert(
@@ -441,7 +441,7 @@ impl IVpnPlugIn_Impl for VpnPlugIn {
         packets: Option<&VpnPacketBufferList>,
         _encapulatedPackets: Option<&VpnPacketBufferList>,
     ) -> Result<()> {
-        let packets = packets.as_ref().unwrap().clone();
+        let packets = packets.unwrap();
         let rx_buf_tx = if let VpnPlugInInner::Running { runtime, .. } = unsafe { &*self.0.get() } {
             &runtime.rx_buf_tx
         } else {
@@ -474,7 +474,7 @@ impl IVpnPlugIn_Impl for VpnPlugIn {
     ) -> Result<()> {
         let inner = unsafe { &mut *self.0.get() };
 
-        let decapsulatedPackets = decapsulatedPackets.as_ref().unwrap().clone();
+        let decapsulatedPackets = decapsulatedPackets.unwrap();
         let tx_buf_rx = match inner {
             VpnPlugInInner::NotRunning => return Ok(()),
             VpnPlugInInner::Running { tx_buf_rx, .. } => tx_buf_rx,
@@ -489,7 +489,7 @@ impl IVpnPlugIn_Impl for VpnPlugIn {
                 }
                 Err(TryRecvError::Disconnected) => {
                     *inner = VpnPlugInInner::NotRunning;
-                    let _ = channel.as_ref().unwrap().Stop();
+                    let _ = channel.unwrap().Stop();
                     return Ok(());
                 }
                 Err(TryRecvError::Empty) if idle_loop_count < 8 => {

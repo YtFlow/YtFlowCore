@@ -106,7 +106,7 @@ impl RuleDispatcher {
                     }
                 });
             }
-            TryMatchResult::Err(_) => {
+            TryMatchResult::Err(_e) => {
                 // TODO: log error
                 return;
             }

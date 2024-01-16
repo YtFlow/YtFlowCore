@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::os::windows::io::FromRawHandle;
 
-use windows::core::{ComInterface, HSTRING};
+use windows::core::ComInterface;
 use windows::Storage::StorageFolder;
 use windows::Win32::System::WinRT::Storage::{
     IStorageItemHandleAccess, HANDLE_ACCESS_OPTIONS, HANDLE_OPTIONS, HANDLE_SHARING_OPTIONS,

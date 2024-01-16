@@ -5,12 +5,10 @@ mod none;
 mod shake;
 
 use crate::flow::FlowResult;
-pub use aead::{
-    AeadClientCryptoRx, AeadClientCryptoTx, AesGcmCryptoFactory, ChachaPolyCryptoFactory,
-};
-pub use aes_cfb::{AesCfbClientCryptoRx, AesCfbClientCryptoTx, AesCfbCryptoFactory};
+pub use aead::{AesGcmCryptoFactory, ChachaPolyCryptoFactory};
+pub use aes_cfb::AesCfbCryptoFactory;
 pub use factory::BodyCryptoFactory;
-pub use none::{NoneClientCryptoRx, NoneClientCryptoTx, NoneCryptoFactory};
+pub use none::NoneCryptoFactory;
 pub use shake::ShakeSizeCrypto;
 
 pub trait SizeCrypto {
