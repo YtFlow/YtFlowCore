@@ -15,7 +15,7 @@ use ytflow::resource::DbFileResourceLoader;
 use ytflow::tokio;
 
 use flume::{bounded, Receiver, Sender, TryRecvError};
-use windows::core::{ComInterface, IInspectable, Result, HSTRING};
+use windows::core::{h, ComInterface, IInspectable, Result, HSTRING};
 use windows::Foundation::Collections::{IIterable, IVectorView};
 use windows::Networking::HostName;
 use windows::Networking::Sockets::DatagramSocket;
@@ -100,7 +100,7 @@ fn connect_with_factory(
         .map(|s| HostName::CreateHostName(&s.into()).map(Some))
         .collect();
     let dnsinfo = VpnDomainNameInfo::CreateVpnDomainNameInfo(
-        &".".into(),
+        h!("."),
         VpnDomainNameType::Suffix,
         &IIterable::<HostName>::try_from(dns_hosts?)?,
         &IIterable::<HostName>::try_from(proxy?)?,
@@ -128,7 +128,7 @@ async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()
     s.bind(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0))?;
     let port = HSTRING::try_from(s.local_addr()?.port().to_string()).unwrap();
     let _ = APP_SETTINGS.get().unwrap().Values()?.Insert(
-        &"YTFLOW_CORE_RPC_PORT".into(),
+        h!("YTFLOW_CORE_RPC_PORT"),
         &IInspectable::try_from(port).unwrap(),
     );
     let listener = s.listen(128)?;
@@ -215,7 +215,7 @@ impl VpnPlugIn {
 
         let transport = DatagramSocket::new()?;
         channel.AssociateTransport(&transport, None)?;
-        let lo_host = HostName::CreateHostName(&"127.0.0.1".into())?;
+        let lo_host = HostName::CreateHostName(h!("127.0.0.1"))?;
         transport
             .BindEndpointAsync(&lo_host, &HSTRING::new())?
             .get()?;
@@ -247,7 +247,7 @@ impl VpnPlugIn {
                     .get()
                     .unwrap()
                     .Values()?
-                    .Lookup(&"YTFLOW_DB_PATH".into())?,
+                    .Lookup(h!("YTFLOW_DB_PATH"))?,
             )?
             .as_wide(),
         )
@@ -287,7 +287,7 @@ impl VpnPlugIn {
             .get()
             .unwrap()
             .Values()?
-            .Lookup(&"YTFLOW_PROFILE_ID".into())?
+            .Lookup(h!("YTFLOW_PROFILE_ID"))?
             .try_into()
             .unwrap_or(0);
         let (entry_plugins, all_plugins) = match load_plugins(profile_id as _, &conn) {
@@ -346,7 +346,7 @@ impl VpnPlugIn {
                 .unwrap()
                 .LocalFolder()
                 .unwrap()
-                .CreateFolderAsync(&"resource".into(), CreationCollisionOption::OpenIfExists)
+                .CreateFolderAsync(h!("resource"), CreationCollisionOption::OpenIfExists)
                 .unwrap()
                 .get()
                 .unwrap();
@@ -411,7 +411,7 @@ impl IVpnPlugIn_Impl for VpnPlugIn {
         if let Err(crate::error::ConnectError(e)) = self.connect_core(channel) {
             let err_msg = format!("{}", e);
             APP_SETTINGS.get().unwrap().Values()?.Insert(
-                &"YTFLOW_CORE_ERROR_LOAD".into(),
+                h!("YTFLOW_CORE_ERROR_LOAD"),
                 &IInspectable::try_from(HSTRING::from(&err_msg))?,
             )?;
             channel.TerminateConnection(&err_msg.into())?;
