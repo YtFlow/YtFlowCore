@@ -12,7 +12,7 @@ use crate::data::{
 
 #[no_mangle]
 #[cfg(windows)]
-pub extern "C" fn ytflow_db_new_win32(path: *const u16, len: usize) -> FfiResult {
+pub unsafe extern "C" fn ytflow_db_new_win32(path: *const u16, len: usize) -> FfiResult {
     use std::ffi::OsString;
     use std::os::windows::ffi::OsStringExt;
     FfiResult::catch_result_unwind(move || {
@@ -23,7 +23,7 @@ pub extern "C" fn ytflow_db_new_win32(path: *const u16, len: usize) -> FfiResult
 
 #[no_mangle]
 #[cfg(unix)]
-pub extern "C" fn ytflow_db_new_unix(path: *const u8, len: usize) -> FfiResult {
+pub unsafe extern "C" fn ytflow_db_new_unix(path: *const u8, len: usize) -> FfiResult {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
     FfiResult::catch_result_unwind(move || {
@@ -33,7 +33,7 @@ pub extern "C" fn ytflow_db_new_unix(path: *const u8, len: usize) -> FfiResult {
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_db_free(db: *mut Database) -> FfiResult {
+pub unsafe extern "C" fn ytflow_db_free(db: *mut Database) -> FfiResult {
     FfiResult::catch_ptr_unwind(move || {
         unsafe { drop(Box::from_raw(db)) };
         (null_mut(), 0)
@@ -41,7 +41,7 @@ pub extern "C" fn ytflow_db_free(db: *mut Database) -> FfiResult {
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_db_conn_new(db: *const Database) -> FfiResult {
+pub unsafe extern "C" fn ytflow_db_conn_new(db: *const Database) -> FfiResult {
     FfiResult::catch_result_unwind(move || {
         let db = unsafe { &*db };
         db.connect()
@@ -50,7 +50,7 @@ pub extern "C" fn ytflow_db_conn_new(db: *const Database) -> FfiResult {
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_db_conn_free(conn: *mut Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_db_conn_free(conn: *mut Connection) -> FfiResult {
     FfiResult::catch_ptr_unwind(AssertUnwindSafe(move || {
         unsafe { drop(Box::from_raw(conn)) };
         (null_mut(), 0)
@@ -58,7 +58,7 @@ pub extern "C" fn ytflow_db_conn_free(conn: *mut Connection) -> FfiResult {
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_profiles_get_all(conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_profiles_get_all(conn: *const Connection) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Profile::query_all(conn).map(|p| serialize_buffer(&p))
@@ -66,7 +66,7 @@ pub extern "C" fn ytflow_profiles_get_all(conn: *const Connection) -> FfiResult 
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugins_get_by_profile(
+pub unsafe extern "C" fn ytflow_plugins_get_by_profile(
     profile_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
@@ -77,7 +77,10 @@ pub extern "C" fn ytflow_plugins_get_by_profile(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugins_get_entry(profile_id: u32, conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_plugins_get_entry(
+    profile_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Plugin::query_entry_by_profile(profile_id.into(), conn).map(|p| serialize_buffer(&p))
@@ -85,7 +88,7 @@ pub extern "C" fn ytflow_plugins_get_entry(profile_id: u32, conn: *const Connect
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_profile_create(
+pub unsafe extern "C" fn ytflow_profile_create(
     name: *const c_char,
     locale: *const c_char,
     conn: *const Connection,
@@ -104,7 +107,7 @@ pub extern "C" fn ytflow_profile_create(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_profile_update(
+pub unsafe extern "C" fn ytflow_profile_update(
     profile_id: u32,
     name: *const c_char,
     locale: *const c_char,
@@ -125,7 +128,10 @@ pub extern "C" fn ytflow_profile_update(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_profile_delete(profile_id: u32, conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_profile_delete(
+    profile_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Profile::delete(profile_id, conn).map(|()| (null_mut(), 0))
@@ -133,7 +139,7 @@ pub extern "C" fn ytflow_profile_delete(profile_id: u32, conn: *const Connection
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugin_create(
+pub unsafe extern "C" fn ytflow_plugin_create(
     profile_id: u32,
     name: *const c_char,
     desc: *const c_char,
@@ -162,7 +168,7 @@ pub extern "C" fn ytflow_plugin_create(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugin_update(
+pub unsafe extern "C" fn ytflow_plugin_update(
     plugin_id: u32,
     profile_id: u32,
     name: *const c_char,
@@ -193,7 +199,10 @@ pub extern "C" fn ytflow_plugin_update(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugin_delete(plugin_id: u32, conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_plugin_delete(
+    plugin_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Plugin::delete(plugin_id, conn).map(|()| (null_mut(), 0))
@@ -201,7 +210,7 @@ pub extern "C" fn ytflow_plugin_delete(plugin_id: u32, conn: *const Connection) 
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugin_set_as_entry(
+pub unsafe extern "C" fn ytflow_plugin_set_as_entry(
     plugin_id: u32,
     profile_id: u32,
     conn: *const Connection,
@@ -213,7 +222,7 @@ pub extern "C" fn ytflow_plugin_set_as_entry(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugin_unset_as_entry(
+pub unsafe extern "C" fn ytflow_plugin_unset_as_entry(
     plugin_id: u32,
     profile_id: u32,
     conn: *const Connection,
@@ -225,7 +234,7 @@ pub extern "C" fn ytflow_plugin_unset_as_entry(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_group_get_all(conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_proxy_group_get_all(conn: *const Connection) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         ProxyGroup::query_all(conn).map(|p| serialize_buffer(&p))
@@ -233,7 +242,7 @@ pub extern "C" fn ytflow_proxy_group_get_all(conn: *const Connection) -> FfiResu
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_group_get_by_id(
+pub unsafe extern "C" fn ytflow_proxy_group_get_by_id(
     proxy_group_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
@@ -244,7 +253,7 @@ pub extern "C" fn ytflow_proxy_group_get_by_id(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_group_create(
+pub unsafe extern "C" fn ytflow_proxy_group_create(
     name: *const c_char,
     r#type: *const c_char,
     conn: *const Connection,
@@ -263,7 +272,7 @@ pub extern "C" fn ytflow_proxy_group_create(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_group_create_subscription(
+pub unsafe extern "C" fn ytflow_proxy_group_create_subscription(
     name: *const c_char,
     format: *const c_char,
     url: *const c_char,
@@ -285,7 +294,7 @@ pub extern "C" fn ytflow_proxy_group_create_subscription(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_group_rename(
+pub unsafe extern "C" fn ytflow_proxy_group_rename(
     proxy_group_id: u32,
     name: *const c_char,
     conn: *const Connection,
@@ -299,7 +308,7 @@ pub extern "C" fn ytflow_proxy_group_rename(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_group_delete(
+pub unsafe extern "C" fn ytflow_proxy_group_delete(
     proxy_group_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
@@ -310,19 +319,19 @@ pub extern "C" fn ytflow_proxy_group_delete(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_subscription_query_by_proxy_group_id(
+pub unsafe extern "C" fn ytflow_proxy_subscription_query_by_proxy_group_id(
     proxy_group_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
-        ProxySubscription::query_by_proxy_group_id(proxy_group_id.into(), conn)
+        ProxySubscription::query_by_proxy_group_id(proxy_group_id, conn)
             .map(|p| serialize_buffer(&p))
     }))
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
+pub unsafe extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
     proxy_group_id: u32,
     upload_bytes_used: *const u64,
     download_bytes_used: *const u64,
@@ -341,7 +350,7 @@ pub extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
         };
         let conn = unsafe { &*conn };
         ProxySubscription::update_retrieved_by_proxy_group_id(
-            proxy_group_id.into(),
+            proxy_group_id,
             upload_bytes_used,
             download_bytes_used,
             bytes_total,
@@ -353,7 +362,7 @@ pub extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_group_id(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_get_by_proxy_group(
+pub unsafe extern "C" fn ytflow_proxy_get_by_proxy_group(
     proxy_group_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
@@ -364,7 +373,7 @@ pub extern "C" fn ytflow_proxy_get_by_proxy_group(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_create(
+pub unsafe extern "C" fn ytflow_proxy_create(
     proxy_group_id: u32,
     name: *const c_char,
     proxy: *const u8,
@@ -387,7 +396,7 @@ pub extern "C" fn ytflow_proxy_create(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_update(
+pub unsafe extern "C" fn ytflow_proxy_update(
     proxy_id: u32,
     name: *const c_char,
     proxy: *const u8,
@@ -410,7 +419,7 @@ pub extern "C" fn ytflow_proxy_update(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_delete(proxy_id: u32, conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_proxy_delete(proxy_id: u32, conn: *const Connection) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Proxy::delete(proxy_id, conn).map(|()| (null_mut(), 0))
@@ -418,7 +427,7 @@ pub extern "C" fn ytflow_proxy_delete(proxy_id: u32, conn: *const Connection) ->
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_reorder(
+pub unsafe extern "C" fn ytflow_proxy_reorder(
     proxy_group_id: u32,
     range_start_order: i32,
     range_end_order: i32,
@@ -439,7 +448,7 @@ pub extern "C" fn ytflow_proxy_reorder(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_proxy_batch_update_by_group(
+pub unsafe extern "C" fn ytflow_proxy_batch_update_by_group(
     proxy_group_id: u32,
     new_proxies_buf: *const u8,
     new_proxies_buf_len: usize,
@@ -463,7 +472,7 @@ pub extern "C" fn ytflow_proxy_batch_update_by_group(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_get_all(conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_resource_get_all(conn: *const Connection) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Resource::query_all(conn).map(|r| serialize_buffer(&r))
@@ -471,7 +480,10 @@ pub extern "C" fn ytflow_resource_get_all(conn: *const Connection) -> FfiResult 
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_delete(resource_id: u32, conn: *const Connection) -> FfiResult {
+pub unsafe extern "C" fn ytflow_resource_delete(
+    resource_id: u32,
+    conn: *const Connection,
+) -> FfiResult {
     FfiResult::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Resource::delete(resource_id, conn).map(|()| (null_mut(), 0))
@@ -479,7 +491,7 @@ pub extern "C" fn ytflow_resource_delete(resource_id: u32, conn: *const Connecti
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_create_with_url(
+pub unsafe extern "C" fn ytflow_resource_create_with_url(
     key: *const c_char,
     r#type: *const c_char,
     local_file: *const c_char,
@@ -504,7 +516,7 @@ pub extern "C" fn ytflow_resource_create_with_url(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_create_with_github_release(
+pub unsafe extern "C" fn ytflow_resource_create_with_github_release(
     key: *const c_char,
     r#type: *const c_char,
     local_file: *const c_char,
@@ -535,7 +547,7 @@ pub extern "C" fn ytflow_resource_create_with_github_release(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_url_query_by_resource_id(
+pub unsafe extern "C" fn ytflow_resource_url_query_by_resource_id(
     resource_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
@@ -546,7 +558,7 @@ pub extern "C" fn ytflow_resource_url_query_by_resource_id(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
+pub unsafe extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
     resource_id: u32,
     etag: *const c_char,
     last_modified: *const c_char,
@@ -578,7 +590,7 @@ pub extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_github_release_query_by_resource_id(
+pub unsafe extern "C" fn ytflow_resource_github_release_query_by_resource_id(
     resource_id: u32,
     conn: *const Connection,
 ) -> FfiResult {
@@ -589,7 +601,7 @@ pub extern "C" fn ytflow_resource_github_release_query_by_resource_id(
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_resource_github_release_update_retrieved_by_resource_id(
+pub unsafe extern "C" fn ytflow_resource_github_release_update_retrieved_by_resource_id(
     resource_id: u32,
     git_tag: *const c_char,
     release_title: *const c_char,

@@ -1,5 +1,5 @@
 #[cfg(feature = "plugins")]
-pub(self) mod crypto;
+mod crypto;
 #[cfg(feature = "plugins")]
 mod datagram;
 #[cfg(feature = "plugins")]

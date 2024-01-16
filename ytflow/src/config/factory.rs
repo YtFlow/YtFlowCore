@@ -51,10 +51,10 @@ pub(super) trait Factory {
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet<'_>) -> LoadResult<()>;
 }
 
-impl<'de, 'f> Factory for Box<dyn Factory + 'f> {
+impl<'f> Factory for Box<dyn Factory + 'f> {
     #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        (&mut **self).load(plugin_name, set)
+        (**self).load(plugin_name, set)
     }
 }
 
@@ -184,7 +184,7 @@ impl<'de> AccessPointResolver<'de> {
                     descriptor: ap.to_owned(),
                 });
         }
-        self.demanding_aps.entry(ap).or_insert(vec![]).push(demand);
+        self.demanding_aps.entry(ap).or_default().push(demand);
         Ok(())
     }
     fn process_plugin(
@@ -207,7 +207,7 @@ impl<'de> AccessPointResolver<'de> {
             .errors
             .extend(requires.into_iter().filter_map(|d| {
                 self.insert_demand(
-                    &*d.descriptor,
+                    d.descriptor,
                     Demand {
                         initiator: &plugin.name,
                         ap_type: d.r#type,

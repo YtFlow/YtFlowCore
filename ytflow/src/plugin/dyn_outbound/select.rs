@@ -83,11 +83,11 @@ impl super::DynOutbound {
         let mut preset_stream_outbounds = BTreeMap::new();
         let mut preset_datagram_outbounds = BTreeMap::new();
         preset_stream_outbounds.insert(
-            "$out.tcp".into(),
+            "$out.tcp",
             self.tcp_next.upgrade().ok_or(SelectError::NoOutbound)?,
         );
         let udp_next = self.udp_next.upgrade().ok_or(SelectError::NoOutbound)?;
-        preset_datagram_outbounds.insert("$out.udp".into(), udp_next.clone());
+        preset_datagram_outbounds.insert("$out.udp", udp_next.clone());
         let (loader, errs) = crate::config::loader::proxy::ProxyLoader::parse_with_preset_outbounds(
             preset_stream_outbounds,
             preset_datagram_outbounds,
@@ -116,7 +116,7 @@ impl super::DynOutbound {
                     .ok_or_else(|| SelectError::EntrypointNotFound(udp_entry.into()))
             })
             .transpose()?
-            .unwrap_or_else(|| udp_next);
+            .unwrap_or(udp_next);
 
         Ok(Selection {
             idx,

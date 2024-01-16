@@ -73,7 +73,7 @@ impl StreamOutboundFactory for NetifSelector {
         let preference = self.selection.load().1;
         let netif = self.cached_netif.load();
         crate::plugin::socket::dial_stream(
-            &context,
+            context,
             self.me.upgrade().unwrap(),
             // A workaround for E0308 "one type is more general than the other"
             // https://github.com/rust-lang/rust/issues/70263

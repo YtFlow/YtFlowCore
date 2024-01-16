@@ -126,7 +126,7 @@ async fn run_rpc(control_hub: ytflow::control::ControlHub) -> std::io::Result<()
     let s = TcpSocket::new_v4()?;
     s.set_reuseaddr(true)?;
     s.bind(SocketAddr::new(Ipv4Addr::LOCALHOST.into(), 0))?;
-    let port = HSTRING::try_from(s.local_addr()?.port().to_string()).unwrap();
+    let port = HSTRING::from(s.local_addr()?.port().to_string());
     let _ = APP_SETTINGS.get().unwrap().Values()?.Insert(
         h!("YTFLOW_CORE_RPC_PORT"),
         &IInspectable::try_from(port).unwrap(),
@@ -166,7 +166,7 @@ impl Drop for Runtime {
     fn drop(&mut self) {
         let _enter_guard = self.rt.enter();
         unsafe {
-            let _ = self.rpc_task.abort();
+            self.rpc_task.abort();
             let _rx_buf_tx = ManuallyDrop::take(&mut self.rx_buf_tx);
             let _plugin_set = ManuallyDrop::take(&mut self.plugin_set);
         }
@@ -252,7 +252,7 @@ impl VpnPlugIn {
             .as_wide(),
         )
         .into();
-        let db = match ytflow::data::Database::open(&db_path) {
+        let db = match ytflow::data::Database::open(db_path) {
             Ok(db) => db,
             Err(e) => return Err(format!("Cannot open database: {}", e).into()),
         };
@@ -268,7 +268,7 @@ impl VpnPlugIn {
             std::result::Result<(Vec<ytflow::config::Plugin>, Vec<ytflow::config::Plugin>), String>,
         > {
             use ytflow::data::{Plugin, Profile};
-            let profile_id = match Profile::query_by_id(profile_id, &conn)? {
+            let profile_id = match Profile::query_by_id(profile_id, conn)? {
                 Some(p) => p.id,
                 None => return Ok(Err(format!("Profile {} not found", profile_id))),
             };
@@ -361,7 +361,7 @@ impl VpnPlugIn {
                     .collect::<std::result::Result<Vec<_>, _>>();
                 res.map(|_| loader)
             })?;
-            factory.load_all(&rt_handle, Box::new(loader), Some(&db))
+            factory.load_all(rt_handle, Box::new(loader), Some(&db))
         };
         let mut error_str = if errors.is_empty() {
             String::from("There must be exactly one vpn-tun entry plugin in a profile")
@@ -374,10 +374,10 @@ impl VpnPlugIn {
         loop {
             if let (Some(vpn_items), []) = (vpn_items_cell.borrow_mut().take(), &*errors) {
                 let (tx_buf_rx, rx_buf_tx, vpn_tun_factory) = vpn_items;
-                match connect_with_factory(&transport, &vpn_tun_factory, &channel) {
+                match connect_with_factory(&transport, &vpn_tun_factory, channel) {
                     Ok(()) => {
                         *inner = VpnPlugInInner::Running {
-                            tx_buf_rx: tx_buf_rx,
+                            tx_buf_rx,
                             runtime: Runtime {
                                 rx_buf_tx: ManuallyDrop::new(rx_buf_tx),
                                 plugin_set: ManuallyDrop::new(set),
@@ -408,8 +408,7 @@ impl VpnPlugIn {
 impl IVpnPlugIn_Impl for VpnPlugIn {
     fn Connect(&self, channel: Option<&VpnChannel>) -> Result<()> {
         let channel = channel.unwrap();
-        if let Err(crate::error::ConnectError(e)) = self.connect_core(channel) {
-            let err_msg = format!("{}", e);
+        if let Err(crate::error::ConnectError(err_msg)) = self.connect_core(channel) {
             APP_SETTINGS.get().unwrap().Values()?.Insert(
                 h!("YTFLOW_CORE_ERROR_LOAD"),
                 &IInspectable::try_from(HSTRING::from(&err_msg))?,
@@ -458,7 +457,7 @@ impl IVpnPlugIn_Impl for VpnPlugIn {
                 std::ptr::copy_nonoverlapping(slice.as_mut_ptr(), buf.as_mut_ptr(), len);
                 buf.set_len(len);
             }
-            if let Err(_) = rx_buf_tx.send(buf) {
+            if rx_buf_tx.send(buf).is_err() {
                 return Ok(());
             }
             packets.Append(&vpn_buffer)?;

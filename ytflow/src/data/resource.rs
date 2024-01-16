@@ -157,7 +157,7 @@ impl ResourceUrl {
             .query_row_and_then(
                 r"SELECT `id`, `url`, `etag`, `last_modified`, `retrieved_at`
                 FROM `yt_resources_url` WHERE `resource_id` = ?",
-                &[&resource_id],
+                [&resource_id],
                 map_resource_url_from_row,
             )
             .optional()?)
@@ -185,7 +185,7 @@ impl ResourceGitHubRelease {
             .query_row_and_then(
                 r"SELECT `id`, `github_username`, `github_repo`, `asset_name`, `git_tag`, `release_title`, `retrieved_at`
                 FROM `yt_resources_github_release` WHERE `resource_id` = ?",
-                &[&resource_id],
+                [&resource_id],
                 map_resource_github_release_from_row,
             )
             .optional()?)

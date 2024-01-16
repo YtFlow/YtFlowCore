@@ -7,7 +7,7 @@ use crate::config::verify::verify_plugin;
 use crate::config::Plugin;
 
 #[no_mangle]
-pub extern "C" fn ytflow_plugin_verify(
+pub unsafe extern "C" fn ytflow_plugin_verify(
     plugin: *const c_char,
     plugin_version: u16,
     param: *const u8,

@@ -21,12 +21,12 @@ impl<'de> SocketListenerFactory<'de> {
         let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
             requires: (!config.tcp_listen.is_empty())
-                .then(|| Descriptor {
+                .then_some(Descriptor {
                     descriptor: config.tcp_next,
                     r#type: AccessPointType::STREAM_HANDLER,
                 })
                 .into_iter()
-                .chain((!config.udp_listen.is_empty()).then(|| Descriptor {
+                .chain((!config.udp_listen.is_empty()).then_some(Descriptor {
                     descriptor: config.udp_next,
                     r#type: AccessPointType::DATAGRAM_SESSION_HANDLER,
                 }))

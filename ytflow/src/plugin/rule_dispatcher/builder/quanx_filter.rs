@@ -84,7 +84,7 @@ fn build_ac_from_line_segs<'s, S: Iterator<Item = &'s str>>(
         .filter_map(|(id, mut segs)| {
             let rule_type = segs.next()?;
             accepted_rule_types
-                .into_iter()
+                .iter()
                 .any(|r| rule_type.eq_ignore_ascii_case(r))
                 .then_some((id, segs))
         })
@@ -108,7 +108,7 @@ fn build_ip_rules_from_line_segs<'s, 'r, 'f: 'r, S: Iterator<Item = &'s str>, I>
         .filter_map(|(id, mut segs)| {
             let rule_type = segs.next()?;
             accepted_rule_types
-                .into_iter()
+                .iter()
                 .any(|r| rule_type.eq_ignore_ascii_case(r))
                 .then_some((id, segs))
         })
@@ -145,7 +145,7 @@ impl RuleSet {
     ) -> Option<Self> {
         let lines = lines
             .map(|l| l.trim())
-            .filter(|l| !l.starts_with(&['#', ';']) && !l.is_empty())
+            .filter(|l| !l.starts_with(['#', ';']) && !l.is_empty())
             .enumerate()
             .map(|(idx, l)| (idx as u32 + 1, l.split(',').map(|s| s.trim())));
         let (mut full_rule_ranges, mut sub_rule_ranges, mut keyword_rule_ranges) =

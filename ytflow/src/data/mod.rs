@@ -17,7 +17,7 @@ pub struct Id<T>(pub u32, PhantomData<T>);
 
 impl<T> Clone for Id<T> {
     fn clone(&self) -> Id<T> {
-        Self(self.0, PhantomData)
+        *self
     }
 }
 impl<T> Copy for Id<T> {}

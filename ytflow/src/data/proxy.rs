@@ -36,7 +36,7 @@ fn map_from_row(row: &Row) -> Result<Proxy, SqError> {
 }
 
 fn are_proxies_equivalent(old: &Proxy, new: &ProxyInput) -> bool {
-    old.name == new.name && &old.proxy == &*new.proxy && old.proxy_version == new.proxy_version
+    old.name == new.name && old.proxy == *new.proxy && old.proxy_version == new.proxy_version
 }
 
 impl Proxy {
@@ -168,7 +168,7 @@ impl Proxy {
 
         let old_proxies = Self::query_all_by_group(proxy_group_id, &tx)?;
         // Delete all proxies starting from the first proxy that is not in the new list, and then insert all new proxies from that point.
-        let mut zipped = old_proxies.iter().zip_longest(new_proxies.into_iter());
+        let mut zipped = old_proxies.iter().zip_longest(new_proxies);
         let mut proxy_to_insert_from = loop {
             let mut proxy_to_insert_from = None;
             let proxy_to_delete_from = match zipped.next() {

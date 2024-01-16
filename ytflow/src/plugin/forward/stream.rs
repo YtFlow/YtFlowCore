@@ -223,7 +223,7 @@ impl StreamForwardHandler {
         }
 
         // Drop earlier to prevent StreamForward outliving outbound
-        let _ = StreamForward {
+        StreamForward {
             stream_local: lower.as_mut(),
             stream_remote: outbound.as_mut(),
             downlink_state: initial_downlink_state,

@@ -22,8 +22,7 @@ pub use udp_listener::listen_udp;
 // See https://datatracker.ietf.org/doc/html/rfc8305
 const CONN_ATTEMPT_DELAY: Duration = Duration::from_millis(250);
 const RESOLUTION_DELAY: Duration = Duration::from_millis(50);
-const SOCKET_KEEPALIVE: &'static TcpKeepalive =
-    &TcpKeepalive::new().with_time(Duration::from_secs(600));
+const SOCKET_KEEPALIVE: &TcpKeepalive = &TcpKeepalive::new().with_time(Duration::from_secs(600));
 
 pub struct SocketOutboundFactory {
     pub resolver: Weak<dyn Resolver>,

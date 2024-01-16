@@ -86,8 +86,8 @@ impl DbFileResourceLoader {
             })
             .collect();
         let registered_handles_for_bytes = metadatas
-            .iter()
-            .map(|(_, m)| (m.handle.handle.clone(), None))
+            .values()
+            .map(|m| (m.handle.handle.clone(), None))
             .collect();
         Ok(Self {
             metadatas,
@@ -107,7 +107,7 @@ impl DbFileResourceLoader {
             .map(move |(handle, bytes)| {
                 use tokio::io::AsyncReadExt;
                 async move {
-                    let mut file = tokio::fs::File::from_std(file_loader.load_file(&handle)?);
+                    let mut file = tokio::fs::File::from_std(file_loader.load_file(handle)?);
                     let mut buf = Vec::new();
                     file.read_to_end(&mut buf).await?;
                     *bytes = Some(buf.into());

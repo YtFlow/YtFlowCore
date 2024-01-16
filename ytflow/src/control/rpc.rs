@@ -63,16 +63,16 @@ impl<'h> ControlHubService<'h> {
         let req: ControlHubRequest = match from_slice(req) {
             Ok(req) => req,
             Err(e) => {
-                return Ok(to_writer(
+                return to_writer(
                     res,
                     &ControlHubResponse::<(), _>::Err {
                         error: e.to_string(),
                     },
-                )?);
+                );
             }
         };
 
-        Ok(match req {
+        match req {
             ControlHubRequest::CollectAllPluginInfo { hashcodes } => {
                 let data = self.collect_all_plugin_info(hashcodes);
                 to_writer(res, &ControlHubResponse::<_, ()>::Ok { data })
@@ -84,7 +84,7 @@ impl<'h> ControlHubService<'h> {
                     .into();
                 to_writer(res, &response)
             }
-        }?)
+        }
     }
 
     fn collect_all_plugin_info(&mut self, hashcodes: BTreeMap<u32, u32>) -> Vec<super::PluginInfo> {
@@ -106,7 +106,7 @@ impl<'h> ControlHubService<'h> {
             .iter()
             .find(|p| p.id == id)
             .ok_or(plugin::PluginRequestError::NoSuchPlugin)
-            .and_then(|p| p.responder.on_request(&func, &params))
+            .and_then(|p| p.responder.on_request(func, params))
     }
 }
 
@@ -143,7 +143,7 @@ where
     D: Sink<Vec<u8>, Error = E> + TryStream<Ok = Vec<u8>, Error = E> + Unpin,
 {
     while let Some(req) = io.try_next().await? {
-        if req.len() == 0 {
+        if req.is_empty() {
             continue;
         }
         let mut res = Vec::with_capacity(128);

@@ -142,7 +142,7 @@ impl Stream for SimpleTlsOutboundStream {
     fn commit_tx_buffer(&mut self, mut buffer: Buffer) -> FlowResult<()> {
         let mut payload_offset = self.tx_offset + self.tx_total_overhead;
         while payload_offset < buffer.len() {
-            let chunk_size = (buffer.len() - payload_offset).min(MAX_TLS_CHUNK_SIZE as usize);
+            let chunk_size = (buffer.len() - payload_offset).min(MAX_TLS_CHUNK_SIZE);
             *<&mut [u8; LEN_BUFFER_SIZE]>::try_from(
                 &mut buffer[self.tx_offset..self.tx_offset + LEN_BUFFER_SIZE],
             )

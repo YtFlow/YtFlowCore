@@ -49,7 +49,7 @@ impl<K: StaticKey, D: Digest + BlockSizeUser> HashMarker for HmacFixedKeyHash<K,
 
 impl<K: StaticKey, D: Digest + BlockSizeUser> Update for HmacFixedKeyHash<K, D> {
     fn update(&mut self, data: &[u8]) {
-        Mac::update(&mut self.hmac, data.as_ref());
+        Mac::update(&mut self.hmac, data);
     }
 }
 
@@ -73,7 +73,7 @@ struct GlobalPathSegmentGuard;
 impl GlobalPathSegmentGuard {
     fn get_tls() -> &'static LocalKey<RefCell<Option<[&'static [u8]; 4]>>> {
         thread_local! {
-            static PATH_SEGMENTS: RefCell<Option<[&'static [u8]; 4]>> = RefCell::new(None);
+            static PATH_SEGMENTS: RefCell<Option<[&'static [u8]; 4]>> = const { RefCell::new(None) };
         }
         &PATH_SEGMENTS
     }

@@ -59,7 +59,7 @@ impl PluginController {
             .map(|info| PluginInfo {
                 id: self.id,
                 name: Cow::Borrowed(&self.name),
-                plugin: Cow::Borrowed(&self.plugin),
+                plugin: Cow::Borrowed(self.plugin),
                 info: ByteBuf::from(info),
                 hashcode,
             })

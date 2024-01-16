@@ -115,7 +115,6 @@ impl StreamOutboundFactory for SslStreamFactory {
             FlowError::UnexpectedData
         })?;
         {
-            let initial_data_container = initial_data_container;
             let initial_data = initial_data_container
                 .lock()
                 .unwrap()
@@ -144,7 +143,7 @@ impl StreamOutboundFactory for SslStreamFactory {
                 .retain(|a| a.as_bytes() == alpn);
         }
 
-        Pin::new(&mut ssl_stream).write(initial_data).await?;
+        Pin::new(&mut ssl_stream).write_all(initial_data).await?;
 
         Ok((Box::new(CompatFlow::new(ssl_stream, 4096)), Buffer::new()))
     }

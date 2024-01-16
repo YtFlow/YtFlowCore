@@ -73,7 +73,7 @@ where
             return None;
         }
         increase_num_buf(&mut self.nonce);
-        let size = u16::from_be_bytes((&size_buf[..]).try_into().unwrap()) & 0x3fff;
+        let size = u16::from_be_bytes(size_buf.try_into().unwrap()) & 0x3fff;
         NonZeroUsize::new(size as usize)
     }
 
@@ -84,7 +84,7 @@ where
     ) -> bool {
         let res = self
             .inner
-            .decrypt_in_place_detached(&self.nonce, &[], data, (&*post_overhead).into())
+            .decrypt_in_place_detached(&self.nonce, &[], data, post_overhead.into())
             .is_ok();
         increase_num_buf(&mut self.nonce);
         res

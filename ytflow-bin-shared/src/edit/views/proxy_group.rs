@@ -254,7 +254,7 @@ fn edit_proxy(ctx: &mut edit::AppContext, bytes: &[u8]) -> Result<Option<Vec<u8>
     let val = EditProxy {
         tcp_entry: proxy.tcp_entry,
         udp_entry: proxy.udp_entry,
-        plugins: plugins,
+        plugins,
     };
 
     // Serialize cborium Value into bytes using cbor4ii and deserialize into cbor4ii Value

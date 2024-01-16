@@ -72,7 +72,6 @@ impl<'de> Factory for DynOutboundFactory<'de> {
 
         let db = set
             .db
-            .as_deref()
             .ok_or_else(|| LoadError::DatabaseRequired {
                 plugin: plugin_name.clone(),
             })?

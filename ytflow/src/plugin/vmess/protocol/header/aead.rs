@@ -103,14 +103,14 @@ impl RequestHeaderEnc for AeadRequestEnc {
 
     fn derive_res_iv(&self, header: &RequestHeader) -> [u8; HEADER_IV_LEN] {
         let mut res_iv = [0; HEADER_IV_LEN];
-        let res = Sha256::digest(&header.data_iv);
+        let res = Sha256::digest(header.data_iv);
         res_iv[..].copy_from_slice(&res[..HEADER_IV_LEN]);
         res_iv
     }
 
     fn derive_res_key(&self, header: &RequestHeader) -> [u8; HEADER_KEY_LEN] {
         let mut res_key = [0; HEADER_KEY_LEN];
-        let res = Sha256::digest(&header.data_key);
+        let res = Sha256::digest(header.data_key);
         res_key[..].copy_from_slice(&res[..HEADER_KEY_LEN]);
         res_key
     }
@@ -177,7 +177,7 @@ impl RequestHeaderEnc for AeadRequestEnc {
 }
 
 impl ResponseHeaderDec for AeadRequestDec {
-    fn decrypt_res<'a>(&mut self, data: &'a mut [u8]) -> HeaderDecryptResult<ResponseHeader> {
+    fn decrypt_res(&mut self, data: &mut [u8]) -> HeaderDecryptResult<ResponseHeader> {
         const RES_LEN: usize = 4;
         // TODO: const time?
         // TODO: cmd bytes
@@ -191,12 +191,17 @@ impl ResponseHeaderDec for AeadRequestDec {
         };
         let (chunk, chunk_tag) = size_chunk.split_at_mut(HEADER_SIZE_LEN);
         let mut chunk = <[u8; HEADER_SIZE_LEN]>::try_from(chunk).unwrap();
-        if let Err(_) = self.header_size_dec.clone().decrypt_in_place_detached(
-            &self.header_size_nonce,
-            &[][..],
-            &mut chunk,
-            (&*chunk_tag).into(),
-        ) {
+        if self
+            .header_size_dec
+            .clone()
+            .decrypt_in_place_detached(
+                &self.header_size_nonce,
+                &[][..],
+                &mut chunk,
+                (&*chunk_tag).into(),
+            )
+            .is_err()
+        {
             return HeaderDecryptResult::Invalid;
         }
         let size = u16::from_be_bytes([chunk[0], chunk[1]]) as usize;
@@ -209,12 +214,12 @@ impl ResponseHeaderDec for AeadRequestDec {
             };
         };
         let (chunk, chunk_tag) = chunk.split_at_mut(size);
-        if let Err(_) = self.header_dec.clone().decrypt_in_place_detached(
-            &self.header_nonce,
-            &[][..],
-            chunk,
-            (&*chunk_tag).into(),
-        ) {
+        if self
+            .header_dec
+            .clone()
+            .decrypt_in_place_detached(&self.header_nonce, &[][..], chunk, (&*chunk_tag).into())
+            .is_err()
+        {
             return HeaderDecryptResult::Invalid;
         }
 

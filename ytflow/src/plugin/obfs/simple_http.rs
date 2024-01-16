@@ -139,7 +139,7 @@ impl StreamOutboundFactory for SimpleHttpOutbound {
             thread_rng().fill_bytes(&mut ws_key);
             let mut b64 = [0; 32];
             let b64_len = BASE64_URL_SAFE
-                .encode_slice(&ws_key, &mut b64)
+                .encode_slice(ws_key, &mut b64)
                 .expect("A base64 repr of 16 bytes should not exceed 32 chars");
             req.extend_from_slice(&b64[..b64_len]);
             req.extend_from_slice(b"\r\nContent-Length: ");

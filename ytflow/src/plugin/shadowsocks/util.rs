@@ -68,7 +68,7 @@ pub fn openssl_bytes_to_key<const K: usize>(password: &[u8]) -> [u8; K] {
     while offset < K {
         let mut m = Md5::new();
         if let Some(digest) = last_digest {
-            m.update(&digest);
+            m.update(digest);
         }
 
         m.update(password);

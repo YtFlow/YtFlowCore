@@ -52,8 +52,7 @@ where
                         reader.poll_read_exact(cx, lower.as_mut(), C::IV_LEN, |buf| iv
                             .copy_from_slice(buf))
                     )?;
-                    *crypto =
-                        RxCryptoState::Ready(C::create_crypto(key, (&iv).try_into().unwrap()));
+                    *crypto = RxCryptoState::Ready(C::create_crypto(key, &iv));
                 }
                 RxCryptoState::Ready(_) if C::PRE_CHUNK_OVERHEAD == 0 => {
                     return Poll::Ready(Ok(SizeHint::Unknown { overhead: 0 }));
@@ -109,7 +108,7 @@ where
                 to_write
             }));
             if let Ok(written) = &res {
-                let _ = reader.advance(*written);
+                reader.advance(*written);
             }
             res.map(|_| ())
         } else {

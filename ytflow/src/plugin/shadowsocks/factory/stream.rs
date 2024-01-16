@@ -65,7 +65,7 @@ where
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let outbound_factory = self.next.upgrade().ok_or(FlowError::NoOutbound)?;
         let ((next, initial_res), tx_crypto) = {
-            let (tx_buffer, tx_crypto) = self.get_req(&context, initial_data);
+            let (tx_buffer, tx_crypto) = self.get_req(context, initial_data);
             (
                 outbound_factory
                     .create_outbound(context, &tx_buffer)

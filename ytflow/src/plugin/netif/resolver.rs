@@ -95,7 +95,7 @@ fn create_host_resolver(
     }
 
     (
-        HostResolver::new(weak_udp_factories.into_iter(), []),
+        HostResolver::new(weak_udp_factories, []),
         vec![],
         udp_factories,
     )

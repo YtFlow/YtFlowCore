@@ -22,7 +22,7 @@ unsafe impl Send for StorageResourceLoader {}
 unsafe impl Sync for StorageResourceLoader {}
 
 fn hresult_to_resource(r: windows::core::Error) -> ResourceError {
-    ResourceError::IoError(io::Error::from_raw_os_error(r.code().0 as i32))
+    ResourceError::IoError(io::Error::from_raw_os_error(r.code().0))
 }
 
 impl FileResourceLoader for StorageResourceLoader {
@@ -36,7 +36,7 @@ impl FileResourceLoader for StorageResourceLoader {
         let handle_access: IStorageItemHandleAccess = storage_file.cast().unwrap();
         unsafe {
             let handle = handle_access
-                .Create(HAO_READ.into(), HSO_SHARE_READ.into(), HO_NONE.into(), None)
+                .Create(HAO_READ, HSO_SHARE_READ, HO_NONE, None)
                 .map_err(hresult_to_resource)?;
             let file = fs::File::from_raw_handle(handle.0 as _);
             Ok(file)

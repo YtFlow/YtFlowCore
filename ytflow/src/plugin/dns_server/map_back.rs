@@ -17,7 +17,7 @@ struct BackMapper {
 impl BackMapper {
     fn map_back_host(&self, host: &mut HostName) {
         match host {
-            HostName::DomainName(_) => return,
+            HostName::DomainName(_) => (),
             HostName::Ip(IpAddr::V4(ip)) => {
                 *host = self
                     .reverse_mapping_v4
@@ -136,7 +136,8 @@ impl DatagramSession for MapBackDatagramSession {
 
     fn send_to(&mut self, mut remote_peer: DestinationAddr, buf: Buffer) {
         if let HostName::DomainName(domain) = &remote_peer.host
-            && let Some(ip) = self.local_forward_mapping.get(domain) {
+            && let Some(ip) = self.local_forward_mapping.get(domain)
+        {
             remote_peer.host = HostName::Ip(*ip);
         }
         self.lower.send_to(remote_peer, buf)

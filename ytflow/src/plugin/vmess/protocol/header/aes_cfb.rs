@@ -59,14 +59,14 @@ impl RequestHeaderEnc for AesCfbRequestEnc {
 
     fn derive_res_iv(&self, header: &RequestHeader) -> [u8; HEADER_IV_LEN] {
         let mut res_iv = [0; HEADER_IV_LEN];
-        let res = Md5::digest(&header.data_iv);
+        let res = Md5::digest(header.data_iv);
         res_iv[..].copy_from_slice(&res[..]);
         res_iv
     }
 
     fn derive_res_key(&self, header: &RequestHeader) -> [u8; HEADER_KEY_LEN] {
         let mut res_key = [0; HEADER_KEY_LEN];
-        let res = Md5::digest(&header.data_key);
+        let res = Md5::digest(header.data_key);
         res_key[..].copy_from_slice(&res[..]);
         res_key
     }
@@ -97,7 +97,7 @@ impl RequestHeaderEnc for AesCfbRequestEnc {
 }
 
 impl ResponseHeaderDec for AesCfbResponseDec {
-    fn decrypt_res<'a>(&mut self, data: &'a mut [u8]) -> HeaderDecryptResult<ResponseHeader> {
+    fn decrypt_res(&mut self, data: &mut [u8]) -> HeaderDecryptResult<ResponseHeader> {
         // Be careful not to mutate data inplace because subsequent dec may still need to continue
         // the dec state, e.g. aes-cfb body dec.
         // See VMessClientStream::poll_request_size.

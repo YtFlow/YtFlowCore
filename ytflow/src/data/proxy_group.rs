@@ -25,8 +25,8 @@ pub struct ProxySubscription {
     pub retrieved_at: Option<NaiveDateTime>,
 }
 
-pub const PROXY_GROUP_TYPE_MANUAL: &'static str = "manual";
-pub const PROXY_GROUP_TYPE_SUBSCRIPTION: &'static str = "subscription";
+pub const PROXY_GROUP_TYPE_MANUAL: &str = "manual";
+pub const PROXY_GROUP_TYPE_SUBSCRIPTION: &str = "subscription";
 
 fn map_from_row(row: &Row) -> Result<ProxyGroup, SqError> {
     Ok(ProxyGroup {
@@ -55,7 +55,7 @@ impl ProxyGroup {
             .query_row_and_then(
                 r"SELECT `id`, `name`, `type`, `created_at`
                 FROM `yt_proxy_groups` WHERE `id` = ?",
-                &[&id],
+                [&id],
                 map_from_row,
             )
             .optional()?)
@@ -118,7 +118,7 @@ impl ProxySubscription {
             .query_row_and_then(
                 r"SELECT `format`, `url`, `upload_bytes_used`, `download_bytes_used`, `bytes_total`, `expires_at`, `retrieved_at`
                 FROM `yt_proxy_subscriptions` WHERE `proxy_group_id` = ?",
-                &[&proxy_group_id],
+                [&proxy_group_id],
                 map_subscription_from_row,
             )?)
     }

@@ -13,7 +13,7 @@ use crate::edit;
 use ytflow::data::proxy_group::{ProxyGroup, PROXY_GROUP_TYPE_MANUAL};
 
 thread_local! {
-    static SHOULD_RETURN: Cell<bool> = Cell::new(false);
+    static SHOULD_RETURN: Cell<bool> = const { Cell::new(false) };
 }
 
 fn state_index_to_type(index: usize) -> Option<&'static str> {

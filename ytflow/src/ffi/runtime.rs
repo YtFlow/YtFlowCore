@@ -23,7 +23,7 @@ pub extern "C" fn ytflow_runtime_new() -> FfiResult {
 }
 
 #[no_mangle]
-pub extern "C" fn ytflow_runtime_free(runtime: *mut Runtime) -> FfiResult {
+pub unsafe extern "C" fn ytflow_runtime_free(runtime: *mut Runtime) -> FfiResult {
     FfiResult::catch_ptr_unwind(AssertUnwindSafe(|| {
         unsafe { drop(Box::from_raw(runtime)) };
         (null_mut(), 0)

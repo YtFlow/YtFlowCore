@@ -6,7 +6,7 @@ use serde::Serialize;
 use super::error::FfiResult;
 
 #[no_mangle]
-pub extern "C" fn ytflow_buffer_free(ptr: *mut c_void, metadata: usize) -> FfiResult {
+pub unsafe extern "C" fn ytflow_buffer_free(ptr: *mut c_void, metadata: usize) -> FfiResult {
     FfiResult::catch_ptr_unwind(|| {
         unsafe {
             drop(Box::from_raw(std::ptr::from_raw_parts_mut::<[u8]>(

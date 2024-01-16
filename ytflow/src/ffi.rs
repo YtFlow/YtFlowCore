@@ -1,3 +1,4 @@
+#![allow(clippy::missing_safety_doc)]
 pub mod config;
 pub mod data;
 pub mod error;

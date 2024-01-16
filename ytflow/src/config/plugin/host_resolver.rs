@@ -121,7 +121,7 @@ impl<'de> Factory for HostResolverFactory<'de> {
             let udp = self
                 .udp
                 .iter()
-                .map(|c| set.get_or_create_datagram_outbound(plugin_name.clone(), *c))
+                .map(|c| set.get_or_create_datagram_outbound(plugin_name.clone(), c))
                 .filter_map(|d| match d {
                     Ok(d) => Some(d),
                     Err(e) => {

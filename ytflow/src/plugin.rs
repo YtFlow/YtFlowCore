@@ -45,4 +45,4 @@ pub mod vmess;
 pub mod ws;
 
 #[cfg(feature = "plugins")]
-pub(self) mod h2;
+mod h2;

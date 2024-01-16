@@ -56,7 +56,7 @@ impl WebSocketStreamOutboundFactory {
             path,
             headers,
             next,
-            h2_probe_state: Mutex::new(Default::default()),
+            h2_probe_state: Default::default(),
         }
     }
 
@@ -165,7 +165,7 @@ impl WebSocketStreamOutboundFactory {
 impl StreamOutboundFactory for WebSocketStreamOutboundFactory {
     async fn create_outbound(
         &self,
-        mut context: &mut FlowContext,
+        context: &mut FlowContext,
         initial_data: &[u8],
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let res = loop {
@@ -175,7 +175,7 @@ impl StreamOutboundFactory for WebSocketStreamOutboundFactory {
             } {
                 H2ProbeState::NotSupported => {
                     return self
-                        .websocket_handshake_h1(&mut context, initial_data.into())
+                        .websocket_handshake_h1(context, initial_data.into())
                         .await
                 }
                 H2ProbeState::Supported(client) => {

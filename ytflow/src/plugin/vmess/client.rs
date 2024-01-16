@@ -66,20 +66,21 @@ where
     let rx_size_crypto;
     let header_dec;
     let (stream, initial_res) = {
-        let mut req_buf = Vec::with_capacity(RE::REQUIRED_SIZE);
-        req_buf.resize(RE::REQUIRED_SIZE, 0);
-        let mut request = RequestHeader::default();
-        request.ver = 1;
+        let mut req_buf = vec![0; RE::REQUIRED_SIZE];
+        let mut request = RequestHeader {
+            ver: 1,
+            res_auth: rand::thread_rng().gen(),
+            opt: VMESS_HEADER_OPT_STD | VMESS_HEADER_OPT_SHAKE,
+            cmd: VMESS_HEADER_CMD_TCP,
+            port: context.remote_peer.port,
+            addr: (&context.remote_peer.host).into(),
+            ..Default::default()
+        };
         getrandom(&mut request.data_iv).unwrap();
         getrandom(&mut request.data_key).unwrap();
-        request.res_auth = rand::thread_rng().gen();
-        request.opt = VMESS_HEADER_OPT_STD | VMESS_HEADER_OPT_SHAKE;
         request.set_padding_len(rand::thread_rng().gen_range(0..=0b1111));
         getrandom(request.padding_mut()).unwrap();
         request.set_encryption(F::HEADER_SEC_TYPE);
-        request.cmd = VMESS_HEADER_CMD_TCP;
-        request.port = context.remote_peer.port;
-        request.addr = (&context.remote_peer.host).into();
         let res_iv = req_enc.derive_res_iv(&request);
         let res_key = req_enc.derive_res_key(&request);
         let (req_len, dec) = req_enc.encrypt_req(&mut request, &mut req_buf).unwrap();

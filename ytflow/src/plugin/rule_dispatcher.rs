@@ -3,9 +3,9 @@ use std::sync::Weak;
 #[cfg(feature = "plugins")]
 mod builder;
 #[cfg(feature = "plugins")]
-pub(self) mod dispatcher;
+mod dispatcher;
 #[cfg(feature = "plugins")]
-pub(self) mod rules;
+mod rules;
 #[cfg(feature = "plugins")]
 mod set;
 

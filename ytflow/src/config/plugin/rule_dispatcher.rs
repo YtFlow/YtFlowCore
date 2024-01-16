@@ -86,13 +86,11 @@ impl<'de> RuleDispatcherFactory<'de> {
             }
         }
 
-        if let Some(geoip_source) = &config.geoip {
-            if let ResourceSource::Literal { .. } = geoip_source {
-                return Err(ConfigError::InvalidParam {
-                    plugin: name.to_string(),
-                    field: "geoip",
-                });
-            }
+        if let Some(ResourceSource::Literal { .. }) = &config.geoip {
+            return Err(ConfigError::InvalidParam {
+                plugin: name.to_string(),
+                field: "geoip",
+            });
         }
 
         if config.actions.len() > rd::ACTION_LIMIT {
@@ -292,8 +290,8 @@ fn load_rule_set(
     set: &mut PartialPluginSet,
 ) -> rd::RuleSet {
     let rule_action_map = rules
-        .into_iter()
-        .map(|(rule, action)| (*rule, action_map[*action].clone()))
+        .iter()
+        .map(|(rule, action)| (*rule, action_map[*action]))
         .collect();
     let resource_key;
     let resource_type;
@@ -325,8 +323,8 @@ fn load_rule_set(
                 RESOURCE_TYPE_GEOIP_COUNTRY => {
                     match rd::RuleSet::build_dst_geoip_rule(
                         rules
-                            .into_iter()
-                            .map(|(rule, action)| (rule.to_string(), action_map[action].clone())),
+                            .iter()
+                            .map(|(rule, action)| (rule.to_string(), action_map[action])),
                         bytes,
                     ) {
                         Some(ruleset) => return ruleset,
@@ -341,7 +339,7 @@ fn load_rule_set(
                     }
                 }
                 RESOURCE_TYPE_QUANX_FILTER => {
-                    let text = validate_text(&bytes, &plugin_name, set);
+                    let text = validate_text(&bytes, plugin_name, set);
                     match rd::RuleSet::load_quanx_filter(
                         text.lines(),
                         &rule_action_map,
@@ -442,7 +440,6 @@ impl<'de> Factory for RuleDispatcherFactory<'de> {
             let resolver = self
                 .config
                 .resolver
-                .clone()
                 .map(|resolver| load_resolver(resolver, set, &plugin_name));
             let fallback = load_action(&self.config.fallback, set, &plugin_name);
             let me = weak.clone();

@@ -111,10 +111,10 @@ pub async fn dial_stream(
             dial_socket_v6(ip, port, &bind_v6).await?
         }
         (HostName::DomainName(domain), Some(bind_v4), None) => {
-            let mut ip_iter = resolver.resolve_ipv4(domain).await?.into_iter();
+            let ips = resolver.resolve_ipv4(domain).await?;
             let mut ret = Err(FlowError::NoOutbound);
             let mut futs = FuturesUnordered::new();
-            while let Some(ip) = ip_iter.next() {
+            for ip in ips {
                 futs.push(dial_socket_v4(ip, port, &bind_v4));
                 if timeout(super::CONN_ATTEMPT_DELAY, async {
                     while let Some(r) = futs.next().await {
@@ -145,10 +145,10 @@ pub async fn dial_stream(
             }
         }
         (HostName::DomainName(domain), None, Some(bind_v6)) => {
-            let mut ip_iter = resolver.resolve_ipv6(domain).await?.into_iter();
+            let ips = resolver.resolve_ipv6(domain).await?;
             let mut ret = Err(FlowError::NoOutbound);
             let mut futs = FuturesUnordered::new();
-            while let Some(ip) = ip_iter.next() {
+            for ip in ips {
                 futs.push(dial_socket_v6(ip, port, &bind_v6));
                 if timeout(super::CONN_ATTEMPT_DELAY, async {
                     while let Some(r) = futs.next().await {
@@ -247,12 +247,12 @@ impl StreamOutboundFactory for super::SocketOutboundFactory {
 
         let resolver = self.resolver.upgrade().ok_or(FlowError::NoOutbound)?;
         dial_stream(
-            &context,
+            context,
             resolver,
-            bind_addr_v4.clone().map(|addr| {
+            bind_addr_v4.map(|addr| {
                 move |s: &mut socket2::Socket| s.bind(&addr.into()).map_err(FlowError::from)
             }),
-            bind_addr_v6.clone().map(|addr| {
+            bind_addr_v6.map(|addr| {
                 move |s: &mut socket2::Socket| s.bind(&addr.into()).map_err(FlowError::from)
             }),
             initial_data,

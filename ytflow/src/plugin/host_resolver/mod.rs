@@ -41,7 +41,7 @@ impl HostResolver {
         let datagram_hosts = datagram_hosts.into_iter();
         let doh = doh.into_iter();
         let size_hint = datagram_hosts.size_hint().1.unwrap_or(0) + doh.size_hint().1.unwrap_or(0);
-        let doh_factories = doh.map(|d| Arc::new(d)).collect::<Vec<_>>();
+        let doh_factories = doh.map(Arc::new).collect::<Vec<_>>();
         let mut dns_configs = Vec::with_capacity(size_hint);
         let mut factory_ids = Vec::with_capacity(size_hint);
         {

@@ -12,7 +12,7 @@ mod null;
 mod redirect;
 mod reject;
 mod resolve_dest;
-pub(self) mod rule_dispatcher;
+mod rule_dispatcher;
 mod shadowsocks;
 mod simple_dispatcher;
 mod socket;

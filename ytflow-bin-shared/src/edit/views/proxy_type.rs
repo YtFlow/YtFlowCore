@@ -13,8 +13,8 @@ use crate::edit;
 use ytflow::data::{Proxy, ProxyGroupId};
 
 thread_local! {
-    static SHOULD_RETURN: Cell<bool> = Cell::new(false);
-    static LAST_NEW_PROXY_NAME: Cell<String> = Cell::new(String::new());
+    static SHOULD_RETURN: Cell<bool> = const { Cell::new(false) };
+    static LAST_NEW_PROXY_NAME: Cell<String> = const { Cell::new(String::new()) };
 }
 
 pub fn run_proxy_type_view(

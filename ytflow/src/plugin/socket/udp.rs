@@ -259,11 +259,11 @@ impl<
                         (
                             res_v4.map(|ips| ips[0]),
                             res_v6
-                                .or_else(|_| {
-                                    Err(FlowError::Io(io::Error::new(
+                                .map_err(|_| {
+                                    FlowError::Io(io::Error::new(
                                         io::ErrorKind::TimedOut,
                                         "IPv6 resolver timeout",
-                                    )))
+                                    ))
                                 })
                                 .flatten()
                                 .map(|ips| ips[0]),
@@ -353,10 +353,10 @@ impl DatagramSessionFactory for super::SocketOutboundFactory {
         dial_datagram_session(
             &context,
             resolver,
-            bind_addr_v4.clone().map(|addr| {
+            bind_addr_v4.map(|addr| {
                 move |s: &mut socket2::Socket| s.bind(&addr.into()).map_err(FlowError::from)
             }),
-            bind_addr_v6.clone().map(|addr| {
+            bind_addr_v6.map(|addr| {
                 move |s: &mut socket2::Socket| s.bind(&addr.into()).map_err(FlowError::from)
             }),
         )

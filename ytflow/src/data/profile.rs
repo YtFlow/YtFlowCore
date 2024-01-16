@@ -43,7 +43,7 @@ impl Profile {
             .query_row_and_then(
                 r"SELECT `id`, `permanent_id`, `name`, `locale`, `last_used_at`, `created_at`
                 FROM `yt_profiles` WHERE `id` = ?",
-                &[&id],
+                [&id],
                 map_from_row,
             )
             .optional()?)

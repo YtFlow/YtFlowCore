@@ -115,7 +115,7 @@ fn load_rule_set(
             };
             match metadata.r#type.as_str() {
                 RESOURCE_TYPE_SURGE_DOMAINSET => {
-                    let text = validate_text(&bytes, &plugin_name, set);
+                    let text = validate_text(&bytes, plugin_name, set);
                     match rd::RuleSet::build_surge_domainset(text.lines(), action) {
                         Some(ruleset) => return ruleset,
                         // TODO: log ruleset build error
@@ -197,7 +197,6 @@ impl<'de> Factory for ListDispatcherFactory<'de> {
             let resolver = self
                 .config
                 .resolver
-                .clone()
                 .map(|resolver| load_resolver(resolver, set, &plugin_name));
             let me = weak.clone();
             builder.set_resolver(resolver);

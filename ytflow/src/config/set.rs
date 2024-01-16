@@ -41,7 +41,7 @@ fn lookup<T: ?Sized>(
     strong_map
         .get(descriptor)
         .map(Arc::downgrade)
-        .or_else(|| weak_map.get(descriptor).map(Weak::clone))
+        .or_else(|| weak_map.get(descriptor).cloned())
 }
 
 macro_rules! impl_get_or_create {

@@ -57,7 +57,7 @@ impl<S> AeadClientCryptoTx<S, ChaCha20Poly1305> {
     ) -> Self {
         let key = {
             let hash1 = Md5::digest(data_key);
-            let hash2 = Md5::digest(&hash1);
+            let hash2 = Md5::digest(hash1);
             let mut key = [0; 32];
             key[..16].copy_from_slice(&hash1[..]);
             key[16..].copy_from_slice(&hash2[..]);
@@ -103,7 +103,7 @@ impl<S> AeadClientCryptoRx<S, ChaCha20Poly1305> {
     ) -> Self {
         let key = {
             let hash1 = Md5::digest(data_key);
-            let hash2 = Md5::digest(&hash1);
+            let hash2 = Md5::digest(hash1);
             let mut key = [0; 32];
             key[..16].copy_from_slice(&hash1[..]);
             key[16..].copy_from_slice(&hash2[..]);

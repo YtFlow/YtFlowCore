@@ -44,7 +44,7 @@ impl PluginResponder for Responder {
         let info = Info {
             selection: &selection.0,
             preference: selection.1,
-            netif: &**netif,
+            netif: &netif,
         };
         Some(to_vec(vec![], &info).unwrap())
     }

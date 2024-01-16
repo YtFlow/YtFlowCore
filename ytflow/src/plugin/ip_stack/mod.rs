@@ -369,7 +369,7 @@ fn process_udp(
                     Box::new(MultiplexedDatagramSessionAdapter::new(
                         datagram::IpStackDatagramSession {
                             stack: stack_inner,
-                            local_endpoint: src_addr.into(),
+                            local_endpoint: src_addr,
                         },
                         rx.into_stream(),
                         120,

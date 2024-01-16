@@ -7,11 +7,12 @@ use tokio::net::lookup_host;
 
 use crate::flow::*;
 
+#[derive(Default)]
 pub struct SystemResolver {}
 
 impl SystemResolver {
     pub fn new() -> Self {
-        Self {}
+        Default::default()
     }
 }
 

@@ -17,7 +17,7 @@ pub struct Netif {
     pub dns_servers: Vec<IpAddr>,
 }
 
-pub(crate) fn serialize_ipaddrs<S>(ipaddrs: &Vec<IpAddr>, serializer: S) -> Result<S::Ok, S::Error>
+pub(crate) fn serialize_ipaddrs<S>(ipaddrs: &[IpAddr], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
