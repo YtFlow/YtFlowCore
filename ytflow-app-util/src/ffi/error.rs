@@ -4,24 +4,28 @@ use std::os::raw::{c_char, c_void};
 use std::panic::{catch_unwind, UnwindSafe};
 use std::ptr::null_mut;
 
-use crate::config::ConfigError;
-use crate::data::DataError;
+use ytflow::config::ConfigError;
+use ytflow::data::DataError;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct FfiResultPtrType(*mut c_void, usize);
-pub type FfiErrorFields = [*mut c_char; 3];
+#[allow(non_camel_case_types)]
+pub struct ytflow_result_content(*mut c_void, usize);
+#[allow(non_camel_case_types)]
+pub type ytflow_error_fields = [*mut c_char; 3];
 
 #[repr(C)]
-pub union FfiResultUnion {
-    pub res: FfiResultPtrType,
-    pub err: FfiErrorFields,
+#[allow(non_camel_case_types)]
+pub union ytflow_result_data {
+    pub res: ytflow_result_content,
+    pub err: ytflow_error_fields,
 }
 
 #[repr(C)]
-pub struct FfiResult {
+#[allow(non_camel_case_types)]
+pub struct ytflow_result {
     pub code: u32,
-    pub data: FfiResultUnion,
+    pub data: ytflow_result_data,
 }
 
 fn string_to_c_ptr(s: &str) -> *mut c_char {
@@ -41,17 +45,17 @@ fn string_to_c_ptr(s: &str) -> *mut c_char {
     }
 }
 
-impl FfiResult {
-    pub fn no_error(ptr: FfiResultPtrType) -> Self {
+impl ytflow_result {
+    pub fn no_error(ptr: ytflow_result_content) -> Self {
         Self {
             code: 0,
-            data: FfiResultUnion { res: ptr },
+            data: ytflow_result_data { res: ptr },
         }
     }
     fn e0(code: u32) -> Self {
         Self {
             code,
-            data: FfiResultUnion {
+            data: ytflow_result_data {
                 err: [null_mut(); 3],
             },
         }
@@ -75,7 +79,7 @@ impl FfiResult {
     }
 }
 
-impl From<Box<dyn Any + Send + 'static>> for FfiResult {
+impl From<Box<dyn Any + Send + 'static>> for ytflow_result {
     fn from(p: Box<dyn Any + Send + 'static>) -> Self {
         let msg = p
             .downcast::<String>()
@@ -86,7 +90,7 @@ impl From<Box<dyn Any + Send + 'static>> for FfiResult {
     }
 }
 
-impl From<DataError> for FfiResult {
+impl From<DataError> for ytflow_result {
     fn from(d: DataError) -> Self {
         match d {
             DataError::Migration(r) => Self::e1(0x0800_1001, r.to_string()),
@@ -98,7 +102,7 @@ impl From<DataError> for FfiResult {
     }
 }
 
-impl From<ConfigError> for FfiResult {
+impl From<ConfigError> for ytflow_result {
     fn from(c: ConfigError) -> Self {
         match c {
             ConfigError::ParseParam(p, inner) => Self::e2(0x0800_2001, p, inner.to_string()),
@@ -128,10 +132,12 @@ impl From<ConfigError> for FfiResult {
     }
 }
 
-impl FfiResult {
-    pub fn catch_ptr_unwind(f: impl FnOnce() -> (*mut c_void, usize) + UnwindSafe) -> FfiResult {
+impl ytflow_result {
+    pub fn catch_ptr_unwind(
+        f: impl FnOnce() -> (*mut c_void, usize) + UnwindSafe,
+    ) -> ytflow_result {
         match catch_unwind(f) {
-            Ok((ptr, metadata)) => Self::no_error(FfiResultPtrType(ptr, metadata)),
+            Ok((ptr, metadata)) => Self::no_error(ytflow_result_content(ptr, metadata)),
             Err(e) => e.into(),
         }
     }
@@ -140,9 +146,9 @@ impl FfiResult {
         R: Into<Self>,
     >(
         f: F,
-    ) -> FfiResult {
+    ) -> ytflow_result {
         match catch_unwind(f) {
-            Ok(Ok((ptr, metadata))) => Self::no_error(FfiResultPtrType(ptr, metadata)),
+            Ok(Ok((ptr, metadata))) => Self::no_error(ytflow_result_content(ptr, metadata)),
             Ok(Err(e)) => e.into(),
             Err(e) => e.into(),
         }
@@ -150,7 +156,7 @@ impl FfiResult {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_result_free(result: *mut FfiResult) {
+pub unsafe extern "C" fn ytflow_result_free(result: *mut ytflow_result) {
     let result = unsafe { &mut *result };
     if result.code == 0 {
         return;

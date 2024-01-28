@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ytflow = { path = "../ytflow", features = ["plugins"] }
+ytflow-app-util = { path = "../ytflow-app-util" }
 anyhow = "1"
 fern = { version = "0.6", features = ["colored"] }
 log = "0.4"

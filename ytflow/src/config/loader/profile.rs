@@ -1,11 +1,15 @@
 #[cfg(feature = "plugins")]
 use crate::resource::ResourceRegistry;
+#[cfg(feature = "plugins")]
 use std::collections::BTreeMap;
 
 use crate::config::factory::RequiredResource;
 use crate::config::*;
 
+#[cfg(feature = "plugins")]
 pub struct ProfileLoader<'f>(BTreeMap<String, Box<dyn factory::Factory + 'f>>);
+#[cfg(not(feature = "plugins"))]
+pub struct ProfileLoader<'f>(std::marker::PhantomData<&'f ()>);
 
 #[cfg(feature = "plugins")]
 pub struct ProfileLoadResult {
@@ -29,7 +33,11 @@ impl<'f> ProfileLoader<'f> {
             },
             all_plugins,
         );
-        (Self(res.factories), res.resources, res.errors)
+        #[cfg(feature = "plugins")]
+        let res = (Self(res.factories), res.resources, res.errors);
+        #[cfg(not(feature = "plugins"))]
+        let res = (Self(Default::default()), res.resources, res.errors);
+        res
     }
     #[cfg(feature = "plugins")]
     pub fn load_all(

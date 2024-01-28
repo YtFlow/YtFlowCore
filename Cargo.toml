@@ -1,9 +1,9 @@
 [workspace]
 members = [
     "ytflow",
+    "ytflow-app-util",
     "ytflow-bin",
     "ytflow-bin-shared",
-    "ytflow-ffi",
     "ytflow-uwp-plugin",
 ]
 resolver = "1"

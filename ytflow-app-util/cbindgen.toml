@@ -1,0 +1,25 @@
+language = "C"
+namespace = "ytflow_core"
+pragma_once = true
+after_includes = '''
+#ifdef __cplusplus
+namespace ytflow_core {
+#endif // __cplusplus
+
+typedef struct ytflow_connection ytflow_connection;
+
+#ifdef __cplusplus
+} // namespace ytflow_core
+#endif // __cplusplus
+'''
+cpp_compat = true
+
+[parse]
+parse_deps = false
+
+[defines]
+"windows" = "_WIN32"
+"unix" = "__unix__"
+
+[export.mangle]
+rename_types = "SnakeCase"

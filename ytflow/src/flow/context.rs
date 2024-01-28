@@ -19,7 +19,7 @@ impl ToString for HostName {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DestinationAddr {
     pub host: HostName,
     pub port: u16,

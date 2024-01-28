@@ -1,0 +1,18 @@
+[package]
+name = "ytflow-app-util"
+version = "0.6.2"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+cbindgen = { version = "0.26", default-features = false }
+
+[dependencies]
+url = "2"
+percent-encoding = "2"
+base64 = "0.21"
+thiserror = "1"
+cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
+serde = { version = "1", features = ["derive"] }
+ytflow = { path = "../ytflow" }

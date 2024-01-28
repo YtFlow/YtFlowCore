@@ -12,6 +12,29 @@ pub struct ShadowsocksFactory<'de> {
     udp_next: &'de str,
 }
 
+pub fn parse_supported_cipher(input: &[u8]) -> Option<SupportedCipher> {
+    Some(match input {
+        b"none" | b"plain" => SupportedCipher::None,
+        b"rc4" => SupportedCipher::Rc4,
+        b"rc4-md5" => SupportedCipher::Rc4Md5,
+        b"aes-128-cfb" => SupportedCipher::Aes128Cfb,
+        b"aes-192-cfb" => SupportedCipher::Aes192Cfb,
+        b"aes-256-cfb" => SupportedCipher::Aes256Cfb,
+        b"aes-128-ctr" => SupportedCipher::Aes128Ctr,
+        b"aes-192-ctr" => SupportedCipher::Aes192Ctr,
+        b"aes-256-ctr" => SupportedCipher::Aes256Ctr,
+        b"camellia-128-cfb" => SupportedCipher::Camellia128Cfb,
+        b"camellia-192-cfb" => SupportedCipher::Camellia192Cfb,
+        b"camellia-256-cfb" => SupportedCipher::Camellia256Cfb,
+        b"aes-128-gcm" => SupportedCipher::Aes128Gcm,
+        b"aes-256-gcm" => SupportedCipher::Aes256Gcm,
+        b"chacha20-ietf" => SupportedCipher::Chacha20Ietf,
+        b"chacha20-ietf-poly1305" => SupportedCipher::Chacha20IetfPoly1305,
+        b"xchacha20-ietf-poly1305" => SupportedCipher::XChacha20IetfPoly1305,
+        _ => return None,
+    })
+}
+
 impl<'de> ShadowsocksFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { param, name, .. } = plugin;
@@ -28,31 +51,11 @@ impl<'de> ShadowsocksFactory<'de> {
             tcp_next,
             udp_next,
         } = parse_param(name, param)?;
-        let cipher = match method {
-            "none" | "plain" => SupportedCipher::None,
-            "rc4" => SupportedCipher::Rc4,
-            "rc4-md5" => SupportedCipher::Rc4Md5,
-            "aes-128-cfb" => SupportedCipher::Aes128Cfb,
-            "aes-192-cfb" => SupportedCipher::Aes192Cfb,
-            "aes-256-cfb" => SupportedCipher::Aes256Cfb,
-            "aes-128-ctr" => SupportedCipher::Aes128Ctr,
-            "aes-192-ctr" => SupportedCipher::Aes192Ctr,
-            "aes-256-ctr" => SupportedCipher::Aes256Ctr,
-            "camellia-128-cfb" => SupportedCipher::Camellia128Cfb,
-            "camellia-192-cfb" => SupportedCipher::Camellia192Cfb,
-            "camellia-256-cfb" => SupportedCipher::Camellia256Cfb,
-            "aes-128-gcm" => SupportedCipher::Aes128Gcm,
-            "aes-256-gcm" => SupportedCipher::Aes256Gcm,
-            "chacha20-ietf" => SupportedCipher::Chacha20Ietf,
-            "chacha20-ietf-poly1305" => SupportedCipher::Chacha20IetfPoly1305,
-            "xchacha20-ietf-poly1305" => SupportedCipher::XChacha20IetfPoly1305,
-            _ => {
-                return Err(ConfigError::InvalidParam {
-                    plugin: name.clone(),
-                    field: "method",
-                })
-            }
-        };
+        let cipher =
+            parse_supported_cipher(method.as_bytes()).ok_or_else(|| ConfigError::InvalidParam {
+                plugin: name.clone(),
+                field: "method",
+            })?;
         Ok(ParsedPlugin {
             factory: ShadowsocksFactory {
                 cipher,

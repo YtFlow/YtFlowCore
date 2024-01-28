@@ -432,9 +432,9 @@ checksum = "df8670b8c7b9dae1793364eafadf7239c40d669904660c5960d74cfd80b46a53"
 
 [[package]]
 name = "cbindgen"
-version = "0.25.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "faeaa693e5a727975a79211b8f35c0cb09b031fdb6eaa4a788bc6713d01488ca"
+checksum = "da6bc11b07529f16944307272d5bd9b22530bc7d05751717c9d416586cedab49"
 dependencies = [
  "heck",
  "indexmap 1.9.3",
@@ -3381,6 +3381,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ytflow-app-util"
+version = "0.6.2"
+dependencies = [
+ "base64",
+ "cbindgen",
+ "cbor4ii",
+ "percent-encoding",
+ "serde",
+ "thiserror",
+ "url",
+ "ytflow",
+]
+
+[[package]]
 name = "ytflow-bin"
 version = "0.6.2"
 dependencies = [
@@ -3413,14 +3427,7 @@ dependencies = [
  "tui",
  "tui-input",
  "ytflow",
-]
-
-[[package]]
-name = "ytflow-ffi"
-version = "0.6.2"
-dependencies = [
- "cbindgen",
- "ytflow",
+ "ytflow-app-util",
 ]
 
 [[package]]

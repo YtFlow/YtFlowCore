@@ -58,6 +58,7 @@ pub use ws::*;
 
 use crate::data::PluginId;
 
+#[derive(Debug, Clone)]
 pub struct Plugin {
     pub id: Option<PluginId>,
     pub name: String,

@@ -39,14 +39,14 @@ pub extern "C" fn ytflow_get_version() -> *const std::os::raw::c_char {
     use std::ptr::null_mut;
     use std::sync::atomic::{AtomicPtr, Ordering};
     static VERSION_CPTR: AtomicPtr<c_char> = AtomicPtr::new(null_mut());
-    let cptr = VERSION_CPTR.load(Ordering::Relaxed);
+    let cptr = VERSION_CPTR.load(Ordering::Acquire);
     if !cptr.is_null() {
         return cptr as _;
     }
     // Let it leak
     VERSION_CPTR.store(
         CString::new(env!("CARGO_PKG_VERSION")).unwrap().into_raw(),
-        Ordering::Relaxed,
+        Ordering::Release,
     );
     ytflow_get_version()
 }

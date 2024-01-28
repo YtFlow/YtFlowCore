@@ -10,7 +10,7 @@ mod stream;
 pub(crate) mod util;
 
 #[rustfmt::skip]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SupportedCipher {
     None, Rc4, Rc4Md5,
     Aes128Cfb, Aes192Cfb, Aes256Cfb,
