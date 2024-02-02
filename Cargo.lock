@@ -3389,6 +3389,7 @@ dependencies = [
  "cbor4ii",
  "percent-encoding",
  "serde",
+ "serde_bytes",
  "thiserror",
  "url",
  "ytflow",

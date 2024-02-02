@@ -18,10 +18,12 @@ pub static BASE64_ENGINE: base64::engine::GeneralPurpose = base64::engine::Gener
 pub enum DecodeError {
     #[error("invalid URL")]
     InvalidUrl,
-    #[error("invalid URL or base64 encoding")]
+    #[error("invalid URL, UTF-8 or Base64 encoding")]
     InvalidEncoding,
-    #[error("invalid value")]
-    InvalidValue,
+    #[error(r#""{0}" is required, but is missing"#)]
+    MissingInfo(&'static str),
+    #[error(r#"unknown value for field "{0}"#)]
+    UnknownValue(&'static str),
     #[error("unknown URL scheme")]
     UnknownScheme,
     #[error(r#"extra parameter "{0}""#)]
@@ -33,7 +35,7 @@ pub type DecodeResult<T> = Result<T, DecodeError>;
 pub(super) type QueryMap<'a> = BTreeMap<Cow<'a, str>, Cow<'a, str>>;
 
 pub fn decode_share_link(link: &str) -> Result<Proxy, DecodeError> {
-    let url = url::Url::parse(link).map_err(|_| DecodeError::InvalidUrl)?;
+    let url = url::Url::parse(link.trim()).map_err(|_| DecodeError::InvalidUrl)?;
     let mut queries = url.query_pairs().collect::<QueryMap>();
 
     let proxy = match url.scheme() {
