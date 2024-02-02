@@ -4,7 +4,7 @@ pub mod obfs;
 pub mod protocol;
 pub mod tls;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Proxy {
     pub name: String,
     pub legs: Vec<ProxyLeg>,

@@ -7,4 +7,5 @@ pub mod vmess;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProxyProtocolType {
     Shadowsocks(shadowsocks::ShadowsocksProxy),
+    Trojan(trojan::TrojanProxy),
 }

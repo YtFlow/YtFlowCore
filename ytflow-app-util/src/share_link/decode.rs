@@ -6,7 +6,8 @@ use thiserror::Error;
 use url::Url;
 use ytflow::flow::DestinationAddr;
 
-use crate::proxy::{protocol::shadowsocks::ShadowsocksProxy, Proxy};
+use crate::proxy::protocol::{shadowsocks::ShadowsocksProxy, trojan::TrojanProxy};
+use crate::proxy::Proxy;
 
 pub static BASE64_ENGINE: base64::engine::GeneralPurpose = base64::engine::GeneralPurpose::new(
     &base64::alphabet::STANDARD,
@@ -40,6 +41,7 @@ pub fn decode_share_link(link: &str) -> Result<Proxy, DecodeError> {
 
     let proxy = match url.scheme() {
         "ss" => ShadowsocksProxy::decode_share_link(&url, &mut queries)?,
+        "trojan" => TrojanProxy::decode_share_link(&url, &mut queries)?,
         _ => return Err(DecodeError::UnknownScheme),
     };
 
@@ -58,4 +60,35 @@ pub(super) fn extract_name_from_frag(url: &Url, dest: &DestinationAddr) -> Decod
         .map_err(|_| DecodeError::InvalidEncoding)?
         .map(|s| s.into_owned())
         .unwrap_or_else(|| dest.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_name_from_frag() {
+        let url = Url::parse("ss://test#cabc%2fabca").unwrap();
+        let dest = DestinationAddr {
+            host: ytflow::flow::HostName::from_domain_name("example.com".into()).unwrap(),
+            port: 1234,
+        };
+        assert_eq!(
+            extract_name_from_frag(&url, &dest).unwrap(),
+            "cabc/abca".to_string()
+        );
+    }
+
+    #[test]
+    fn test_extract_name_from_frag_invalid() {
+        let url = Url::parse("ss://test#cabc%ff%ffabca").unwrap();
+        let dest = DestinationAddr {
+            host: ytflow::flow::HostName::from_domain_name("example.com".into()).unwrap(),
+            port: 1234,
+        };
+        assert_eq!(
+            extract_name_from_frag(&url, &dest),
+            Err(DecodeError::InvalidEncoding)
+        );
+    }
 }
