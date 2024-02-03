@@ -1,4 +1,4 @@
-use percent_encoding::percent_decode_str;
+use percent_encoding::{percent_decode_str, percent_encode, NON_ALPHANUMERIC};
 use serde_bytes::ByteBuf;
 use url::Url;
 
@@ -7,6 +7,7 @@ use ytflow::flow::DestinationAddr;
 use super::decode::{
     extract_name_from_frag, parse_host_transparent, DecodeError, DecodeResult, QueryMap,
 };
+use super::encode::{url_encode_host, EncodeError, EncodeResult};
 use crate::proxy::protocol::socks5::Socks5Proxy;
 use crate::proxy::protocol::ProxyProtocolType;
 use crate::proxy::{Proxy, ProxyLeg};
@@ -47,11 +48,46 @@ impl Socks5Proxy {
             udp_supported: false,
         })
     }
+
+    pub(super) fn encode_share_link(&self, leg: &ProxyLeg, proxy: &Proxy) -> EncodeResult<String> {
+        if proxy.legs.len() != 1 {
+            return Err(EncodeError::TooManyLegs);
+        }
+        if leg.obfs.is_some() {
+            return Err(EncodeError::UnsupportedComponent("obfs"));
+        }
+        if leg.tls.is_some() {
+            return Err(EncodeError::UnsupportedComponent("tls"));
+        }
+        let host = url_encode_host(&leg.dest.host);
+        let mut url = Url::parse(&format!(
+            "socks5://{}:{}#{}",
+            host,
+            leg.dest.port,
+            percent_encode(proxy.name.as_bytes(), NON_ALPHANUMERIC),
+        ))
+        .expect("host name should be valid");
+
+        if !self.username.is_empty() {
+            url.set_username(&percent_encode(&self.username, NON_ALPHANUMERIC).to_string())
+                .expect("cannot set username");
+        }
+        if !self.password.is_empty() {
+            url.set_password(Some(
+                &percent_encode(&self.password, NON_ALPHANUMERIC).to_string(),
+            ))
+            .expect("cannot set password");
+        }
+
+        Ok(url.to_string())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use ytflow::flow::HostName;
+
+    use crate::proxy::obfs::ProxyObfsType;
 
     use super::*;
 
@@ -107,5 +143,114 @@ mod tests {
             let proxy = Socks5Proxy::decode_share_link(&url, &mut QueryMap::new());
             assert_eq!(proxy.unwrap_err(), DecodeError::InvalidEncoding);
         }
+    }
+
+    #[test]
+    fn test_encode_share_link() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::Socks5(Socks5Proxy {
+                    username: ByteBuf::from("a/b"),
+                    password: ByteBuf::from("p/d"),
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: None,
+                tls: None,
+            }],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let socks5 = match &leg.protocol {
+            ProxyProtocolType::Socks5(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        assert_eq!(
+            socks5.encode_share_link(leg, &proxy).unwrap(),
+            "socks5://a%2Fb:p%2Fd@a.co:1080#c%2Fd"
+        );
+    }
+    #[test]
+    fn test_encode_share_link_too_many_legs() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![
+                ProxyLeg {
+                    protocol: ProxyProtocolType::Socks5(Default::default()),
+                    dest: DestinationAddr {
+                        host: HostName::DomainName("a.co".into()),
+                        port: 1080,
+                    },
+                    obfs: None,
+                    tls: Some(Default::default()),
+                },
+                ProxyLeg {
+                    protocol: ProxyProtocolType::Http(Default::default()),
+                    dest: DestinationAddr {
+                        host: HostName::DomainName("b.co".into()),
+                        port: 1080,
+                    },
+                    obfs: None,
+                    tls: Some(Default::default()),
+                },
+            ],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let socks5 = match &leg.protocol {
+            ProxyProtocolType::Socks5(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let res = socks5.encode_share_link(leg, &proxy);
+        assert_eq!(res.unwrap_err(), EncodeError::TooManyLegs);
+    }
+    #[test]
+    fn test_encode_share_link_obfs() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::Socks5(Default::default()),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: Some(ProxyObfsType::WebSocket(Default::default())),
+                tls: None,
+            }],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let socks5 = match &leg.protocol {
+            ProxyProtocolType::Socks5(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let res = socks5.encode_share_link(leg, &proxy);
+        assert_eq!(res.unwrap_err(), EncodeError::UnsupportedComponent("obfs"));
+    }
+    #[test]
+    fn test_encode_share_link_tls() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::Socks5(Default::default()),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: None,
+                tls: Some(Default::default()),
+            }],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let socks5 = match &leg.protocol {
+            ProxyProtocolType::Socks5(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let res = socks5.encode_share_link(leg, &proxy);
+        assert_eq!(res.unwrap_err(), EncodeError::UnsupportedComponent("tls"));
     }
 }
