@@ -1,6 +1,6 @@
 use crate::config::factory::*;
 use crate::config::*;
-use crate::plugin::vmess;
+use crate::plugin::vmess::{self, SupportedSecurity};
 
 fn default_security() -> &'static str {
     "auto"
@@ -24,6 +24,17 @@ pub struct VMessClientFactory<'a> {
     tcp_next: &'a str,
 }
 
+pub fn parse_supported_security(input: &[u8]) -> Option<SupportedSecurity> {
+    Some(match input {
+        b"none" => vmess::SupportedSecurity::None,
+        b"auto" => vmess::SupportedSecurity::Auto,
+        b"aes-128-cfb" => vmess::SupportedSecurity::Aes128Cfb,
+        b"aes-128-gcm" => vmess::SupportedSecurity::Aes128Gcm,
+        b"chacha20-poly1305" => vmess::SupportedSecurity::Chacha20Poly1305,
+        _ => return None,
+    })
+}
+
 impl<'de> VMessClientFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
@@ -32,19 +43,16 @@ impl<'de> VMessClientFactory<'de> {
         let recommended_security = vmess::SupportedSecurity::Aes128Gcm;
         #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
         let recommended_security = vmess::SupportedSecurity::Chacha20Poly1305;
-        let security = match config.security {
-            "none" => vmess::SupportedSecurity::None,
-            "auto" => recommended_security,
-            "aes-128-cfb" => vmess::SupportedSecurity::Aes128Cfb,
-            "aes-128-gcm" => vmess::SupportedSecurity::Aes128Gcm,
-            "chacha20-poly1305" => vmess::SupportedSecurity::Chacha20Poly1305,
-            _ => {
-                return Err(ConfigError::InvalidParam {
+        let mut security =
+            parse_supported_security(config.security.as_bytes()).ok_or_else(|| {
+                ConfigError::InvalidParam {
                     plugin: name.clone(),
                     field: "security",
-                })
-            }
-        };
+                }
+            })?;
+        if security == vmess::SupportedSecurity::Auto {
+            security = recommended_security;
+        }
         Ok(ParsedPlugin {
             requires: vec![Descriptor {
                 descriptor: config.tcp_next,

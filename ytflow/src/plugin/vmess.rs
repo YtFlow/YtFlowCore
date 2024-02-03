@@ -8,7 +8,7 @@ mod stream;
 #[cfg(feature = "plugins")]
 pub use client::VMessStreamOutboundFactory;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SupportedSecurity {
     None,
     Auto,

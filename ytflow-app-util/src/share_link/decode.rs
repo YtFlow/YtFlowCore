@@ -9,6 +9,7 @@ use ytflow::flow::{DestinationAddr, HostName};
 
 use crate::proxy::protocol::{
     http::HttpProxy, shadowsocks::ShadowsocksProxy, socks5::Socks5Proxy, trojan::TrojanProxy,
+    vmess::VMessProxy,
 };
 use crate::proxy::Proxy;
 
@@ -55,6 +56,7 @@ pub fn decode_share_link(link: &str) -> Result<Proxy, DecodeError> {
         }
         "http" | "https" => HttpProxy::decode_share_link(&url, &mut queries)?,
         "socks5" => Socks5Proxy::decode_share_link(&url, &mut queries)?,
+        "vmess" => VMessProxy::decode_share_link(&url, &mut queries)?,
         _ => return Err(DecodeError::UnknownScheme),
     };
 
@@ -100,7 +102,64 @@ pub(super) fn map_host_name(host: Host<impl Into<String>>) -> HostName {
 mod tests {
     use std::net::Ipv6Addr;
 
+    use crate::proxy::protocol::ProxyProtocolType;
+
     use super::*;
+
+    #[test]
+    fn test_decode_share_link() {
+        const SS_LINK: &str = "ss://YWVzLTEyOC1nY206MTE0NTE0@1.1.1.1:36326#US-1.1.1.1-0842";
+        const TROJAN_LINK: &str =
+            "trojan://ffffffff-cccc-aaaa-dddd-111111111111@1.1.1.1:19201?security=tls#5228";
+        const HTTP_LINK: &str = "http://127.0.0.1:8080";
+        const HTTPS_LINK: &str = "https://127.0.0.1:8443";
+        const SOCKS5_LINK: &str = "socks5://127.0.0.1:8080";
+        const VMESS_LINK: &str = "vmess://eyJhZGQiOiIxMTQ1MTQubmlwLmlvIiwiYWlkIjoiMCIsImFscG4iOiIiLCJmcCI6IiIsImhvc3QiOiIxMTQuY29tIiwiaWQiOiIzMDFkODE1Zi1hMDJhLTRjMmMtYTQyNC1iMTZjZjBhMjQxYWUiLCJuZXQiOiJ3cyIsInBhdGgiOiIvMTEiLCJwb3J0IjoiODAiLCJwcyI6IlVQRF8zLjAyLjIwMjQiLCJzY3kiOiJhdXRvIiwic25pIjoiIiwidGxzIjoiIiwidHlwZSI6IiIsInYiOiIyIn0=";
+        let cases: [(&str, fn(&ProxyProtocolType) -> bool); 6] = [
+            (SS_LINK, |protocol| {
+                matches!(protocol, ProxyProtocolType::Shadowsocks(_))
+            }),
+            (TROJAN_LINK, |protocol| {
+                matches!(protocol, ProxyProtocolType::Trojan(_))
+            }),
+            (HTTP_LINK, |protocol| {
+                matches!(protocol, ProxyProtocolType::Http(_))
+            }),
+            (HTTPS_LINK, |protocol| {
+                matches!(protocol, ProxyProtocolType::Http(_))
+            }),
+            (SOCKS5_LINK, |protocol| {
+                matches!(protocol, ProxyProtocolType::Socks5(_))
+            }),
+            (VMESS_LINK, |protocol| {
+                matches!(protocol, ProxyProtocolType::VMess(_))
+            }),
+        ];
+        for (link, is_protocol) in cases {
+            let proxy = decode_share_link(link).unwrap();
+            assert!(is_protocol(&proxy.legs[0].protocol), "{link}");
+        }
+    }
+
+    #[test]
+    fn test_decode_share_link_not_supported() {
+        const T_ME_LINK: &str = "https://t.me/proxy?server=";
+        const WTF_LINK: &str = "wtf://a.co";
+        for raw_url in [T_ME_LINK, WTF_LINK].iter() {
+            let result = decode_share_link(raw_url);
+            assert_eq!(result.unwrap_err(), DecodeError::UnknownScheme, "{raw_url}");
+        }
+    }
+
+    #[test]
+    fn test_decode_share_link_extra_parameters() {
+        let url = "ss://YWVzLTI1Ni1jZmI6VVlMMUV2a2ZJMGNUNk5PWUAzLjE4Ny4yMjUuNzozNDE4Nw?extra=1";
+        let result = decode_share_link(&url);
+        assert_eq!(
+            result.unwrap_err(),
+            DecodeError::ExtraParameters("extra".into())
+        );
+    }
 
     #[test]
     fn test_extract_name_from_frag() {

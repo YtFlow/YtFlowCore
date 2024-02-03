@@ -15,5 +15,7 @@ base64 = "0.21"
 thiserror = "1"
 cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["alloc"] }
 serde_bytes = "0.11"
+uuid = { version = "1", features = ["serde"] }
 ytflow = { path = "../ytflow" }

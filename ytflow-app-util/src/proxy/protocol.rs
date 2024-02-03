@@ -10,4 +10,5 @@ pub enum ProxyProtocolType {
     Trojan(trojan::TrojanProxy),
     Http(http::HttpProxy),
     Socks5(socks5::Socks5Proxy),
+    VMess(vmess::VMessProxy),
 }

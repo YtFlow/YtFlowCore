@@ -14,6 +14,10 @@ use crate::proxy::{Proxy, ProxyLeg};
 
 impl TrojanProxy {
     pub(super) fn decode_share_link(url: &Url, queries: &mut QueryMap) -> DecodeResult<Proxy> {
+        if !matches!(&*queries.remove("security").unwrap_or_default(), "" | "tls") {
+            return Err(DecodeError::UnknownValue("security"));
+        }
+
         let password = ByteBuf::from(
             percent_decode_str(url.username())
                 .decode_utf8()
@@ -122,5 +126,12 @@ mod tests {
                 udp_supported: false
             }
         );
+    }
+    #[test]
+    fn test_decode_share_link_unknown_security() {
+        let url = Url::parse("trojan://a%2fb@a.co:10443?security=qtls").unwrap();
+        let mut queries = url.query_pairs().collect::<QueryMap>();
+        let proxy = TrojanProxy::decode_share_link(&url, &mut queries);
+        assert_eq!(proxy.unwrap_err(), DecodeError::UnknownValue("security"));
     }
 }
