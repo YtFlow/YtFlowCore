@@ -3,14 +3,13 @@ use percent_encoding::percent_decode_str;
 use serde_bytes::ByteBuf;
 use url::{Host, Url};
 
-use ytflow::{
-    config::plugin::parse_supported_cipher,
-    flow::{DestinationAddr, HostName},
-};
+use ytflow::{config::plugin::parse_supported_cipher, flow::DestinationAddr};
 
 use crate::proxy::protocol::{shadowsocks::ShadowsocksProxy, ProxyProtocolType};
 use crate::proxy::ProxyLeg;
-use crate::share_link::decode::{DecodeError, DecodeResult, QueryMap, BASE64_ENGINE};
+use crate::share_link::decode::{
+    map_host_name, DecodeError, DecodeResult, QueryMap, BASE64_ENGINE,
+};
 
 pub fn decode_legacy(url: &Url, _queries: &mut QueryMap) -> DecodeResult<ProxyLeg> {
     let b64 = {
@@ -30,13 +29,7 @@ pub fn decode_legacy(url: &Url, _queries: &mut QueryMap) -> DecodeResult<ProxyLe
         let host = Host::parse(split.next().ok_or(DecodeError::MissingInfo("port"))?)
             .map_err(|_| DecodeError::InvalidEncoding)?;
         DestinationAddr {
-            host: match host {
-                Host::Domain(domain) => {
-                    HostName::from_domain_name(domain).expect("a valid domain name")
-                }
-                Host::Ipv4(ip) => HostName::Ip(ip.into()),
-                Host::Ipv6(ip) => HostName::Ip(ip.into()),
-            },
+            host: map_host_name(host),
             port: port.parse().map_err(|_| DecodeError::InvalidEncoding)?,
         }
     };
@@ -59,54 +52,43 @@ pub fn decode_legacy(url: &Url, _queries: &mut QueryMap) -> DecodeResult<ProxyLe
 
 #[cfg(test)]
 mod tests {
-    use std::net::Ipv6Addr;
-
     use base64::engine::general_purpose::STANDARD;
     use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 
-    use ytflow::plugin::shadowsocks::SupportedCipher;
+    use ytflow::{flow::HostName, plugin::shadowsocks::SupportedCipher};
 
     use super::*;
 
     #[test]
-    fn test_decode_legacy_hosts() {
-        let hosts = [
-            ("3.187.225.7", HostName::Ip([3, 187, 225, 7].into())),
-            ("a.co", HostName::DomainName("a.co".into())),
-            ("[::1]", HostName::Ip(Ipv6Addr::LOCALHOST.into())),
-        ];
-
-        for (host_part, expected_host) in hosts {
-            let url = Url::parse(&format!(
-                "ss://{}",
-                percent_encode(
-                    STANDARD
-                        .encode(format!("aes-256-cfb:UYL1EvkfI0cT6NOY@{host_part}:34187"))
-                        .as_bytes(),
-                    NON_ALPHANUMERIC
-                )
-            ))
-            .unwrap();
-            let mut queries = QueryMap::new();
-            let leg = decode_legacy(&url, &mut queries).unwrap();
-            assert_eq!(
-                leg,
-                ProxyLeg {
-                    protocol: ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
-                        cipher: SupportedCipher::Aes256Cfb,
-                        password: ByteBuf::from("UYL1EvkfI0cT6NOY"),
-                    }),
-                    dest: DestinationAddr {
-                        host: expected_host,
-                        port: 34187,
-                    },
-                    obfs: None,
-                    tls: None,
+    fn test_decode_legacy() {
+        let url = Url::parse(&format!(
+            "ss://{}",
+            percent_encode(
+                STANDARD
+                    .encode(format!("aes-256-cfb:UYL1EvkfI0cT6NOY@a.co:34187"))
+                    .as_bytes(),
+                NON_ALPHANUMERIC
+            )
+        ))
+        .unwrap();
+        let mut queries = QueryMap::new();
+        let leg = decode_legacy(&url, &mut queries).unwrap();
+        assert_eq!(
+            leg,
+            ProxyLeg {
+                protocol: ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
+                    cipher: SupportedCipher::Aes256Cfb,
+                    password: ByteBuf::from("UYL1EvkfI0cT6NOY"),
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 34187,
                 },
-                "{host_part}"
-            );
-            assert!(queries.is_empty());
-        }
+                obfs: None,
+                tls: None,
+            },
+        );
+        assert!(queries.is_empty());
     }
     #[test]
     fn test_decode_legacy_no_padding() {

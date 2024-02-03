@@ -3,16 +3,14 @@ use std::collections::BTreeMap;
 use base64::Engine;
 use percent_encoding::percent_decode_str;
 use serde_bytes::ByteBuf;
-use url::{Host, Url};
+use url::Url;
 
-use ytflow::{
-    config::plugin::parse_supported_cipher,
-    flow::{DestinationAddr, HostName},
-};
+use ytflow::{config::plugin::parse_supported_cipher, flow::DestinationAddr};
 
 use crate::proxy::obfs::{http_obfs::HttpObfsObfs, tls_obfs::TlsObfsObfs, ProxyObfsType};
 use crate::proxy::protocol::{shadowsocks::ShadowsocksProxy, ProxyProtocolType};
 use crate::proxy::ProxyLeg;
+use crate::share_link::decode::parse_host_transparent;
 use crate::share_link::decode::{DecodeError, DecodeResult, QueryMap, BASE64_ENGINE};
 
 pub fn decode_sip002(url: &Url, queries: &mut QueryMap) -> DecodeResult<ProxyLeg> {
@@ -32,18 +30,7 @@ pub fn decode_sip002(url: &Url, queries: &mut QueryMap) -> DecodeResult<ProxyLeg
         (cipher, pass)
     };
 
-    // Parse the host part again without scheme information.
-    // ss URLs are not ["special"](https://url.spec.whatwg.org/#is-special), hence IPv4 hosts are
-    // treated as domain names. Parsing again is necessary to handle IPv4 hosts correctly.
-    let host = match Host::parse(url.host_str().unwrap_or_default())
-        .map_err(|_| DecodeError::InvalidEncoding)?
-    {
-        Host::Domain(domain) => {
-            HostName::from_domain_name(domain.into()).expect("a valid domain name")
-        }
-        Host::Ipv4(ip) => HostName::Ip(ip.into()),
-        Host::Ipv6(ip) => HostName::Ip(ip.into()),
-    };
+    let host = parse_host_transparent(url)?;
     let port = url.port().ok_or(DecodeError::InvalidUrl)?;
 
     let plugin_param = queries.remove("plugin").unwrap_or_default();
@@ -103,46 +90,37 @@ pub fn decode_sip002(url: &Url, queries: &mut QueryMap) -> DecodeResult<ProxyLeg
 
 #[cfg(test)]
 mod tests {
-    use std::net::Ipv6Addr;
-
     use base64::engine::general_purpose::STANDARD;
+    use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 
-    use ytflow::plugin::shadowsocks::SupportedCipher;
+    use ytflow::{flow::HostName, plugin::shadowsocks::SupportedCipher};
 
     use super::*;
 
     #[test]
-    fn test_decode_sip002_hosts() {
-        let hosts = [
-            ("3.187.225.7", HostName::Ip([3, 187, 225, 7].into())),
-            ("a.co", HostName::DomainName("a.co".into())),
-            ("[::1]", HostName::Ip(Ipv6Addr::LOCALHOST.into())),
-        ];
-        for (host_part, expected_host) in hosts {
-            let url = Url::parse(&format!(
-                "ss://YWVzLTI1Ni1jZmI6VVlMMUV2a2ZJMGNUNk5PWQ==@{host_part}:34187"
-            ))
-            .unwrap();
-            let mut queries = QueryMap::new();
-            let leg = decode_sip002(&url, &mut queries).unwrap();
-            assert_eq!(
-                leg,
-                ProxyLeg {
-                    protocol: ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
-                        cipher: SupportedCipher::Aes256Cfb,
-                        password: ByteBuf::from("UYL1EvkfI0cT6NOY"),
-                    }),
-                    dest: DestinationAddr {
-                        host: expected_host,
-                        port: 34187,
-                    },
-                    obfs: None,
-                    tls: None,
+    fn test_decode_sip002() {
+        let url = Url::parse(&format!(
+            "ss://YWVzLTI1Ni1jZmI6VVlMMUV2a2ZJMGNUNk5PWQ==@a.co:34187"
+        ))
+        .unwrap();
+        let mut queries = QueryMap::new();
+        let leg = decode_sip002(&url, &mut queries).unwrap();
+        assert_eq!(
+            leg,
+            ProxyLeg {
+                protocol: ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
+                    cipher: SupportedCipher::Aes256Cfb,
+                    password: ByteBuf::from("UYL1EvkfI0cT6NOY"),
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 34187,
                 },
-                "{host_part}"
-            );
-            assert!(queries.is_empty());
-        }
+                obfs: None,
+                tls: None,
+            },
+        );
+        assert!(queries.is_empty());
     }
     #[test]
     fn test_decode_sip002_no_padding() {
@@ -155,6 +133,22 @@ mod tests {
             p => panic!("unexpected protocol type {:?}", p),
         };
         assert_eq!(&ss.password, b"UYL1EvkfI0cT6NOY");
+        assert!(queries.is_empty());
+    }
+    #[test]
+    fn test_decode_sip002_binary_password() {
+        let url = Url::parse(&format!(
+            "ss://{}@3.187.225.7:34187",
+            utf8_percent_encode(&STANDARD.encode(b"aes-128-cfb:\xff\xff"), NON_ALPHANUMERIC)
+        ))
+        .unwrap();
+        let mut queries = QueryMap::new();
+        let leg = decode_sip002(&url, &mut queries).unwrap();
+        let ss = match leg.protocol {
+            ProxyProtocolType::Shadowsocks(ss) => ss,
+            p => panic!("unexpected protocol type {:?}", p),
+        };
+        assert_eq!(&ss.password, b"\xff\xff");
         assert!(queries.is_empty());
     }
     #[test]
@@ -296,11 +290,7 @@ mod tests {
     }
     #[test]
     fn test_decode_sip002_invalid_encoding() {
-        let cases: [&str; 3] = [
-            "ss://%ff%ff@a.com:114",
-            "ss://あ@a.com:514",
-            "ss://YWVzLTI1Ni1jZmI6VVlMMUV2a2ZJMGNUNk5PWQ==@a%25b:1919",
-        ];
+        let cases: [&str; 2] = ["ss://%ff%ff@a.com:114", "ss://あ@a.com:514"];
         for raw_url in cases {
             let url = Url::parse(raw_url).unwrap();
             let mut queries = QueryMap::new();
