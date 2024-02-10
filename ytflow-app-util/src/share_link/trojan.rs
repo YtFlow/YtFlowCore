@@ -1,4 +1,4 @@
-use percent_encoding::percent_decode_str;
+use percent_encoding::{percent_decode_str, percent_encode, NON_ALPHANUMERIC};
 use serde_bytes::ByteBuf;
 use url::Url;
 
@@ -7,6 +7,7 @@ use ytflow::flow::DestinationAddr;
 use super::decode::{
     extract_name_from_frag, parse_host_transparent, DecodeError, DecodeResult, QueryMap,
 };
+use super::encode::{url_encode_host, EncodeError, EncodeResult};
 use crate::proxy::protocol::trojan::TrojanProxy;
 use crate::proxy::protocol::ProxyProtocolType;
 use crate::proxy::tls::ProxyTlsLayer;
@@ -50,6 +51,45 @@ impl TrojanProxy {
             udp_supported: false,
         })
     }
+
+    pub(super) fn encode_share_link(&self, leg: &ProxyLeg, proxy: &Proxy) -> EncodeResult<String> {
+        if proxy.legs.len() != 1 {
+            return Err(EncodeError::TooManyLegs);
+        }
+        if leg.obfs.is_some() {
+            return Err(EncodeError::UnsupportedComponent("obfs"));
+        }
+        let Some(tls) = &leg.tls else {
+            return Err(EncodeError::UnsupportedComponent("tls"));
+        };
+        let host = url_encode_host(&leg.dest.host);
+        let mut url = Url::parse(&format!(
+            "trojan://{}@{}:{}#{}",
+            percent_encode(&self.password, NON_ALPHANUMERIC).to_string(),
+            host,
+            leg.dest.port,
+            percent_encode(proxy.name.as_bytes(), NON_ALPHANUMERIC),
+        ))
+        .expect("host name should be valid");
+
+        let mut query = url.query_pairs_mut();
+        if tls.skip_cert_check == Some(true) {
+            query.append_pair("allowInsecure", "1");
+        }
+        if let Some(sni) = tls.sni.as_ref().filter(|s| !s.is_empty()) {
+            query.append_pair("sni", sni);
+        }
+        let alpn = tls.alpn.join(",");
+        if !alpn.is_empty() {
+            query.append_pair("alpn", &alpn);
+        }
+        drop(query);
+        if url.query() == Some("") {
+            url.set_query(None);
+        }
+
+        Ok(url.to_string())
+    }
 }
 
 #[cfg(test)]
@@ -57,6 +97,7 @@ mod tests {
     use ytflow::flow::HostName;
 
     use super::*;
+    use crate::proxy::obfs::ProxyObfsType;
     use crate::proxy::tls::ProxyTlsLayer;
 
     #[test]
@@ -133,5 +174,130 @@ mod tests {
         let mut queries = url.query_pairs().collect::<QueryMap>();
         let proxy = TrojanProxy::decode_share_link(&url, &mut queries);
         assert_eq!(proxy.unwrap_err(), DecodeError::UnknownValue("security"));
+    }
+
+    #[test]
+    fn test_encode_share_link() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::Trojan(TrojanProxy {
+                    password: ByteBuf::from("a/b"),
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 10443,
+                },
+                obfs: None,
+                tls: Some(ProxyTlsLayer {
+                    alpn: vec!["ipv9".into(), "http/1.1".into()],
+                    sni: Some("b.com".into()),
+                    skip_cert_check: Some(true),
+                }),
+            }],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let trojan = match &leg.protocol {
+            ProxyProtocolType::Trojan(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let url = trojan.encode_share_link(leg, &proxy).unwrap();
+        assert_eq!(
+            url,
+            "trojan://a%2Fb@a.co:10443?allowInsecure=1&sni=b.com&alpn=ipv9%2Chttp%2F1.1#c%2Fd",
+        );
+    }
+    #[test]
+    fn test_encode_share_link_minimal() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::Trojan(TrojanProxy {
+                    password: ByteBuf::from("a/b"),
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 10443,
+                },
+                obfs: None,
+                tls: Some(ProxyTlsLayer {
+                    alpn: vec![],
+                    sni: None,
+                    skip_cert_check: Some(false),
+                }),
+            }],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let trojan = match &leg.protocol {
+            ProxyProtocolType::Trojan(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let url = trojan.encode_share_link(leg, &proxy).unwrap();
+        assert_eq!(url, "trojan://a%2Fb@a.co:10443#c%2Fd",);
+    }
+    #[test]
+    fn test_encode_share_link_too_many_legs() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![
+                ProxyLeg {
+                    protocol: ProxyProtocolType::Trojan(TrojanProxy {
+                        password: ByteBuf::new(),
+                    }),
+                    dest: DestinationAddr {
+                        host: HostName::DomainName("a.co".into()),
+                        port: 10443,
+                    },
+                    obfs: None,
+                    tls: Some(Default::default()),
+                },
+                ProxyLeg {
+                    protocol: ProxyProtocolType::Trojan(TrojanProxy {
+                        password: ByteBuf::new(),
+                    }),
+                    dest: DestinationAddr {
+                        host: HostName::DomainName("a.co".into()),
+                        port: 10443,
+                    },
+                    obfs: None,
+                    tls: Some(Default::default()),
+                },
+            ],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let trojan = match &leg.protocol {
+            ProxyProtocolType::Trojan(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let url = trojan.encode_share_link(leg, &proxy);
+        assert_eq!(url.unwrap_err(), EncodeError::TooManyLegs);
+    }
+    #[test]
+    fn test_encode_share_link_obfs() {
+        let proxy = Proxy {
+            name: "c/d".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::Trojan(TrojanProxy {
+                    password: ByteBuf::new(),
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: Some(ProxyObfsType::WebSocket(Default::default())),
+                tls: Some(Default::default()),
+            }],
+            udp_supported: false,
+        };
+        let leg = &proxy.legs[0];
+        let trojan = match &leg.protocol {
+            ProxyProtocolType::Trojan(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let res = trojan.encode_share_link(leg, &proxy);
+        assert_eq!(res.unwrap_err(), EncodeError::UnsupportedComponent("obfs"));
     }
 }

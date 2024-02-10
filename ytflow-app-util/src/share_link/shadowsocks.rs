@@ -2,6 +2,7 @@ use url::Url;
 
 mod decode_legacy;
 mod decode_sip002;
+mod encode;
 
 use super::decode::{extract_name_from_frag, DecodeResult, QueryMap};
 use crate::proxy::protocol::shadowsocks::ShadowsocksProxy;

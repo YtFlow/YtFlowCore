@@ -1,10 +1,7 @@
-use std::borrow::Cow;
-use std::fmt::Display;
-use std::str::FromStr;
-
+use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use percent_encoding::percent_decode_str;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 use ytflow::config::plugin::parse_supported_security;
@@ -18,40 +15,19 @@ use crate::proxy::protocol::ProxyProtocolType;
 use crate::proxy::tls::ProxyTlsLayer;
 use crate::proxy::{Proxy, ProxyLeg};
 use crate::share_link::decode::{DecodeError, DecodeResult, QueryMap, BASE64_ENGINE};
+use crate::share_link::encode::EncodeError;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct StupidValue<T>(T);
+mod stupid_value;
 
-impl<'de, T> Deserialize<'de> for StupidValue<T>
-where
-    T: FromStr + Deserialize<'de>,
-    T::Err: Display,
-{
-    fn deserialize<D>(deserializer: D) -> Result<StupidValue<T>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum StrOrValue<'a, T> {
-            Str(Cow<'a, str>),
-            Value(T),
-        }
+use stupid_value::StupidValue;
 
-        let str_or_val = StrOrValue::<T>::deserialize(deserializer)?;
-        Ok(StupidValue(match str_or_val {
-            StrOrValue::Value(val) => val,
-            StrOrValue::Str(s) => s.parse().map_err(serde::de::Error::custom)?,
-        }))
-    }
-}
-
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct V2raynDoc<'a> {
     #[serde(rename = "v")]
     version: StupidValue<u8>,
     #[serde(rename = "ps")]
     name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     enable_vless: Option<StupidValue<bool>>,
     #[serde(rename = "aid")]
     alter_id: StupidValue<u16>,
@@ -79,7 +55,7 @@ struct V2raynDoc<'a> {
     alpn: &'a str,
 }
 
-pub fn decode_v2rayn(url: &Url, queries: &mut QueryMap) -> DecodeResult<Proxy> {
+pub(crate) fn decode_v2rayn(url: &Url, queries: &mut QueryMap) -> DecodeResult<Proxy> {
     if !queries.is_empty() {
         return Err(DecodeError::InvalidUrl);
     }
@@ -178,6 +154,61 @@ pub fn decode_v2rayn(url: &Url, queries: &mut QueryMap) -> DecodeResult<Proxy> {
     })
 }
 
+pub(crate) fn encode_v2rayn(
+    vmess: &VMessProxy,
+    ProxyLeg {
+        dest,
+        obfs,
+        tls,
+        protocol: _,
+    }: &ProxyLeg,
+    proxy: &Proxy,
+) -> Result<String, EncodeError> {
+    if proxy.legs.len() > 1 {
+        return Err(EncodeError::TooManyLegs);
+    }
+
+    let security = vmess.security.to_string();
+    let mut doc = V2raynDoc {
+        version: 2.into(),
+        name: proxy.name.clone(),
+        enable_vless: None,
+        alter_id: vmess.alter_id.into(),
+        user_id: vmess.user_id,
+        security: &security,
+        host: dest.host.clone(),
+        port: dest.port.into(),
+        proxy_type: "none",
+        obfs_type: "tcp",
+        obfs_host: None,
+        obfs_path: None,
+        tls: "",
+        sni: None,
+        alpn: "",
+    };
+
+    match obfs {
+        Some(ProxyObfsType::WebSocket(ws)) => {
+            doc.obfs_type = "ws";
+            doc.obfs_host = Some(ws.host.clone().unwrap_or_else(|| dest.host.to_string()));
+            doc.obfs_path = Some(ws.path.clone());
+        }
+        None => {}
+        Some(_) => return Err(EncodeError::UnsupportedComponent("obfs")),
+    }
+    let mut alpn = None;
+    if let Some(tls) = tls {
+        doc.tls = "tls";
+        doc.sni = tls.sni.clone();
+        let alpn = alpn.insert(tls.alpn.join(","));
+        doc.alpn = alpn;
+    }
+
+    let doc = serde_json::to_string(&doc).expect("Failed to serialize JSON");
+    let b64 = STANDARD.encode(doc.as_bytes());
+    Ok("vmess://".to_owned() + &b64)
+}
+
 #[cfg(test)]
 mod tests {
     use base64::engine::general_purpose::STANDARD;
@@ -185,6 +216,8 @@ mod tests {
     use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
     use serde_json::{json, to_string as to_json};
     use uuid::uuid;
+
+    use crate::proxy::obfs::tls_obfs::TlsObfsObfs;
 
     use super::*;
 
@@ -452,5 +485,230 @@ mod tests {
         let url = Url::parse(&format!("vmess://{}", b64)).unwrap();
         let mut proxy = decode_v2rayn(&url, &mut Default::default()).unwrap();
         assert_eq!(proxy.legs.pop().unwrap().tls.unwrap().sni, None);
+    }
+
+    fn get_json_from_url(url: &str) -> serde_json::Value {
+        let b64 = url.strip_prefix("vmess://").unwrap();
+        let doc = STANDARD.decode(b64).unwrap();
+        let doc = std::str::from_utf8(&doc).unwrap();
+        serde_json::from_str(doc).unwrap()
+    }
+
+    #[test]
+    fn test_encode_v2rayn() {
+        let proxy = Proxy {
+            name: "n".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::VMess(VMessProxy {
+                    user_id: uuid!("22222222-3333-4444-5555-666666666666"),
+                    alter_id: 114,
+                    security: SupportedSecurity::Aes128Gcm,
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: None,
+                tls: None,
+            }],
+            udp_supported: true,
+        };
+        let leg = &proxy.legs[0];
+        let vmess = match &leg.protocol {
+            ProxyProtocolType::VMess(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let url = vmess.encode_share_link(leg, &proxy).unwrap();
+        let doc = get_json_from_url(&url);
+        assert_eq!(
+            doc,
+            json!({
+                "v": "2",
+                "ps": "n",
+                "add": "a.co",
+                "port": "1080",
+                "id": "22222222-3333-4444-5555-666666666666",
+                "aid": "114",
+                "scy": "aes-128-gcm",
+                "net": "tcp",
+                "type": "none",
+                "host": null,
+                "path": null,
+                "tls": "",
+                "sni": null,
+                "alpn": ""
+            })
+        );
+    }
+    #[test]
+    fn test_encode_v2rayn_obfs_tls() {
+        let proxy = Proxy {
+            name: "n".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::VMess(VMessProxy {
+                    user_id: uuid!("22222222-3333-4444-5555-666666666666"),
+                    alter_id: 114,
+                    security: SupportedSecurity::Aes128Gcm,
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: Some(ProxyObfsType::WebSocket(WebSocketObfs {
+                    host: Some("b.co".into()),
+                    path: "/path".into(),
+                })),
+                tls: Some(ProxyTlsLayer {
+                    alpn: vec!["h2".into(), "http/0.0".into()],
+                    sni: Some("c.co".into()),
+                    skip_cert_check: Some(true),
+                }),
+            }],
+            udp_supported: true,
+        };
+        let leg = &proxy.legs[0];
+        let vmess = match &leg.protocol {
+            ProxyProtocolType::VMess(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let url = vmess.encode_share_link(leg, &proxy).unwrap();
+        let doc = get_json_from_url(&url);
+        assert_eq!(
+            doc,
+            json!({
+                "v": "2",
+                "ps": "n",
+                "add": "a.co",
+                "port": "1080",
+                "id": "22222222-3333-4444-5555-666666666666",
+                "aid": "114",
+                "scy": "aes-128-gcm",
+                "net": "ws",
+                "type": "none",
+                "host": "b.co",
+                "path": "/path",
+                "tls": "tls",
+                "sni": "c.co",
+                "alpn": "h2,http/0.0"
+            })
+        );
+    }
+    #[test]
+    fn test_encode_v2rayn_not_supported_obfs() {
+        let proxy = Proxy {
+            name: "n".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::VMess(VMessProxy {
+                    user_id: uuid!("22222222-3333-4444-5555-666666666666"),
+                    alter_id: 114,
+                    security: SupportedSecurity::Aes128Gcm,
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: Some(ProxyObfsType::TlsObfs(TlsObfsObfs { host: "aa".into() })),
+                tls: None,
+            }],
+            udp_supported: true,
+        };
+        let leg = &proxy.legs[0];
+        let vmess = match &leg.protocol {
+            ProxyProtocolType::VMess(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let res = vmess.encode_share_link(leg, &proxy);
+        assert_eq!(res.unwrap_err(), EncodeError::UnsupportedComponent("obfs"));
+    }
+    #[test]
+    fn test_encode_v2rayn_ws_default_host() {
+        let proxy = Proxy {
+            name: "n".into(),
+            legs: vec![ProxyLeg {
+                protocol: ProxyProtocolType::VMess(VMessProxy {
+                    user_id: uuid!("22222222-3333-4444-5555-666666666666"),
+                    alter_id: 114,
+                    security: SupportedSecurity::Aes128Gcm,
+                }),
+                dest: DestinationAddr {
+                    host: HostName::DomainName("a.co".into()),
+                    port: 1080,
+                },
+                obfs: Some(ProxyObfsType::WebSocket(WebSocketObfs {
+                    host: None,
+                    path: "/path".into(),
+                })),
+                tls: None,
+            }],
+            udp_supported: true,
+        };
+        let leg = &proxy.legs[0];
+        let vmess = match &leg.protocol {
+            ProxyProtocolType::VMess(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let url = vmess.encode_share_link(leg, &proxy).unwrap();
+        let doc = get_json_from_url(&url);
+        assert_eq!(
+            doc,
+            json!({
+                "v": "2",
+                "ps": "n",
+                "add": "a.co",
+                "port": "1080",
+                "id": "22222222-3333-4444-5555-666666666666",
+                "aid": "114",
+                "scy": "aes-128-gcm",
+                "net": "ws",
+                "type": "none",
+                "host": "a.co",
+                "path": "/path",
+                "tls": "",
+                "sni": null,
+                "alpn": ""
+            })
+        );
+    }
+    #[test]
+    fn test_encode_v2rayn_too_many_legs() {
+        let proxy = Proxy {
+            name: "n".into(),
+            legs: vec![
+                ProxyLeg {
+                    protocol: ProxyProtocolType::VMess(VMessProxy {
+                        user_id: uuid!("22222222-3333-4444-5555-666666666666"),
+                        alter_id: 114,
+                        security: SupportedSecurity::Aes128Gcm,
+                    }),
+                    dest: DestinationAddr {
+                        host: HostName::DomainName("a.co".into()),
+                        port: 1080,
+                    },
+                    obfs: Some(ProxyObfsType::TlsObfs(TlsObfsObfs { host: "aa".into() })),
+                    tls: None,
+                },
+                ProxyLeg {
+                    protocol: ProxyProtocolType::VMess(VMessProxy {
+                        user_id: uuid!("22222222-3333-4444-5555-666666666666"),
+                        alter_id: 114,
+                        security: SupportedSecurity::Aes128Gcm,
+                    }),
+                    dest: DestinationAddr {
+                        host: HostName::DomainName("a.co".into()),
+                        port: 1080,
+                    },
+                    obfs: Some(ProxyObfsType::TlsObfs(TlsObfsObfs { host: "aa".into() })),
+                    tls: None,
+                },
+            ],
+            udp_supported: true,
+        };
+        let leg = &proxy.legs[0];
+        let vmess = match &leg.protocol {
+            ProxyProtocolType::VMess(p) => p,
+            _ => panic!("unexpected protocol"),
+        };
+        let res = vmess.encode_share_link(leg, &proxy);
+        assert_eq!(res.unwrap_err(), EncodeError::TooManyLegs);
     }
 }
