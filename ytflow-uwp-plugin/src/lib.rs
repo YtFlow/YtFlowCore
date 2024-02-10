@@ -1,6 +1,9 @@
 #![allow(non_snake_case)]
 
 #[cfg(target_vendor = "uwp")]
+extern crate ytflow_app_util;
+
+#[cfg(target_vendor = "uwp")]
 mod error;
 #[cfg(target_vendor = "uwp")]
 mod storage_resource_loader;

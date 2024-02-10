@@ -7,10 +7,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 ytflow = { path = "../ytflow", features = ["plugins"] }
+ytflow-app-util = { path = "../ytflow-app-util" }
 flume = { version = "0.11", default-features = false, features = [] }
 futures = { version = "0.3", default-features = false }
 

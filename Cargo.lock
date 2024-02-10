@@ -3390,8 +3390,10 @@ dependencies = [
  "percent-encoding",
  "serde",
  "serde_bytes",
+ "serde_json",
  "thiserror",
  "url",
+ "uuid",
  "ytflow",
 ]
 
@@ -3440,6 +3442,7 @@ dependencies = [
  "windows",
  "windows-implement",
  "ytflow",
+ "ytflow-app-util",
 ]
 
 [[package]]

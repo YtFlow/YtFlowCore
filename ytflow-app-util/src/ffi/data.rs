@@ -3,9 +3,11 @@ use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
 use std::ptr::null_mut;
 
+#[allow(non_camel_case_types)]
+use ytflow::data::{Connection as ytflow_connection, Database as ytflow_database};
 use ytflow::data::{
-    Connection, DataError, Database, Plugin, Profile, Proxy, ProxyGroup, ProxySubscription,
-    Resource, ResourceGitHubRelease, ResourceUrl,
+    DataError, Plugin, Profile, Proxy, ProxyGroup, ProxySubscription, Resource,
+    ResourceGitHubRelease, ResourceUrl,
 };
 
 use super::error::ytflow_result;
@@ -18,7 +20,7 @@ pub unsafe extern "C" fn ytflow_db_new_win32(path: *const u16, len: usize) -> yt
     use std::os::windows::ffi::OsStringExt;
     ytflow_result::catch_result_unwind(move || {
         let path = unsafe { OsString::from_wide(std::slice::from_raw_parts(path, len)) };
-        Database::open(path).map(|db| (Box::into_raw(Box::new(db)) as *mut _, 0))
+        ytflow::data::Database::open(path).map(|db| (Box::into_raw(Box::new(db)) as *mut _, 0))
     })
 }
 
@@ -29,12 +31,12 @@ pub unsafe extern "C" fn ytflow_db_new_unix(path: *const u8, len: usize) -> ytfl
     use std::os::unix::ffi::OsStrExt;
     ytflow_result::catch_result_unwind(move || {
         let path = unsafe { OsStr::from_bytes(std::slice::from_raw_parts(path, len)) };
-        Database::open(path).map(|db| (Box::into_raw(Box::new(db)) as *mut _, 0))
+        ytflow::data::Database::open(path).map(|db| (Box::into_raw(Box::new(db)) as *mut _, 0))
     })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_db_free(db: *mut Database) -> ytflow_result {
+pub unsafe extern "C" fn ytflow_db_free(db: *mut ytflow_database) -> ytflow_result {
     ytflow_result::catch_ptr_unwind(move || {
         unsafe { drop(Box::from_raw(db)) };
         (null_mut(), 0)
@@ -42,7 +44,7 @@ pub unsafe extern "C" fn ytflow_db_free(db: *mut Database) -> ytflow_result {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_db_conn_new(db: *const Database) -> ytflow_result {
+pub unsafe extern "C" fn ytflow_db_conn_new(db: *const ytflow_database) -> ytflow_result {
     ytflow_result::catch_result_unwind(move || {
         let db = unsafe { &*db };
         db.connect()
@@ -51,7 +53,7 @@ pub unsafe extern "C" fn ytflow_db_conn_new(db: *const Database) -> ytflow_resul
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_db_conn_free(conn: *mut Connection) -> ytflow_result {
+pub unsafe extern "C" fn ytflow_db_conn_free(conn: *mut ytflow_connection) -> ytflow_result {
     ytflow_result::catch_ptr_unwind(AssertUnwindSafe(move || {
         unsafe { drop(Box::from_raw(conn)) };
         (null_mut(), 0)
@@ -59,7 +61,7 @@ pub unsafe extern "C" fn ytflow_db_conn_free(conn: *mut Connection) -> ytflow_re
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_profiles_get_all(conn: *const Connection) -> ytflow_result {
+pub unsafe extern "C" fn ytflow_profiles_get_all(conn: *const ytflow_connection) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Profile::query_all(conn).map(|p| serialize_buffer(&p))
@@ -69,7 +71,7 @@ pub unsafe extern "C" fn ytflow_profiles_get_all(conn: *const Connection) -> ytf
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_plugins_get_by_profile(
     profile_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -80,7 +82,7 @@ pub unsafe extern "C" fn ytflow_plugins_get_by_profile(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_plugins_get_entry(
     profile_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -92,7 +94,7 @@ pub unsafe extern "C" fn ytflow_plugins_get_entry(
 pub unsafe extern "C" fn ytflow_profile_create(
     name: *const c_char,
     locale: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -112,7 +114,7 @@ pub unsafe extern "C" fn ytflow_profile_update(
     profile_id: u32,
     name: *const c_char,
     locale: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -131,7 +133,7 @@ pub unsafe extern "C" fn ytflow_profile_update(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_profile_delete(
     profile_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -148,7 +150,7 @@ pub unsafe extern "C" fn ytflow_plugin_create(
     plugin_version: u16,
     param: *const u8,
     param_len: usize,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -178,7 +180,7 @@ pub unsafe extern "C" fn ytflow_plugin_update(
     plugin_version: u16,
     param: *const u8,
     param_len: usize,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -202,7 +204,7 @@ pub unsafe extern "C" fn ytflow_plugin_update(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_plugin_delete(
     plugin_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -214,7 +216,7 @@ pub unsafe extern "C" fn ytflow_plugin_delete(
 pub unsafe extern "C" fn ytflow_plugin_set_as_entry(
     plugin_id: u32,
     profile_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -226,7 +228,7 @@ pub unsafe extern "C" fn ytflow_plugin_set_as_entry(
 pub unsafe extern "C" fn ytflow_plugin_unset_as_entry(
     plugin_id: u32,
     profile_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -235,7 +237,9 @@ pub unsafe extern "C" fn ytflow_plugin_unset_as_entry(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_proxy_group_get_all(conn: *const Connection) -> ytflow_result {
+pub unsafe extern "C" fn ytflow_proxy_group_get_all(
+    conn: *const ytflow_connection,
+) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         ProxyGroup::query_all(conn).map(|p| serialize_buffer(&p))
@@ -245,7 +249,7 @@ pub unsafe extern "C" fn ytflow_proxy_group_get_all(conn: *const Connection) -> 
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_proxy_group_get_by_id(
     proxy_group_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -257,7 +261,7 @@ pub unsafe extern "C" fn ytflow_proxy_group_get_by_id(
 pub unsafe extern "C" fn ytflow_proxy_group_create(
     name: *const c_char,
     r#type: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -277,7 +281,7 @@ pub unsafe extern "C" fn ytflow_proxy_group_create_subscription(
     name: *const c_char,
     format: *const c_char,
     url: *const c_char,
-    conn: *mut Connection,
+    conn: *mut ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -298,7 +302,7 @@ pub unsafe extern "C" fn ytflow_proxy_group_create_subscription(
 pub unsafe extern "C" fn ytflow_proxy_group_rename(
     proxy_group_id: u32,
     name: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -311,7 +315,7 @@ pub unsafe extern "C" fn ytflow_proxy_group_rename(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_proxy_group_delete(
     proxy_group_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -322,7 +326,7 @@ pub unsafe extern "C" fn ytflow_proxy_group_delete(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_proxy_subscription_query_by_proxy_group_id(
     proxy_group_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -338,7 +342,7 @@ pub unsafe extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_gro
     download_bytes_used: *const u64,
     bytes_total: *const u64,
     expires_at: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let upload_bytes_used = unsafe { upload_bytes_used.as_ref().copied() };
@@ -365,7 +369,7 @@ pub unsafe extern "C" fn ytflow_proxy_subscription_update_retrieved_by_proxy_gro
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_proxy_get_by_proxy_group(
     proxy_group_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -380,7 +384,7 @@ pub unsafe extern "C" fn ytflow_proxy_create(
     proxy: *const u8,
     proxy_len: usize,
     proxy_version: u16,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -403,7 +407,7 @@ pub unsafe extern "C" fn ytflow_proxy_update(
     proxy: *const u8,
     proxy_len: usize,
     proxy_version: u16,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let name = unsafe { CStr::from_ptr(name) };
@@ -422,7 +426,7 @@ pub unsafe extern "C" fn ytflow_proxy_update(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_proxy_delete(
     proxy_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -436,7 +440,7 @@ pub unsafe extern "C" fn ytflow_proxy_reorder(
     range_start_order: i32,
     range_end_order: i32,
     moves: i32,
-    conn: *mut Connection,
+    conn: *mut ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &mut *conn };
@@ -456,7 +460,7 @@ pub unsafe extern "C" fn ytflow_proxy_batch_update_by_group(
     proxy_group_id: u32,
     new_proxies_buf: *const u8,
     new_proxies_buf_len: usize,
-    conn: *mut Connection,
+    conn: *mut ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let new_proxies_buf = if new_proxies_buf_len == 0 {
@@ -476,7 +480,7 @@ pub unsafe extern "C" fn ytflow_proxy_batch_update_by_group(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ytflow_resource_get_all(conn: *const Connection) -> ytflow_result {
+pub unsafe extern "C" fn ytflow_resource_get_all(conn: *const ytflow_connection) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Resource::query_all(conn).map(|r| serialize_buffer(&r))
@@ -486,7 +490,7 @@ pub unsafe extern "C" fn ytflow_resource_get_all(conn: *const Connection) -> ytf
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_resource_delete(
     resource_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -500,7 +504,7 @@ pub unsafe extern "C" fn ytflow_resource_create_with_url(
     r#type: *const c_char,
     local_file: *const c_char,
     url: *const c_char,
-    conn: *mut Connection,
+    conn: *mut ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let key = unsafe { CStr::from_ptr(key) };
@@ -527,7 +531,7 @@ pub unsafe extern "C" fn ytflow_resource_create_with_github_release(
     github_username: *const c_char,
     github_repo: *const c_char,
     asset_name: *const c_char,
-    conn: *mut Connection,
+    conn: *mut ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let key = unsafe { CStr::from_ptr(key) };
@@ -553,7 +557,7 @@ pub unsafe extern "C" fn ytflow_resource_create_with_github_release(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_resource_url_query_by_resource_id(
     resource_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -566,7 +570,7 @@ pub unsafe extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
     resource_id: u32,
     etag: *const c_char,
     last_modified: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let etag = if etag.is_null() {
@@ -596,7 +600,7 @@ pub unsafe extern "C" fn ytflow_resource_url_update_retrieved_by_resource_id(
 #[no_mangle]
 pub unsafe extern "C" fn ytflow_resource_github_release_query_by_resource_id(
     resource_id: u32,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
@@ -609,7 +613,7 @@ pub unsafe extern "C" fn ytflow_resource_github_release_update_retrieved_by_reso
     resource_id: u32,
     git_tag: *const c_char,
     release_title: *const c_char,
-    conn: *const Connection,
+    conn: *const ytflow_connection,
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let git_tag = unsafe { CStr::from_ptr(git_tag) };
