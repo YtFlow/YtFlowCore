@@ -4,13 +4,25 @@
 rustflags = [
     "-C",
     "target-feature=+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+avx,+aes,+pclmulqdq",
+    "--cfg", "windows_raw_dylib"
 ]
 
 [target.'cfg(target_arch = "x86")']
-rustflags = ["-C", "target-feature=+sse,+sse2,+sse3,+ssse3"]
+rustflags = [
+    "-C", "target-feature=+sse,+sse2,+sse3,+ssse3",
+    "--cfg", "windows_raw_dylib"
+]
 
 [target.'cfg(target_arch = "aarch64")']
-rustflags = ["-C", "target-feature=+neon,+aes,+sha2,+crc"]
+rustflags = [
+    "-C", "target-feature=+neon,+aes,+sha2,+crc",
+    "--cfg", "windows_raw_dylib"
+]
+
+[target.'cfg(target_arch = "arm")']
+rustflags = [
+    "--cfg", "windows_raw_dylib"
+]
 
 [unstable]
 bindeps = true
