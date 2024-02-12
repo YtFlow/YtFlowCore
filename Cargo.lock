@@ -3387,6 +3387,7 @@ dependencies = [
  "base64",
  "cbindgen",
  "cbor4ii",
+ "chrono",
  "percent-encoding",
  "serde",
  "serde_bytes",

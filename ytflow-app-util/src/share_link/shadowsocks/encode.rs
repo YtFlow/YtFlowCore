@@ -4,7 +4,7 @@ use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use url::Url;
 
 use crate::proxy::obfs::ProxyObfsType;
-use crate::proxy::protocol::shadowsocks::ShadowsocksProxy;
+use crate::proxy::protocol::ShadowsocksProxy;
 use crate::proxy::{Proxy, ProxyLeg};
 use crate::share_link::encode::{url_encode_host, EncodeError, EncodeResult};
 
@@ -67,7 +67,7 @@ mod tests {
     use ytflow::flow::{DestinationAddr, HostName};
     use ytflow::plugin::shadowsocks::SupportedCipher;
 
-    use crate::proxy::obfs::{http_obfs::HttpObfsObfs, tls_obfs::TlsObfsObfs, ws::WebSocketObfs};
+    use crate::proxy::obfs::{HttpObfsObfs, TlsObfsObfs, WebSocketObfs};
     use crate::proxy::protocol::ProxyProtocolType;
 
     use super::*;

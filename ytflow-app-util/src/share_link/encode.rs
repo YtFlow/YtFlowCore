@@ -51,8 +51,7 @@ mod tests {
     use ytflow::plugin::vmess::SupportedSecurity;
 
     use crate::proxy::protocol::{
-        http::HttpProxy, shadowsocks::ShadowsocksProxy, socks5::Socks5Proxy, trojan::TrojanProxy,
-        vmess::VMessProxy,
+        HttpProxy, ShadowsocksProxy, Socks5Proxy, TrojanProxy, VMessProxy,
     };
     use crate::proxy::tls::ProxyTlsLayer;
     use crate::proxy::ProxyLeg;

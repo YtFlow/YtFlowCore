@@ -35,25 +35,3 @@ jobs:
       run: cargo build
     - name: Run tests
       run: cargo test
-
-  build-uwp:
-  
-    runs-on: windows-latest
-    env:
-      VCPKGRS_TRIPLET: arm-uwp
-      UWP_CROSS_TARGET_TRIPLET: thumbv7a-uwp-windows-msvc
-      UWP_NATIVE_TARGET_TRIPLET: x86_64-uwp-windows-msvc
-      BUILD_STD_ARGS: build-std=std,panic_abort
-      THUMBV7A_UWP_WINDOWS_MSVC_OPENSSL_DIR: 'C:\vcpkg\installed\arm-uwp'
-    
-    steps:
-    - uses: actions/checkout@v2
-    - name: Prepare toolchain
-      run: rustup show
-    - uses: Swatinem/rust-cache@v1
-
-    - name: Install OpenSSL
-      run: vcpkg install openssl:arm-uwp
-
-    - name: Build ARMv7
-      run: cargo build -p ytflow-uwp-plugin -Z $env:BUILD_STD_ARGS --target $env:UWP_CROSS_TARGET_TRIPLET --release

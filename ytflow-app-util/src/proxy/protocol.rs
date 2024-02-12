@@ -1,10 +1,18 @@
-pub mod http;
-pub mod shadowsocks;
-pub mod socks5;
-pub mod trojan;
-pub mod vmess;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+mod http;
+mod shadowsocks;
+mod socks5;
+mod trojan;
+mod vmess;
+
+pub use http::HttpProxy;
+pub use shadowsocks::ShadowsocksProxy;
+pub use socks5::Socks5Proxy;
+pub use trojan::TrojanProxy;
+pub use vmess::VMessProxy;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProxyProtocolType {
     Shadowsocks(shadowsocks::ShadowsocksProxy),
     Trojan(trojan::TrojanProxy),

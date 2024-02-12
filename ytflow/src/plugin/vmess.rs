@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "plugins")]
 mod client;
 #[cfg(feature = "plugins")]
@@ -10,12 +12,17 @@ mod stream;
 #[cfg(feature = "plugins")]
 pub use client::VMessStreamOutboundFactory;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SupportedSecurity {
+    #[serde(rename = "none")]
     None,
+    #[serde(rename = "auto")]
     Auto,
+    #[serde(rename = "aes-128-cfb")]
     Aes128Cfb,
+    #[serde(rename = "aes-128-gcm")]
     Aes128Gcm,
+    #[serde(rename = "chacha20-poly1305")]
     Chacha20Poly1305,
 }
 

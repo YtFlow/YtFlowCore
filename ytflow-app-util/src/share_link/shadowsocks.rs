@@ -5,7 +5,7 @@ mod decode_sip002;
 mod encode;
 
 use super::decode::{extract_name_from_frag, DecodeResult, QueryMap};
-use crate::proxy::protocol::shadowsocks::ShadowsocksProxy;
+use crate::proxy::protocol::ShadowsocksProxy;
 use crate::proxy::Proxy;
 
 impl ShadowsocksProxy {

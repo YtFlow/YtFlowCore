@@ -5,7 +5,7 @@ use url::{Host, Url};
 
 use ytflow::{config::plugin::parse_supported_cipher, flow::DestinationAddr};
 
-use crate::proxy::protocol::{shadowsocks::ShadowsocksProxy, ProxyProtocolType};
+use crate::proxy::protocol::{ProxyProtocolType, ShadowsocksProxy};
 use crate::proxy::ProxyLeg;
 use crate::share_link::decode::{
     map_host_name, DecodeError, DecodeResult, QueryMap, BASE64_ENGINE,
@@ -55,7 +55,8 @@ mod tests {
     use base64::engine::general_purpose::STANDARD;
     use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 
-    use ytflow::{flow::HostName, plugin::shadowsocks::SupportedCipher};
+    use ytflow::flow::HostName;
+    use ytflow::plugin::shadowsocks::SupportedCipher;
 
     use super::*;
 

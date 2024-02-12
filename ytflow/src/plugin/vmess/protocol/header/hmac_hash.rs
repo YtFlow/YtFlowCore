@@ -53,8 +53,8 @@ impl<K: StaticKey, D: Digest + BlockSizeUser> Update for HmacFixedKeyHash<K, D> 
     }
 }
 
-trait AssertDigest: Digest {}
-impl<K: StaticKey, D: Digest + BlockSizeUser> AssertDigest for HmacFixedKeyHash<K, D> {}
+trait _AssertDigest: Digest {}
+impl<K: StaticKey, D: Digest + BlockSizeUser> _AssertDigest for HmacFixedKeyHash<K, D> {}
 
 macro_rules! define_static_key_literal(
     ($name:ident, $key:expr) => {

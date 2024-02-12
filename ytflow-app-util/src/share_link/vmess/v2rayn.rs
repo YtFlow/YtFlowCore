@@ -8,10 +8,8 @@ use ytflow::config::plugin::parse_supported_security;
 use ytflow::flow::{DestinationAddr, HostName};
 use ytflow::plugin::vmess::SupportedSecurity;
 
-use crate::proxy::obfs::ws::WebSocketObfs;
-use crate::proxy::obfs::ProxyObfsType;
-use crate::proxy::protocol::vmess::VMessProxy;
-use crate::proxy::protocol::ProxyProtocolType;
+use crate::proxy::obfs::{ProxyObfsType, WebSocketObfs};
+use crate::proxy::protocol::{ProxyProtocolType, VMessProxy};
 use crate::proxy::tls::ProxyTlsLayer;
 use crate::proxy::{Proxy, ProxyLeg};
 use crate::share_link::decode::{DecodeError, DecodeResult, QueryMap, BASE64_ENGINE};
@@ -217,7 +215,7 @@ mod tests {
     use serde_json::{json, to_string as to_json};
     use uuid::uuid;
 
-    use crate::proxy::obfs::tls_obfs::TlsObfsObfs;
+    use crate::proxy::obfs::TlsObfsObfs;
 
     use super::*;
 

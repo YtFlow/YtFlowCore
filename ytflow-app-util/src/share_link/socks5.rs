@@ -8,8 +8,7 @@ use super::decode::{
     extract_name_from_frag, parse_host_transparent, DecodeError, DecodeResult, QueryMap,
 };
 use super::encode::{url_encode_host, EncodeError, EncodeResult};
-use crate::proxy::protocol::socks5::Socks5Proxy;
-use crate::proxy::protocol::ProxyProtocolType;
+use crate::proxy::protocol::{ProxyProtocolType, Socks5Proxy};
 use crate::proxy::{Proxy, ProxyLeg};
 
 impl Socks5Proxy {

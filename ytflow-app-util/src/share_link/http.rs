@@ -6,8 +6,7 @@ use ytflow::flow::DestinationAddr;
 
 use super::decode::{extract_name_from_frag, map_host_name, DecodeError, DecodeResult, QueryMap};
 use super::encode::{url_encode_host, EncodeError, EncodeResult};
-use crate::proxy::protocol::http::HttpProxy;
-use crate::proxy::protocol::ProxyProtocolType;
+use crate::proxy::protocol::{HttpProxy, ProxyProtocolType};
 use crate::proxy::tls::ProxyTlsLayer;
 use crate::proxy::{Proxy, ProxyLeg};
 

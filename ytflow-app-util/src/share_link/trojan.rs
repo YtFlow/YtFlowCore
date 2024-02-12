@@ -8,8 +8,7 @@ use super::decode::{
     extract_name_from_frag, parse_host_transparent, DecodeError, DecodeResult, QueryMap,
 };
 use super::encode::{url_encode_host, EncodeError, EncodeResult};
-use crate::proxy::protocol::trojan::TrojanProxy;
-use crate::proxy::protocol::ProxyProtocolType;
+use crate::proxy::protocol::{ProxyProtocolType, TrojanProxy};
 use crate::proxy::tls::ProxyTlsLayer;
 use crate::proxy::{Proxy, ProxyLeg};
 

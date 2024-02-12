@@ -4,7 +4,7 @@ mod v2rayn;
 
 use super::decode::{DecodeResult, QueryMap};
 use super::encode::EncodeResult;
-use crate::proxy::protocol::vmess::VMessProxy;
+use crate::proxy::protocol::VMessProxy;
 use crate::proxy::{Proxy, ProxyLeg};
 
 impl VMessProxy {

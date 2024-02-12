@@ -11,7 +11,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ytflow = { path = "../ytflow", features = ["plugins"] }
-ytflow-app-util = { path = "../ytflow-app-util" }
+ytflow-app-util = { path = "../ytflow-app-util", features = ["ffi"] }
 flume = { version = "0.11", default-features = false, features = [] }
 futures = { version = "0.3", default-features = false }
 

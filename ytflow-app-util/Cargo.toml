@@ -5,6 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+ffi = []
+
 [build-dependencies]
 cbindgen = { version = "0.26", default-features = false }
 
@@ -17,5 +20,6 @@ cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["alloc"] }
 serde_bytes = "0.11"
+chrono = { version = "*", features = ["serde"] }
 uuid = { version = "1", features = ["serde"] }
 ytflow = { path = "../ytflow" }

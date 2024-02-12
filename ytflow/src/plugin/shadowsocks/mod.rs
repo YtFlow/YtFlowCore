@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
+
 #[cfg(feature = "plugins")]
 mod crypto;
 #[cfg(feature = "plugins")]
@@ -12,14 +14,42 @@ mod stream;
 pub(crate) mod util;
 
 #[rustfmt::skip]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SupportedCipher {
-    None, Rc4, Rc4Md5,
-    Aes128Cfb, Aes192Cfb, Aes256Cfb,
-    Aes128Ctr, Aes192Ctr, Aes256Ctr,
-    Camellia128Cfb, Camellia192Cfb, Camellia256Cfb,
-    Aes128Gcm, Aes256Gcm,
-    Chacha20Ietf, Chacha20IetfPoly1305, XChacha20IetfPoly1305,
+    #[serde(rename = "none")]
+    None,
+    #[serde(rename = "rc4")]
+    Rc4,
+    #[serde(rename = "rc4-md5")]
+    Rc4Md5,
+    #[serde(rename = "aes-128-cfb")]
+    Aes128Cfb,
+    #[serde(rename = "aes-192-cfb")]
+    Aes192Cfb,
+    #[serde(rename = "aes-256-cfb")]
+    Aes256Cfb,
+    #[serde(rename = "aes-128-ctr")]
+    Aes128Ctr,
+    #[serde(rename = "aes-192-ctr")]
+    Aes192Ctr,
+    #[serde(rename = "aes-256-ctr")]
+    Aes256Ctr,
+    #[serde(rename = "camellia-128-cfb")]
+    Camellia128Cfb,
+    #[serde(rename = "camellia-192-cfb")]
+    Camellia192Cfb,
+    #[serde(rename = "camellia-256-cfb")]
+    Camellia256Cfb,
+    #[serde(rename = "aes-128-gcm")]
+    Aes128Gcm,
+    #[serde(rename = "aes-256-gcm")]
+    Aes256Gcm,
+    #[serde(rename = "chacha20-ietf")]
+    Chacha20Ietf,
+    #[serde(rename = "chacha20-ietf-poly1305")]
+    Chacha20IetfPoly1305,
+    #[serde(rename = "xchacha20-ietf-poly1305")]
+    XChacha20IetfPoly1305,
 }
 
 impl Display for SupportedCipher {

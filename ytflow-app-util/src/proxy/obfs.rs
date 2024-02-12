@@ -1,8 +1,14 @@
-pub mod http_obfs;
-pub mod tls_obfs;
-pub mod ws;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+mod http_obfs;
+mod tls_obfs;
+mod ws;
+
+pub use http_obfs::HttpObfsObfs;
+pub use tls_obfs::TlsObfsObfs;
+pub use ws::WebSocketObfs;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProxyObfsType {
     HttpObfs(http_obfs::HttpObfsObfs),
     TlsObfs(tls_obfs::TlsObfsObfs),

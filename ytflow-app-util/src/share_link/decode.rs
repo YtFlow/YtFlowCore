@@ -7,10 +7,7 @@ use url::{Host, Url};
 
 use ytflow::flow::{DestinationAddr, HostName};
 
-use crate::proxy::protocol::{
-    http::HttpProxy, shadowsocks::ShadowsocksProxy, socks5::Socks5Proxy, trojan::TrojanProxy,
-    vmess::VMessProxy,
-};
+use crate::proxy::protocol::{HttpProxy, ShadowsocksProxy, Socks5Proxy, TrojanProxy, VMessProxy};
 use crate::proxy::Proxy;
 
 pub static BASE64_ENGINE: base64::engine::GeneralPurpose = base64::engine::GeneralPurpose::new(
