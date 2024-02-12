@@ -1,4 +1,4 @@
-name: Run Build and Tests
+name: Run Build for ARM UWP
 
 on:
   push:
