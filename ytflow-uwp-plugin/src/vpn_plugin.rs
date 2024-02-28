@@ -321,12 +321,12 @@ impl VpnPlugIn {
                 let (rx_buf_tx, rx_buf_rx) = bounded::<Vec<u8>>(16);
                 *vpn_items_cell.borrow_mut() = Some((tx_buf_rx, rx_buf_tx, f.clone()));
 
-                Arc::new(super::tun_plugin::VpnTun {
-                    tx: tx_buf_tx,
-                    rx: rx_buf_rx,
-                    dummy_socket: b_transport,
+                Arc::new(super::tun_plugin::VpnTun::new(
                     channel,
-                })
+                    tx_buf_tx,
+                    rx_buf_rx,
+                    b_transport,
+                ))
             }));
         });
 
