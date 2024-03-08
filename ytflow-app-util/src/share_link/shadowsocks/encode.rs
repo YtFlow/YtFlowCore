@@ -67,7 +67,7 @@ mod tests {
     use ytflow::flow::{DestinationAddr, HostName};
     use ytflow::plugin::shadowsocks::SupportedCipher;
 
-    use crate::proxy::obfs::{HttpObfsObfs, TlsObfsObfs, WebSocketObfs};
+    use crate::proxy::obfs::{HttpObfsObfs, TlsObfsObfs};
     use crate::proxy::protocol::ProxyProtocolType;
 
     use super::*;
@@ -240,10 +240,7 @@ mod tests {
                     host: HostName::DomainName("a.co".into()),
                     port: 1080,
                 },
-                obfs: Some(ProxyObfsType::WebSocket(WebSocketObfs {
-                    host: None,
-                    path: "/".into(),
-                })),
+                obfs: Some(ProxyObfsType::WebSocket(Default::default())),
                 tls: None,
             }],
             udp_supported: true,

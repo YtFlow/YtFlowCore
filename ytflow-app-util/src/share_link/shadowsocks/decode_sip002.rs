@@ -13,6 +13,57 @@ use crate::proxy::ProxyLeg;
 use crate::share_link::decode::parse_host_transparent;
 use crate::share_link::decode::{DecodeError, DecodeResult, QueryMap, BASE64_ENGINE};
 
+pub fn decode_shadowsocks_plugin_opts(
+    plugin: &str,
+    opts: &str,
+    leg: &mut ProxyLeg,
+) -> DecodeResult<()> {
+    match plugin {
+        "" => return Ok(()),
+        "obfs-local" => {}
+        _ => return Err(DecodeError::UnknownValue("plugin")),
+    };
+    let mut obfs_params = opts
+        .split(';')
+        .map(|kv| {
+            let mut split = kv.splitn(2, '=');
+            let k = split.next().expect("first split must exist");
+            let v = split.next().unwrap_or_default();
+            (k, v)
+        })
+        .collect::<BTreeMap<&str, &str>>();
+
+    let host = obfs_params
+        .remove("obfs-host")
+        .filter(|s| !s.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| leg.dest.host.to_string());
+    let r#type = obfs_params
+        .remove("obfs")
+        .filter(|s| !s.is_empty())
+        .ok_or(DecodeError::MissingInfo("obfs"))?;
+
+    let obfs = match r#type {
+        "http" => {
+            let path = obfs_params
+                .remove("obfs-uri")
+                .filter(|s| !s.is_empty())
+                .unwrap_or("/")
+                .into();
+            ProxyObfsType::HttpObfs(HttpObfsObfs { host, path })
+        }
+        "tls" => ProxyObfsType::TlsObfs(TlsObfsObfs { host }),
+        _ => return Err(DecodeError::UnknownValue("obfs")),
+    };
+
+    if let Some((first_extra_key, _)) = obfs_params.pop_first() {
+        return Err(DecodeError::ExtraParameters(first_extra_key.into()));
+    }
+
+    leg.obfs = Some(obfs);
+    Ok(())
+}
+
 pub fn decode_sip002(url: &Url, queries: &mut QueryMap) -> DecodeResult<ProxyLeg> {
     let b64 = {
         let b64str = percent_decode_str(url.username())
@@ -33,59 +84,21 @@ pub fn decode_sip002(url: &Url, queries: &mut QueryMap) -> DecodeResult<ProxyLeg
     let host = parse_host_transparent(url)?;
     let port = url.port().ok_or(DecodeError::InvalidUrl)?;
 
-    let plugin_param = queries.remove("plugin").unwrap_or_default();
-    let mut obfs_split = plugin_param.split(";");
-    let obfs = match obfs_split.next().expect("first split must exist") {
-        "obfs-local" => {
-            let mut obfs_params = obfs_split
-                .map(|kv| {
-                    let mut split = kv.splitn(2, '=');
-                    let k = split.next().expect("first split must exist");
-                    let v = split.next().unwrap_or_default();
-                    (k, v)
-                })
-                .collect::<BTreeMap<&str, &str>>();
-
-            let host = obfs_params
-                .remove("obfs-host")
-                .filter(|s| !s.is_empty())
-                .unwrap_or(url.host_str().expect("host has been validated"))
-                .into();
-            let r#type = obfs_params
-                .remove("obfs")
-                .filter(|s| !s.is_empty())
-                .ok_or(DecodeError::MissingInfo("obfs"))?;
-            let obfs = match r#type {
-                "http" => {
-                    let path = obfs_params
-                        .remove("obfs-uri")
-                        .filter(|s| !s.is_empty())
-                        .unwrap_or("/")
-                        .into();
-                    ProxyObfsType::HttpObfs(HttpObfsObfs { host, path })
-                }
-                "tls" => ProxyObfsType::TlsObfs(TlsObfsObfs { host }),
-                _ => return Err(DecodeError::UnknownValue("obfs")),
-            };
-
-            if let Some((first_extra_key, _)) = obfs_params.pop_first() {
-                return Err(DecodeError::ExtraParameters(first_extra_key.into()));
-            }
-            Some(obfs)
-        }
-        "" => None,
-        _ => return Err(DecodeError::UnknownValue("plugin")),
-    };
-
-    Ok(ProxyLeg {
+    let mut leg = ProxyLeg {
         protocol: ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
             cipher,
             password: ByteBuf::from(password),
         }),
         dest: DestinationAddr { host, port },
-        obfs,
+        obfs: None,
         tls: None,
-    })
+    };
+
+    let plugin_param = queries.remove("plugin").unwrap_or_default();
+    let (obfs_plugin, obfs_opts) = plugin_param.split_once(";").unwrap_or((&plugin_param, ""));
+    decode_shadowsocks_plugin_opts(obfs_plugin, obfs_opts, &mut leg)?;
+
+    Ok(leg)
 }
 
 #[cfg(test)]

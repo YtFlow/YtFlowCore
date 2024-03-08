@@ -110,6 +110,7 @@ pub(crate) fn decode_v2rayn(url: &Url, queries: &mut QueryMap) -> DecodeResult<P
                 path: obfs_path
                     .filter(|s| !s.is_empty())
                     .unwrap_or_else(|| "/".into()),
+                ..Default::default()
             }))
         }
         _ => return Err(DecodeError::UnknownValue("obfs_type")),
@@ -392,7 +393,8 @@ mod tests {
             ws,
             WebSocketObfs {
                 host: Some("b.co".into()),
-                path: "/path".into()
+                path: "/path".into(),
+                ..Default::default()
             }
         );
     }
@@ -416,13 +418,7 @@ mod tests {
             Some(ProxyObfsType::WebSocket(ws)) => ws,
             p => panic!("unexpected obfs {:?}", p),
         };
-        assert_eq!(
-            ws,
-            WebSocketObfs {
-                host: None,
-                path: "/".into()
-            }
-        );
+        assert_eq!(ws, Default::default());
     }
     #[test]
     fn test_decode_v2rayn_tls_alpn() {
@@ -555,6 +551,7 @@ mod tests {
                 obfs: Some(ProxyObfsType::WebSocket(WebSocketObfs {
                     host: Some("b.co".into()),
                     path: "/path".into(),
+                    ..Default::default()
                 })),
                 tls: Some(ProxyTlsLayer {
                     alpn: vec!["h2".into(), "http/0.0".into()],
@@ -635,6 +632,7 @@ mod tests {
                 obfs: Some(ProxyObfsType::WebSocket(WebSocketObfs {
                     host: None,
                     path: "/path".into(),
+                    ..Default::default()
                 })),
                 tls: None,
             }],

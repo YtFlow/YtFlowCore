@@ -7,6 +7,7 @@ mod encode;
 use super::decode::{extract_name_from_frag, DecodeResult, QueryMap};
 use crate::proxy::protocol::ShadowsocksProxy;
 use crate::proxy::Proxy;
+pub(crate) use decode_sip002::decode_shadowsocks_plugin_opts;
 
 impl ShadowsocksProxy {
     pub(super) fn decode_share_link(url: &Url, queries: &mut QueryMap) -> DecodeResult<Proxy> {

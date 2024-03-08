@@ -10,7 +10,7 @@ pub struct SubscriptionUserInfo {
 }
 
 impl SubscriptionUserInfo {
-    pub fn decode_header(header: &str) -> SubscriptionUserInfo {
+    pub fn decode_header(header: &str) -> Self {
         let mut ret = Self::default();
         for kv in header.split(';') {
             let mut kv = kv.split('=');

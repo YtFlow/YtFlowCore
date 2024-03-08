@@ -1,7 +1,7 @@
 mod decode;
 mod encode;
 mod http;
-mod shadowsocks;
+pub mod shadowsocks;
 mod socks5;
 mod trojan;
 mod vmess;
