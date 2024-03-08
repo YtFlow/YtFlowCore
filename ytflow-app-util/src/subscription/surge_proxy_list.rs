@@ -59,14 +59,12 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
     );
     kv_args.extend(args.filter_map(|arg| {
         let (k, v) = arg.split_once('=')?;
-        Some((k.trim(), v.trim()))
+        Some((k.trim(), Some(v.trim()).filter(|s| !s.is_empty())?))
     }));
     kv_args.remove("group");
     kv_args.remove("no-error-alert");
 
-    let sni = kv_args
-        .remove("sni")
-        .filter(|&sni| sni != "off" || sni == "");
+    let sni = kv_args.remove("sni").filter(|&sni| sni != "off");
     let tls = if kv_args.remove("tls") == Some("true")
         || ["https", "trojan", "socks5-tls"].contains(&protocol)
     {
@@ -81,18 +79,9 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
 
     let ws = kv_args.remove("ws");
     let obfs = kv_args.remove("obfs");
-    let obfs_host = kv_args
-        .remove("obfs-host")
-        .filter(|s| !s.is_empty())
-        .unwrap_or(server);
-    let obfs_uri = kv_args
-        .remove("obfs-uri")
-        .filter(|s| !s.is_empty())
-        .unwrap_or("/");
-    let ws_path = kv_args
-        .remove("ws-path")
-        .filter(|s| !s.is_empty())
-        .unwrap_or("/");
+    let obfs_host = kv_args.remove("obfs-host").unwrap_or(server);
+    let obfs_uri = kv_args.remove("obfs-uri").unwrap_or("/");
+    let ws_path = kv_args.remove("ws-path").unwrap_or("/");
     let ws_headers = kv_args
         .remove("ws-headers")
         .unwrap_or_default()
@@ -119,7 +108,7 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
     };
 
     let mut udp_supported = false;
-    let encrypt_method = kv_args.remove("encrypt-method").unwrap_or_default();
+    let encrypt_method = kv_args.remove("encrypt-method");
     let protocol_username = kv_args.remove("username").unwrap_or_default();
     let protocol_password = ByteBuf::from(kv_args.remove("password").unwrap_or_default());
     let udp_relay = kv_args.remove("udp-relay").unwrap_or_default();
@@ -133,7 +122,7 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
         "ss" => {
             udp_supported = udp_relay == "true";
             ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
-                cipher: parse_supported_cipher(encrypt_method.as_bytes())?,
+                cipher: parse_supported_cipher(encrypt_method?.as_bytes())?,
                 password: protocol_password,
             })
         }
@@ -142,8 +131,7 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
         }),
         "vmess" => ProxyProtocolType::VMess(VMessProxy {
             user_id: protocol_username.parse().ok()?,
-            security: Some(encrypt_method)
-                .filter(|s| !s.is_empty())
+            security: encrypt_method
                 .map(|s| parse_supported_security(s.as_bytes()))
                 .unwrap_or(Some(SupportedSecurity::Auto))?,
             alter_id: if vmess_aead == "true" { 0 } else { 1 },
@@ -151,7 +139,7 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
         _ => return None,
     };
 
-    if let Some(underlying_proxy) = kv_args.remove("underlying-proxy").filter(|s| !s.is_empty()) {
+    if let Some(underlying_proxy) = kv_args.remove("underlying-proxy") {
         parents.insert(name.into(), underlying_proxy.into());
     }
 
