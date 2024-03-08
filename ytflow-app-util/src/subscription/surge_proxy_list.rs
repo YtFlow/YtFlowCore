@@ -19,7 +19,7 @@ impl SubscriptionFormat {
     pub const SURGE_PROXY_LIST: SubscriptionFormat = SubscriptionFormat("surge-proxy-list");
 }
 
-fn decode_surge_proxy_line(line: &str) -> Option<Proxy> {
+fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -> Option<Proxy> {
     let line = line
         .trim()
         .split('#')
@@ -33,6 +33,10 @@ fn decode_surge_proxy_line(line: &str) -> Option<Proxy> {
     let protocol = args.next()?;
     let server = args.next()?;
     let port: u16 = args.next()?.parse().ok()?;
+    let dest = DestinationAddr {
+        host: HostName::from_domain_name(server.into()).ok()?,
+        port,
+    };
     let (mut username, mut password) = ("", "");
     let mut kv_args = BTreeMap::new();
     if let Some(maybe_username) = args.next() {
@@ -147,6 +151,10 @@ fn decode_surge_proxy_line(line: &str) -> Option<Proxy> {
         _ => return None,
     };
 
+    if let Some(underlying_proxy) = kv_args.remove("underlying-proxy").filter(|s| !s.is_empty()) {
+        parents.insert(name.into(), underlying_proxy.into());
+    }
+
     if !kv_args.is_empty() {
         return None;
     }
@@ -155,10 +163,7 @@ fn decode_surge_proxy_line(line: &str) -> Option<Proxy> {
         name: name.into(),
         legs: vec![ProxyLeg {
             protocol,
-            dest: DestinationAddr {
-                host: HostName::from_domain_name(server.into()).ok()?,
-                port,
-            },
+            dest,
             obfs,
             tls,
         }],
@@ -167,10 +172,36 @@ fn decode_surge_proxy_line(line: &str) -> Option<Proxy> {
 }
 
 pub fn decode_surge_proxy_list(data: &[u8]) -> DecodeResult<Subscription> {
-    let proxies = String::from_utf8_lossy(data)
+    let mut parents = BTreeMap::new();
+    let mut proxies = String::from_utf8_lossy(data)
         .lines()
-        .filter_map(decode_surge_proxy_line)
-        .collect();
+        .filter_map(|l| decode_surge_proxy_line(l, &mut parents))
+        .collect::<Vec<_>>();
+    while let Some((leaf, mut node)) = parents.pop_first() {
+        let mut chain = vec![leaf];
+        while let Some(parent) = parents.remove(&node) {
+            chain.push(node);
+            node = parent;
+        }
+        let mut parent = node;
+        while let Some(child_name) = chain.pop() {
+            let Some(mut parent_legs) = proxies
+                .iter()
+                .find(|p| p.name == parent)
+                .map(|p| p.legs.clone())
+            else {
+                proxies.retain(|p| p.name != child_name);
+                continue;
+            };
+            let child = proxies
+                .iter_mut()
+                .find(|p| p.name == child_name)
+                .expect("child must have been decoded");
+            parent_legs.extend(child.legs.drain(..));
+            child.legs = parent_legs;
+            parent = child_name;
+        }
+    }
     Ok(Subscription { proxies })
 }
 
@@ -369,5 +400,87 @@ mod tests {
             let sub = decode_surge_proxy_list(data.as_bytes()).unwrap();
             assert!(sub.proxies.is_empty(), "{}", data);
         }
+    }
+
+    #[test]
+    fn test_decode_surge_proxy_list_chain() {
+        let data = b"
+            aa = http, a.com, 114, underlying-proxy=bb
+            bb = http, b.com, 114, underlying-proxy=cc
+            cc = http, c.com, 114
+        ";
+        let sub = decode_surge_proxy_list(data).unwrap();
+        let protocol = ProxyProtocolType::Http(HttpProxy::default());
+        let aa_dest = DestinationAddr {
+            host: HostName::from_domain_name("a.com".into()).unwrap(),
+            port: 114,
+        };
+        let bb_dest = DestinationAddr {
+            host: HostName::from_domain_name("b.com".into()).unwrap(),
+            port: 114,
+        };
+        let cc_dest = DestinationAddr {
+            host: HostName::from_domain_name("c.com".into()).unwrap(),
+            port: 114,
+        };
+        assert_eq!(
+            sub,
+            Subscription {
+                proxies: vec![
+                    Proxy {
+                        name: "aa".into(),
+                        legs: vec![
+                            ProxyLeg {
+                                protocol: protocol.clone(),
+                                dest: cc_dest.clone(),
+                                obfs: None,
+                                tls: None,
+                            },
+                            ProxyLeg {
+                                protocol: protocol.clone(),
+                                dest: bb_dest.clone(),
+                                obfs: None,
+                                tls: None,
+                            },
+                            ProxyLeg {
+                                protocol: protocol.clone(),
+                                dest: aa_dest,
+                                obfs: None,
+                                tls: None,
+                            }
+                        ],
+                        udp_supported: false,
+                    },
+                    Proxy {
+                        name: "bb".into(),
+                        legs: vec![
+                            ProxyLeg {
+                                protocol: protocol.clone(),
+                                dest: cc_dest.clone(),
+                                obfs: None,
+                                tls: None,
+                            },
+                            ProxyLeg {
+                                protocol: protocol.clone(),
+                                dest: bb_dest,
+                                obfs: None,
+                                tls: None,
+                            }
+                        ],
+                        udp_supported: false,
+                    },
+                    Proxy {
+                        name: "cc".into(),
+                        legs: vec![ProxyLeg {
+                            protocol,
+                            dest: cc_dest,
+                            obfs: None,
+                            tls: None,
+                        }],
+                        udp_supported: false,
+                    }
+                ]
+            }
+        );
     }
 }
