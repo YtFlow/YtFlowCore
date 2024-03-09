@@ -173,20 +173,19 @@ pub fn decode_surge_proxy_list(data: &[u8]) -> DecodeResult<Subscription> {
         }
         let mut parent = node;
         while let Some(child_name) = chain.pop() {
-            let Some(mut parent_legs) = proxies
-                .iter()
-                .find(|p| p.name == parent)
-                .map(|p| p.legs.clone())
-            else {
+            let Some(parent_proxy) = proxies.iter().find(|p| p.name == parent) else {
                 proxies.retain(|p| p.name != child_name);
                 continue;
             };
+            let udp_supported = parent_proxy.udp_supported;
+            let mut parent_legs = parent_proxy.legs.clone();
             let child = proxies
                 .iter_mut()
                 .find(|p| p.name == child_name)
                 .expect("child must have been decoded");
             parent_legs.extend(child.legs.drain(..));
             child.legs = parent_legs;
+            child.udp_supported &= udp_supported;
             parent = child_name;
         }
     }
@@ -396,6 +395,8 @@ mod tests {
             aa = http, a.com, 114, underlying-proxy=bb
             bb = http, b.com, 114, underlying-proxy=cc
             cc = http, c.com, 114
+            dd = http, d.com, 114, underlying-proxy=ee
+            ee = http, d.com, 114, underlying-proxy=??
         ";
         let sub = decode_surge_proxy_list(data).unwrap();
         let protocol = ProxyProtocolType::Http(HttpProxy::default());
@@ -470,5 +471,24 @@ mod tests {
                 ]
             }
         );
+    }
+
+    #[test]
+    fn test_decode_surge_proxy_list_chain_udp() {
+        let data = b"
+            aa = ss, a.com, 114, underlying-proxy=bb
+            bb = ss, b.com, 114, underlying-proxy=cc
+            cc = ss, c.com, 114
+            dd = ss, d.com, 114, underlying-proxy=ee
+            ee = http, d.com, 114, underlying-proxy=ff
+            ff = ss, d.com, 114, underlying-proxy=gg
+            gg = ss, d.com, 114, underlying-proxy=hh
+        ";
+        let sub = decode_surge_proxy_list(data).unwrap();
+        let udp_support = sub.proxies.into_iter().map(|p| (p.name, p.udp_supported));
+        let expected_udp_support = [true, true, true, false, false, true, true];
+        for ((name, udp_support), expected) in udp_support.zip(expected_udp_support) {
+            assert_eq!(udp_support, expected, "{}", name);
+        }
     }
 }
