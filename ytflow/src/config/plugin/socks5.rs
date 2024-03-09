@@ -85,11 +85,10 @@ impl<'de> Socks5ClientFactory<'de> {
                     descriptor: name.to_string() + ".tcp",
                     r#type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                 },
-                // TODO:
-                // Descriptor {
-                //     descriptor: name.to_string() + ".udp",
-                //     r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
-                // },
+                Descriptor {
+                    descriptor: name.to_string() + ".udp",
+                    r#type: AccessPointType::DATAGRAM_SESSION_FACTORY,
+                },
             ],
             factory: config,
             resources: vec![],
@@ -135,6 +134,11 @@ impl<'de> Factory for Socks5ClientFactory<'de> {
         let factory = Arc::new_cyclic(|weak| {
             set.stream_outbounds
                 .insert(plugin_name.clone() + ".tcp", weak.clone() as _);
+            set.datagram_outbounds.insert(
+                plugin_name.clone() + ".udp",
+                // TODO: socks5 udp
+                Arc::downgrade(&Arc::new(Null)) as _,
+            );
             let tcp_next =
                 match set.get_or_create_stream_outbound(plugin_name.clone(), self.tcp_next) {
                     Ok(t) => t,

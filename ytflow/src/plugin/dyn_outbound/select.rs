@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use itertools::Itertools;
 use thiserror::Error;
@@ -8,6 +8,7 @@ use super::config::v1;
 use super::PLUGIN_CACHE_KEY_LAST_SELECT;
 use crate::config::PluginSet;
 use crate::flow::{DatagramSessionFactory, StreamOutboundFactory};
+use crate::plugin::null::Null;
 
 pub(super) struct Selection {
     pub(super) idx: usize,
@@ -31,6 +32,8 @@ pub enum SelectError {
     ConfigParseError(Vec<crate::config::ConfigError>),
     #[error("error loading plugins: {0:?}")]
     PluginLoadError(Vec<crate::config::LoadError>),
+    #[error("bad plugin name")]
+    BadPluginName,
     #[error("tcp/udp entry point not found: {0}")]
     EntrypointNotFound(String),
 }
@@ -78,6 +81,12 @@ impl super::DynOutbound {
             tcp_entry,
             udp_entry,
         } = cbor4ii::serde::from_slice(&proxy).map_err(|_| SelectError::ProxyParseError)?;
+        if plugins
+            .iter()
+            .any(|p| p.name.is_empty() || v1::BUILTIN_PLUGIN_NAMES.contains(&&*p.name))
+        {
+            return Err(SelectError::BadPluginName);
+        }
         let plugins = plugins.into_iter().map(|p| p.into()).collect_vec();
 
         let mut preset_stream_outbounds = BTreeMap::new();
@@ -88,6 +97,9 @@ impl super::DynOutbound {
         );
         let udp_next = self.udp_next.upgrade().ok_or(SelectError::NoOutbound)?;
         preset_datagram_outbounds.insert("$out.udp", udp_next.clone());
+        static NULL: LazyLock<Arc<Null>> = LazyLock::new(|| Arc::new(Null));
+        preset_stream_outbounds.insert("$null.tcp", NULL.clone());
+        preset_datagram_outbounds.insert("$null.udp", NULL.clone());
         let (loader, errs) = crate::config::loader::proxy::ProxyLoader::parse_with_preset_outbounds(
             preset_stream_outbounds,
             preset_datagram_outbounds,

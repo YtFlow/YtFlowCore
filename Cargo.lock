@@ -3388,6 +3388,7 @@ dependencies = [
  "cbindgen",
  "cbor4ii",
  "chrono",
+ "ciborium",
  "percent-encoding",
  "serde",
  "serde_bytes",

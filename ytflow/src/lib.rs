@@ -5,6 +5,7 @@
 #![feature(ip)]
 #![feature(const_option)]
 #![feature(result_flattening)]
+#![feature(lazy_cell)]
 
 pub mod config;
 #[cfg(feature = "plugins")]

@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 
+pub const BUILTIN_PLUGIN_OUT: &str = "$out";
+pub const BUILTIN_PLUGIN_NULL: &str = "$null";
+pub const BUILTIN_PLUGIN_NAMES: [&str; 2] = [BUILTIN_PLUGIN_OUT, BUILTIN_PLUGIN_NULL];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Plugin {
     pub name: String,

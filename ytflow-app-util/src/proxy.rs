@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use ytflow::flow::DestinationAddr;
 
+pub mod data;
 pub mod obfs;
 pub mod protocol;
 pub mod tls;

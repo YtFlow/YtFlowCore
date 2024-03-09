@@ -1,6 +1,5 @@
 #[cfg(feature = "plugins")]
 pub mod dns_server;
-#[cfg(feature = "plugins")]
 pub mod dyn_outbound;
 #[cfg(feature = "plugins")]
 pub mod fakeip;
