@@ -246,7 +246,7 @@ mod tests {
         for (data, expected_tls) in cases {
             let mut sub = decode_surge_proxy_list(data.as_bytes()).unwrap();
             let proxy = sub.proxies.pop().unwrap().legs.pop().unwrap().tls.unwrap();
-            assert_eq!(proxy, expected_tls, "{}", data);
+            assert_eq!(proxy, expected_tls, "{data}");
         }
     }
 
@@ -297,7 +297,7 @@ mod tests {
         for (data, expected_obfs) in cases {
             let mut sub = decode_surge_proxy_list(data.as_bytes()).unwrap();
             let proxy = sub.proxies.pop().unwrap().legs.pop().unwrap().obfs.unwrap();
-            assert_eq!(proxy, expected_obfs, "{}", data);
+            assert_eq!(proxy, expected_obfs, "{data}");
         }
     }
 
@@ -365,7 +365,7 @@ mod tests {
         for (data, expected_protocol) in cases {
             let mut sub = decode_surge_proxy_list(data.as_bytes()).unwrap();
             let proxy = sub.proxies.pop().expect(data).legs.pop().unwrap().protocol;
-            assert_eq!(proxy, expected_protocol, "{}", data);
+            assert_eq!(proxy, expected_protocol, "{data}");
         }
     }
 
@@ -383,7 +383,7 @@ mod tests {
         ];
         for data in cases {
             let sub = decode_surge_proxy_list(data.as_bytes()).unwrap();
-            assert!(sub.proxies.is_empty(), "{}", data);
+            assert!(sub.proxies.is_empty(), "{data}");
         }
     }
 

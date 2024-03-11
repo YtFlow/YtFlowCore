@@ -70,7 +70,7 @@ impl<
                     if let Err(e) = resolver.insert_demand(
                         name,
                         Demand {
-                            initiator: "entry",
+                            initiator: "$entry",
                             ap_type: AccessPointType::STREAM_OUTBOUND_FACTORY,
                         },
                     ) {
@@ -81,7 +81,7 @@ impl<
                     if let Err(e) = resolver.insert_demand(
                         name,
                         Demand {
-                            initiator: "entry",
+                            initiator: "$entry",
                             ap_type: AccessPointType::DATAGRAM_SESSION_FACTORY,
                         },
                     ) {
