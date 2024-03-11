@@ -32,3 +32,14 @@ pub fn analyze_data_proxy(name: String, proxy: &[u8], version: u16) -> AnalyzeRe
     }
     super::v1::analyzer::analyze(name, proxy)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_analyze_data_proxy_invalid_version() {
+        let result = analyze_data_proxy("test".into(), &[], 1);
+        assert_eq!(result, Err(AnalyzeError::UnknownVersion));
+    }
+}
