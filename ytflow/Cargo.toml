@@ -138,9 +138,7 @@ refinery-core = "0.8"
 cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
 maxminddb = { version = "0.23", optional = true }
 
-[target.'cfg(windows)'.dependencies]
-# To use patched mio v0.7.
-tokio = { version = "=1.16.1", features = [
+tokio = { version = "1", features = [
     "rt",
     "rt-multi-thread",
     "sync",
@@ -150,6 +148,8 @@ tokio = { version = "=1.16.1", features = [
     "time",
     "macros",
 ] }
+
+[target.'cfg(windows)'.dependencies]
 rusqlite = { version = "0.28", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.52", features = [
     "Foundation",
@@ -164,17 +164,6 @@ windows = { version = "0.52", features = [
 ipconfig = { version = "=0.3.1", default-features = false, optional = true }
 
 [target.'cfg(not(windows))'.dependencies]
-tokio = { version = "1", features = [
-    "rt",
-    "rt-multi-thread",
-    "sync",
-    "fs",
-    "net",
-    "io-util",
-    "time",
-    "macros",
-    "parking_lot",
-] }
 rusqlite = { version = "0.28", features = ["chrono"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
