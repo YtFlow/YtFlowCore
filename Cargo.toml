@@ -1,16 +1,6 @@
 [workspace]
-members = [
-    "ytflow",
-    "ytflow-app-util",
-    "ytflow-bin",
-    "ytflow-bin-shared",
-    "ytflow-uwp-plugin",
-]
+members = ["ytflow", "ytflow-app-util", "ytflow-bin", "ytflow-bin-shared"]
 resolver = "2"
-
-[patch.crates-io]
-mio = { git = "https://github.com/YtFlow/mio-noafd", branch = "noafd-v0.7-nobind" }
-libsqlite3-sys = { git = "https://github.com/YtFlow/rusqlite" }
 
 [profile.release]
 debug = true

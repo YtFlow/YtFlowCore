@@ -18,7 +18,7 @@ If you are looking for the UWP app powered by YtFlowCore, please head over to [Y
 
 ## Usage
 
-Use `ytflow-edit` to generate a new database file `conf.db` and a profile `my_profile`, and edit plugins accordingly. For newcomers, you may be interested in the `profile-shadowsocks` and `profile-redir` plugins. Read the [YtFlowCore Book](https://ytflow.github.io/ytflow-book/) to learn more about configuration.
+Use `ytflow-edit` to generate a new database file `conf.db` and a profile `my_profile`, and edit plugins accordingly. For newcomers, you may be interested in the `default-ss` and `default-redir` plugins. Read the [YtFlowCore Book](https://ytflow.github.io/ytflow-book/) to learn more about configuration.
 
 When the profile is ready, execute `ytflow-core --db-file conf.db my_profile` to launch YtFlowCore.
 
@@ -27,9 +27,9 @@ When the profile is ready, execute `ytflow-core --db-file conf.db my_profile` to
 | Package | Description | Dependency |
 |---------|-------------|------------|
 | ytflow  | Includes all components and plugins to run a YtFlowCore instance. | - |
-| ytflow-bin | Produces the core executable `ytflow-core` and a TUI editor `ytflow-edit`. | ytflow |
-| ytflow-ffi | Exports FFI functions into a static library and generates a C header file. | ytflow |
-| ytflow-uwp-plugin | UWP VPN related core wrapper. Provides a UWP VPN plugin implementation. | ytflow |
+| ytflow-bin | Shell executables for the core `ytflow-core` and a TUI editor `ytflow-edit` that actually call into entrypoints exposed by `ytflow-bin-shared`. | ytflow-bin-shared |
+| ytflow-bin-shared | Contains the actual code for the binaries. Produces a single cdylib that reuses common dependencies to reduce final artifact size. | ytflow, ytflow-app-util |
+| ytflow-app-util | Provides utilities for app frontends to handle share links, subscriptions etc. Also exports FFI functions and generates a C header file. | ytflow |
 
 ## Build
 
