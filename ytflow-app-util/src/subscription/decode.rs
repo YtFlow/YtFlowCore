@@ -52,6 +52,7 @@ pub fn decode_subscription_with_format(
     match format {
         SubscriptionFormat::SIP008 => decode_sip008(data),
         SubscriptionFormat::SURGE_PROXY_LIST => decode_surge_proxy_list(data),
+        SubscriptionFormat::B64_LINKS => decode_b64_links(data),
         _ => return Err(DecodeError::UnknownFormat),
     }
     .and_then(Subscription::ensure_proxies)
@@ -103,7 +104,7 @@ mod tests {
     fn test_decode_subscription_with_format() {
         for (data, format) in SUBSCRIPTION_LIST {
             let sub = decode_subscription_with_format(data.as_bytes(), *format).unwrap();
-            assert_eq!(sub.proxies.len(), 1);
+            assert!(sub.proxies.len() >= 1);
         }
     }
 
