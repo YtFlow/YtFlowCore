@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use super::b64_links::decode_b64_links;
 use super::sip008::decode_sip008;
 use super::surge_proxy_list::decode_surge_proxy_list;
 use super::{Subscription, SubscriptionFormat};
@@ -37,6 +38,11 @@ pub fn decode_subscription(data: &[u8]) -> DecodeResult<(Subscription, Subscript
                 .and_then(Subscription::ensure_proxies)
                 .map(|sub| (sub, SubscriptionFormat::SURGE_PROXY_LIST))
         })
+        .or_else(|_| {
+            decode_b64_links(data)
+                .and_then(Subscription::ensure_proxies)
+                .map(|sub| (sub, SubscriptionFormat::B64_LINKS))
+        })
 }
 
 pub fn decode_subscription_with_format(
@@ -68,12 +74,14 @@ mod tests {
         ]
     }"#;
     const SUBSCRIPTION_SURGE_PROXY_LIST: &str = r#"aa = http, a.com, 114"#;
+    const SUBSCRIPTION_B64_LINKS: &str = "c3M6Ly9ZV1Z6TFRFeU9DMW5ZMjA2WVdKalpBQGFhLmNvbTo4Mzg4Lz9ncm91cD1xdXEjYWEKc3M6Ly9ZV1Z6TFRFeU9DMW5ZMjA2WVdKalpBQGFiLmNvbTo4Mzg4Lz9ncm91cD1xdXEjYWI=\nc3M6Ly9ZV1Z6TFRFeU9DMW5ZMjA2WVdKalpBQGFjLmNvbTo4Mzg4Lz9ncm91cD1xdXEjYWM=";
     const SUBSCRIPTION_LIST: &[(&str, SubscriptionFormat)] = &[
         (SUBSCRIPTION_SIP008, SubscriptionFormat::SIP008),
         (
             SUBSCRIPTION_SURGE_PROXY_LIST,
             SubscriptionFormat::SURGE_PROXY_LIST,
         ),
+        (SUBSCRIPTION_B64_LINKS, SubscriptionFormat::B64_LINKS),
     ];
 
     #[test]
@@ -81,7 +89,7 @@ mod tests {
         for (data, format) in SUBSCRIPTION_LIST {
             let (sub, fmt) = decode_subscription(data.as_bytes()).unwrap();
             assert_eq!(fmt, *format);
-            assert_eq!(sub.proxies.len(), 1);
+            assert!(sub.proxies.len() >= 1);
         }
     }
 

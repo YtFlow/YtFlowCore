@@ -98,6 +98,7 @@ pub fn decode_sip002(url: &Url, queries: &mut QueryMap) -> DecodeResult<ProxyLeg
     let (obfs_plugin, obfs_opts) = plugin_param.split_once(";").unwrap_or((&plugin_param, ""));
     decode_shadowsocks_plugin_opts(obfs_plugin, obfs_opts, &mut leg)?;
 
+    queries.remove("group");
     Ok(leg)
 }
 

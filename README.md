@@ -14,6 +14,8 @@ If you are looking for the UWP app powered by YtFlowCore, please head over to [Y
 - Flexible outbound transports: simple-obfs, WebSocket, TLS etc.
 - DNS resolvers at your option: libc resolver, classic DNS over UDP, DNS over HTTPS.
 - Rule-based split routing modules: GeoIP, Surge domain set, Quantumult X filter.
+- Share link encoders/decoders: Shadowsocks, SIP002, Trojan, SOCKS5, HTTP and V2rayN
+- Subscription parsers: Base64 encoded share links, SIP008, Surge proxy list
 - Runs on Linux, macOS and Universal Windows Platform.
 
 ## Usage

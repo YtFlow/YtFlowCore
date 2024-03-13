@@ -1,3 +1,4 @@
+mod b64_links;
 mod decode;
 mod sip008;
 mod surge_proxy_list;
