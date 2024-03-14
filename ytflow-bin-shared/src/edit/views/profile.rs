@@ -7,7 +7,7 @@ use tui::{
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
 
-use super::{utils::open_editor_for_cbor_bytes, InputRequest, NavChoice, BG, FG};
+use super::{utils::open_editor_for_cbor, InputRequest, NavChoice, BG, FG};
 use crate::edit;
 use ytflow::data::{Plugin, Profile, ProfileId};
 
@@ -146,7 +146,10 @@ pub fn run_profile_view(ctx: &mut edit::AppContext, id: ProfileId) -> Result<Nav
                 }
                 (KeyCode::Enter, Some(idx)) => {
                     let plugin = plugins[idx].clone();
-                    if let Some(new_param) = open_editor_for_cbor_bytes(ctx, &plugin.param)? {
+                    if let Some(new_param) = open_editor_for_cbor(ctx, &plugin.param, |val| {
+                        cbor4ii::serde::to_vec(vec![], &val)
+                            .context("Failed to serialize Plugin param")
+                    })? {
                         Plugin::update(
                             plugin.id.0,
                             profile.id,

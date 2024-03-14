@@ -41,8 +41,8 @@ struct Sip008Server<'a> {
     // https://shadowsocks.org/doc/sip008.html
 }
 
-impl SubscriptionFormat {
-    pub const SIP008: SubscriptionFormat = SubscriptionFormat("sip008");
+impl SubscriptionFormat<'static> {
+    pub const SIP008: Self = SubscriptionFormat(b"sip008\0");
 }
 
 pub fn decode_sip008(data: &[u8]) -> DecodeResult<Subscription> {

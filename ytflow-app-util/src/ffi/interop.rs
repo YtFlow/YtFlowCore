@@ -19,7 +19,15 @@ pub unsafe extern "C" fn ytflow_buffer_free(ptr: *mut c_void, metadata: usize) -
 
 pub(super) fn serialize_buffer<T: Serialize>(data: &T) -> (*mut c_void, usize) {
     let buf = cbor4ii::serde::to_vec(vec![], data).expect("Could not serialize buffer into CBOR");
-    let ptr = Box::into_raw(buf.into_boxed_slice());
+    serialize_byte_buffer(buf.into_boxed_slice())
+}
+
+pub(super) fn serialize_byte_buffer(data: impl Into<Box<[u8]>>) -> (*mut c_void, usize) {
+    let ptr = Box::into_raw(data.into());
     let (ptr, metadata) = ptr.to_raw_parts();
     (ptr as _, metadata)
+}
+
+pub(super) fn serialize_string_buffer(data: impl Into<String>) -> (*mut c_void, usize) {
+    serialize_byte_buffer(data.into().into_bytes())
 }

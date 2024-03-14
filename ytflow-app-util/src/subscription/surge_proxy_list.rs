@@ -15,8 +15,8 @@ use crate::proxy::tls::ProxyTlsLayer;
 use crate::proxy::{Proxy, ProxyLeg};
 use crate::subscription::{Subscription, SubscriptionFormat};
 
-impl SubscriptionFormat {
-    pub const SURGE_PROXY_LIST: SubscriptionFormat = SubscriptionFormat("surge-proxy-list");
+impl SubscriptionFormat<'static> {
+    pub const SURGE_PROXY_LIST: Self = SubscriptionFormat(b"surge-proxy-list\0");
 }
 
 fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -> Option<Proxy> {

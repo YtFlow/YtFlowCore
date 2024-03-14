@@ -29,7 +29,9 @@ impl Subscription {
     }
 }
 
-pub fn decode_subscription(data: &[u8]) -> DecodeResult<(Subscription, SubscriptionFormat)> {
+pub fn decode_subscription(
+    data: &[u8],
+) -> DecodeResult<(Subscription, SubscriptionFormat<'static>)> {
     decode_sip008(data)
         .and_then(Subscription::ensure_proxies)
         .map(|sub| (sub, SubscriptionFormat::SIP008))
@@ -112,7 +114,7 @@ mod tests {
     fn test_decode_subscription_with_format_invalid_format() {
         let result = decode_subscription_with_format(
             SUBSCRIPTION_SURGE_PROXY_LIST.as_bytes(),
-            SubscriptionFormat("??"),
+            SubscriptionFormat(b"??\0"),
         );
         assert_eq!(result.unwrap_err(), DecodeError::UnknownFormat);
     }

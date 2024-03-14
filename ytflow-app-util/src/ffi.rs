@@ -1,13 +1,18 @@
 #![allow(clippy::missing_safety_doc)]
+pub mod cbor;
 pub mod config;
 pub mod data;
 pub mod error;
 pub mod interop;
+pub mod proxy;
 pub mod runtime;
+pub mod share_link;
+pub mod subscription;
 
 pub mod exports {
     pub use super::ytflow_get_version;
     use super::*;
+    pub use cbor::{ytflow_app_cbor_from_json, ytflow_app_cbor_to_json};
     pub use config::ytflow_plugin_verify;
     #[cfg(unix)]
     pub use data::ytflow_db_new_unix;
@@ -29,7 +34,13 @@ pub mod exports {
     };
     pub use error::ytflow_result_free;
     pub use interop::ytflow_buffer_free;
+    pub use proxy::{ytflow_app_proxy_data_proxy_analyze, ytflow_app_proxy_data_proxy_compose_v1};
     pub use runtime::{ytflow_runtime_free, ytflow_runtime_new};
+    pub use share_link::{ytflow_app_share_link_decode, ytflow_app_share_link_encode};
+    pub use subscription::{
+        ytflow_app_subscription_decode, ytflow_app_subscription_decode_with_format,
+        ytflow_app_subscription_userinfo_header_decode,
+    };
 }
 
 #[no_mangle]

@@ -7,8 +7,8 @@ use super::decode::{DecodeError, DecodeResult};
 use crate::share_link::decode_share_link;
 use crate::subscription::{Subscription, SubscriptionFormat};
 
-impl SubscriptionFormat {
-    pub const B64_LINKS: SubscriptionFormat = SubscriptionFormat("b64_links");
+impl SubscriptionFormat<'static> {
+    pub const B64_LINKS: Self = SubscriptionFormat(b"b64_links\0");
 }
 
 pub fn decode_b64_links(data: &[u8]) -> DecodeResult<Subscription> {

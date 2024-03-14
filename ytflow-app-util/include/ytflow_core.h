@@ -27,7 +27,7 @@ typedef struct ytflow_result_content {
   uintptr_t _1;
 } ytflow_result_content;
 
-typedef char *ytflow_error_fields[3];
+typedef char *ytflow_error_fields[4];
 
 typedef union ytflow_result_data {
   struct ytflow_result_content res;
@@ -44,6 +44,10 @@ extern "C" {
 #endif // __cplusplus
 
 const char *ytflow_get_version(void);
+
+struct ytflow_result ytflow_app_cbor_to_json(const uint8_t *cbor, uintptr_t cbor_len);
+
+struct ytflow_result ytflow_app_cbor_from_json(const char *json);
 
 struct ytflow_result ytflow_plugin_verify(const char *plugin,
                                           uint16_t plugin_version,
@@ -210,9 +214,31 @@ void ytflow_result_free(struct ytflow_result *result);
 
 struct ytflow_result ytflow_buffer_free(void *ptr, uintptr_t metadata);
 
+struct ytflow_result ytflow_app_proxy_data_proxy_analyze(const char *name,
+                                                         const uint8_t *data_proxy,
+                                                         uintptr_t data_proxy_len,
+                                                         uint16_t version);
+
+struct ytflow_result ytflow_app_proxy_data_proxy_compose_v1(const uint8_t *proxy,
+                                                            uintptr_t proxy_len);
+
 struct ytflow_result ytflow_runtime_new(void);
 
 struct ytflow_result ytflow_runtime_free(struct ytflow_runtime *runtime);
+
+struct ytflow_result ytflow_app_share_link_decode(const char *link);
+
+struct ytflow_result ytflow_app_share_link_encode(const uint8_t *proxy, uintptr_t proxy_len);
+
+struct ytflow_result ytflow_app_subscription_userinfo_header_decode(const char *header);
+
+struct ytflow_result ytflow_app_subscription_decode(const uint8_t *subscription,
+                                                    uintptr_t subscription_len,
+                                                    const char **format);
+
+struct ytflow_result ytflow_app_subscription_decode_with_format(const uint8_t *subscription,
+                                                                uintptr_t subscription_len,
+                                                                const char *format);
 
 #ifdef __cplusplus
 } // extern "C"

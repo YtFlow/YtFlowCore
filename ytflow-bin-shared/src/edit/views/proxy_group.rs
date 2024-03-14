@@ -233,7 +233,7 @@ struct EditProxy {
 fn edit_proxy(ctx: &mut edit::AppContext, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
     use serde_bytes::ByteBuf;
 
-    use super::utils::open_editor_and_verify_for_cbor;
+    use super::utils::open_editor_for_cbor;
     use ytflow::plugin::dyn_outbound::config::v1::{Plugin, Proxy};
 
     let proxy: Proxy = cbor4ii::serde::from_slice(bytes).context("Failed to deserialize proxy")?;
@@ -259,10 +259,9 @@ fn edit_proxy(ctx: &mut edit::AppContext, bytes: &[u8]) -> Result<Option<Vec<u8>
 
     // Serialize cborium Value into bytes using cbor4ii and deserialize into cbor4ii Value
     let buf = Vec::with_capacity(512);
-    let val = cbor4ii::serde::from_slice(&cbor4ii::serde::to_vec(buf, &val).unwrap())
-        .expect("Cannot convert cborium VaLue to cbor4ii Value");
+    let val = cbor4ii::serde::to_vec(buf, &val).expect("Cannot serialize ciborium Value");
 
-    open_editor_and_verify_for_cbor(ctx, val, |val| {
+    open_editor_for_cbor(ctx, &val, |val| {
         let buf = Vec::with_capacity(512);
         let val: EditProxy =
             cbor4ii::serde::from_slice(&cbor4ii::serde::to_vec(buf, &val).unwrap())
