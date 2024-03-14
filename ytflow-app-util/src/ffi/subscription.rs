@@ -1,7 +1,6 @@
 use std::ffi::CStr;
 use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
-use std::ptr::null_mut;
 
 use crate::subscription::{
     decode_subscription, decode_subscription_with_format, DecodeError, SubscriptionFormat,
