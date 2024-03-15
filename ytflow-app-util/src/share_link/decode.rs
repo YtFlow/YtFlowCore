@@ -57,8 +57,10 @@ pub fn decode_share_link(link: &str) -> Result<Proxy, DecodeError> {
         _ => return Err(DecodeError::UnknownScheme),
     };
 
-    if let Some((first_extra_key, _)) = queries.pop_first() {
-        return Err(DecodeError::ExtraParameters(first_extra_key.into()));
+    while let Some((extra_key, extra_value)) = queries.pop_first() {
+        if !matches!(&*extra_value, "" | "none" | "false" | "off" | "original") {
+            return Err(DecodeError::ExtraParameters(extra_key.into()));
+        }
     }
 
     Ok(proxy)
@@ -67,10 +69,15 @@ pub fn decode_share_link(link: &str) -> Result<Proxy, DecodeError> {
 pub(super) fn extract_name_from_frag(url: &Url, dest: &DestinationAddr) -> DecodeResult<String> {
     Ok(url
         .fragment()
-        .map(|s| percent_decode_str(s).decode_utf8())
+        .map(|s| {
+            let mut decoded = percent_decode_str(s).decode_utf8().map(|s| s.into_owned());
+            if !(s.contains(' ') || s.contains("%20")) {
+                decoded = decoded.map(|s| s.replace('+', " "));
+            }
+            decoded
+        })
         .transpose()
         .map_err(|_| DecodeError::InvalidEncoding)?
-        .map(|s| s.into_owned())
         .unwrap_or_else(|| dest.to_string()))
 }
 
@@ -108,7 +115,7 @@ mod tests {
         const SS_LINK: &str = "ss://YWVzLTEyOC1nY206MTE0NTE0@1.1.1.1:36326#US-1.1.1.1-0842";
         const TROJAN_LINK: &str =
             "trojan://ffffffff-cccc-aaaa-dddd-111111111111@1.1.1.1:19201?security=tls#5228";
-        const HTTP_LINK: &str = "http://127.0.0.1:8080";
+        const HTTP_LINK: &str = "http://127.0.0.1:8080?a=&b=none&c=false&d=off&e=original";
         const HTTPS_LINK: &str = "https://127.0.0.1:8443";
         const SOCKS5_LINK: &str = "socks5://127.0.0.1:8080";
         const VMESS_LINK: &str = "vmess://eyJhZGQiOiIxMTQ1MTQubmlwLmlvIiwiYWlkIjoiMCIsImFscG4iOiIiLCJmcCI6IiIsImhvc3QiOiIxMTQuY29tIiwiaWQiOiIzMDFkODE1Zi1hMDJhLTRjMmMtYTQyNC1iMTZjZjBhMjQxYWUiLCJuZXQiOiJ3cyIsInBhdGgiOiIvMTEiLCJwb3J0IjoiODAiLCJwcyI6IlVQRF8zLjAyLjIwMjQiLCJzY3kiOiJhdXRvIiwic25pIjoiIiwidGxzIjoiIiwidHlwZSI6IiIsInYiOiIyIn0=";
@@ -160,14 +167,38 @@ mod tests {
 
     #[test]
     fn test_extract_name_from_frag() {
-        let url = Url::parse("ss://test#cabc%2fabca").unwrap();
+        let url = Url::parse("ss://test#cabc%2fabc+a").unwrap();
         let dest = DestinationAddr {
             host: ytflow::flow::HostName::from_domain_name("example.com".into()).unwrap(),
             port: 1234,
         };
         assert_eq!(
             extract_name_from_frag(&url, &dest).unwrap(),
-            "cabc/abca".to_string()
+            "cabc/abc a".to_string()
+        );
+    }
+    #[test]
+    fn test_extract_name_from_frag_percent_space() {
+        let url = Url::parse("ss://test#cabc+%20abc").unwrap();
+        let dest = DestinationAddr {
+            host: ytflow::flow::HostName::from_domain_name("example.com".into()).unwrap(),
+            port: 1234,
+        };
+        assert_eq!(
+            extract_name_from_frag(&url, &dest).unwrap(),
+            "cabc+ abc".to_string()
+        );
+    }
+    #[test]
+    fn test_extract_name_from_frag_space_space() {
+        let url = Url::parse("ss://test#cabc+ abc").unwrap();
+        let dest = DestinationAddr {
+            host: ytflow::flow::HostName::from_domain_name("example.com".into()).unwrap(),
+            port: 1234,
+        };
+        assert_eq!(
+            extract_name_from_frag(&url, &dest).unwrap(),
+            "cabc+ abc".to_string()
         );
     }
 
