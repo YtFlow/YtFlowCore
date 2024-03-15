@@ -44,7 +44,7 @@ pub unsafe extern "C" fn ytflow_app_subscription_decode_with_format(
 ) -> ytflow_result {
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let subscription = std::slice::from_raw_parts(subscription, subscription_len);
-        let format = SubscriptionFormat(CStr::from_ptr(format).to_bytes());
+        let format = SubscriptionFormat(CStr::from_ptr(format).to_bytes_with_nul());
         decode_subscription_with_format(subscription, format).map(|s| serialize_buffer(&s))
     }))
 }

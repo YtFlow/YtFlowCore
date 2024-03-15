@@ -209,7 +209,7 @@ impl<'p> Analyzer<'p> {
             "shadowsocks-client" => {
                 #[derive(Deserialize)]
                 struct ShadowsocksConfig<'a> {
-                    cipher: SupportedCipher,
+                    method: SupportedCipher,
                     password: ByteBuf,
                     tcp_next: &'a str,
                     udp_next: &'a str,
@@ -217,7 +217,7 @@ impl<'p> Analyzer<'p> {
                 let ss: ShadowsocksConfig = deserialize_plugin_param(plugin)?;
                 (
                     ProxyProtocolType::Shadowsocks(ShadowsocksProxy {
-                        cipher: ss.cipher,
+                        cipher: ss.method,
                         password: ss.password,
                     }),
                     ss.tcp_next,
@@ -623,7 +623,7 @@ mod tests {
                 plugin: "shadowsocks-client".into(),
                 plugin_version: 0,
                 param: to_cbor(cbor!({
-                    "cipher" => SupportedCipher::Aes128Gcm,
+                    "method" => SupportedCipher::Aes128Gcm,
                     "password" => ByteBuf::new(),
                     "tcp_next" => "b.tcp",
                     "udp_next" => "c.udp",
@@ -696,7 +696,7 @@ mod tests {
                     plugin: "shadowsocks-client".into(),
                     plugin_version: 0,
                     param: to_cbor(cbor!({
-                        "cipher" => SupportedCipher::Aes128Gcm,
+                        "method" => SupportedCipher::Aes128Gcm,
                         "password" => ByteBuf::new(),
                         "tcp_next" => "b.tcp",
                         "udp_next" => "b.udp",
@@ -720,7 +720,7 @@ mod tests {
                     plugin: "shadowsocks-client".into(),
                     plugin_version: 0,
                     param: to_cbor(cbor!({
-                        "cipher" => SupportedCipher::Aes128Gcm,
+                        "method" => SupportedCipher::Aes128Gcm,
                         "password" => ByteBuf::new(),
                         "tcp_next" => "d.tcp",
                         "udp_next" => "d.udp",
@@ -760,7 +760,7 @@ mod tests {
                     plugin: "shadowsocks-client".into(),
                     plugin_version: 0,
                     param: to_cbor(cbor!({
-                        "cipher" => SupportedCipher::Aes128Gcm,
+                        "method" => SupportedCipher::Aes128Gcm,
                         "password" => ByteBuf::new(),
                         "tcp_next" => "b.tcp",
                         "udp_next" => "b.udp",
@@ -784,7 +784,7 @@ mod tests {
                     plugin: "shadowsocks-client".into(),
                     plugin_version: 0,
                     param: to_cbor(cbor!({
-                        "cipher" => SupportedCipher::Aes128Gcm,
+                        "method" => SupportedCipher::Aes128Gcm,
                         "password" => ByteBuf::new(),
                         "tcp_next" => "$out.tcp",
                         "udp_next" => "$out.udp",

@@ -114,7 +114,7 @@ fn encode_protocol(
             plugin: "shadowsocks-client".into(),
             plugin_version: 0,
             param: to_cbor(cbor!({
-                "cipher" => ss.cipher,
+                "method" => ss.cipher,
                 "password" => &ss.password,
                 "tcp_next" => tcp_next,
                 "udp_next" => udp_next,
