@@ -4,6 +4,7 @@ use serde::Deserialize;
 
 use crate::config::factory::*;
 use crate::config::*;
+use crate::data::PluginId;
 
 #[cfg_attr(not(feature = "plugins"), allow(dead_code))]
 #[derive(Deserialize)]
@@ -16,12 +17,17 @@ pub struct DnsServerFactory<'a> {
     tcp_map_back: HashSet<&'a str>,
     #[serde(borrow)]
     udp_map_back: HashSet<&'a str>,
+    #[serde(skip)]
+    plugin_id: Option<PluginId>,
 }
 
 impl<'de> DnsServerFactory<'de> {
     pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
-        let Plugin { name, param, .. } = plugin;
-        let config: Self = parse_param(name, param)?;
+        let Plugin {
+            name, param, id, ..
+        } = plugin;
+        let mut config: Self = parse_param(name, param)?;
+        config.plugin_id = *id;
         let resolver = config.resolver;
         Ok(ParsedPlugin {
             requires: [Descriptor {
@@ -61,9 +67,23 @@ impl<'de> DnsServerFactory<'de> {
 impl<'de> Factory for DnsServerFactory<'de> {
     #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
+        use crate::data::PluginCache;
         use crate::plugin::dns_server;
         use crate::plugin::null::Null;
         use crate::plugin::reject::RejectHandler;
+
+        let db = set
+            .db
+            .ok_or_else(|| LoadError::DatabaseRequired {
+                plugin: plugin_name.clone(),
+            })?
+            .clone();
+        let cache = PluginCache::new(
+            self.plugin_id.ok_or_else(|| LoadError::DatabaseRequired {
+                plugin: plugin_name.clone(),
+            })?,
+            Some(db.clone()),
+        );
 
         let mut err = None;
         let factory = Arc::new_cyclic(|weak| {
@@ -75,7 +95,7 @@ impl<'de> Factory for DnsServerFactory<'de> {
                     err = Some(e);
                     Arc::downgrade(&(Arc::new(Null) as _))
                 });
-            dns_server::DnsDatagramHandler::new(self.concurrency_limit as usize, resolver, self.ttl)
+            dns_server::DnsServer::new(self.concurrency_limit as usize, resolver, self.ttl, cache)
         });
         if let Some(e) = err {
             set.errors.push(e);
@@ -127,7 +147,10 @@ impl<'de> Factory for DnsServerFactory<'de> {
 
         set.fully_constructed
             .datagram_handlers
-            .insert(plugin_name + ".udp", factory);
+            .insert(plugin_name + ".udp", factory.clone());
+        set.fully_constructed
+            .long_running_tasks
+            .push(tokio::spawn(dns_server::cache_writer(factory)));
         Ok(())
     }
 }

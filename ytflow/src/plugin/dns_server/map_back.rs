@@ -5,7 +5,7 @@ use std::task::{ready, Context, Poll};
 
 use lru::LruCache;
 
-use super::DnsDatagramHandler;
+use super::DnsServer;
 use crate::flow::*;
 
 #[derive(Clone)]
@@ -46,8 +46,7 @@ pub struct MapBackStreamHandler {
 }
 
 impl MapBackStreamHandler {
-    pub fn new(handler: &DnsDatagramHandler, next: Weak<dyn StreamHandler>) -> Self {
-        // TODO: persist mapping into cache
+    pub fn new(handler: &DnsServer, next: Weak<dyn StreamHandler>) -> Self {
         Self {
             back_mapper: BackMapper {
                 reverse_mapping_v4: handler.reverse_mapping_v4.clone(),
@@ -104,7 +103,7 @@ struct MapBackDatagramSession {
 }
 
 impl MapBackDatagramSessionHandler {
-    pub fn new(handler: &DnsDatagramHandler, next: Weak<dyn DatagramSessionHandler>) -> Self {
+    pub fn new(handler: &DnsServer, next: Weak<dyn DatagramSessionHandler>) -> Self {
         Self {
             back_mapper: BackMapper {
                 reverse_mapping_v4: handler.reverse_mapping_v4.clone(),

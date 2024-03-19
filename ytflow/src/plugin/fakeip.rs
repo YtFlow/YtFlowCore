@@ -11,7 +11,7 @@ use tokio::sync::Notify;
 use crate::data::PluginCache;
 use crate::flow::*;
 
-const CACHE_SIZE: NonZeroUsize = NonZeroUsize::new(1000).unwrap();
+const CACHE_CAPACITY: NonZeroUsize = NonZeroUsize::new(1000).unwrap();
 const PLUGIN_CACHE_KEY: &str = "map";
 
 struct Inner {
@@ -35,7 +35,7 @@ pub struct FakeIp {
 
 impl FakeIp {
     pub fn new(prefix_v4: [u8; 2], prefix_v6: [u8; 14], plugin_cache: PluginCache) -> Self {
-        let mut lru = LruCache::new(CACHE_SIZE);
+        let mut lru = LruCache::new(CACHE_CAPACITY);
         let inner = match plugin_cache
             .get::<InnerCache>(PLUGIN_CACHE_KEY)
             .ok()
