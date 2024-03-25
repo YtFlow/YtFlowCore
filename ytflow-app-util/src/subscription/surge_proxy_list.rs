@@ -63,15 +63,21 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
     }));
     kv_args.remove("group");
     kv_args.remove("no-error-alert");
+    kv_args.remove("tls13");
+
+    if kv_args.remove("tfo") == Some("true") {
+        return None;
+    }
 
     let sni = kv_args.remove("sni").filter(|&sni| sni != "off");
+    let skip_cert_check = kv_args.remove("skip-cert-verify").map(|v| v == "true");
     let tls = if kv_args.remove("tls") == Some("true")
         || ["https", "trojan", "socks5-tls"].contains(&protocol)
     {
         Some(ProxyTlsLayer {
             alpn: vec![],
             sni: sni.map(String::from),
-            skip_cert_check: kv_args.remove("skip-cert-verify").map(|v| v == "true"),
+            skip_cert_check,
         })
     } else {
         None
@@ -143,9 +149,12 @@ fn decode_surge_proxy_line(line: &str, parents: &mut BTreeMap<String, String>) -
         parents.insert(name.into(), underlying_proxy.into());
     }
 
-    if !kv_args.is_empty() {
-        return None;
-    }
+    kv_args
+        .into_values()
+        .filter(|extra_value| !matches!(*extra_value, "" | "none" | "false" | "off"))
+        .map(|_| None)
+        .next()
+        .unwrap_or(Some(()))?;
 
     Some(Proxy {
         name: name.into(),
@@ -202,7 +211,7 @@ mod tests {
     fn test_decode_surge_proxy_list() {
         let data = b"
             // # aa = ss , a.com , 11451 , group = g , no-error-alert = t , encrypt-method = aes-256-cfb , password = abc , udp-relay = true 
-            aa = ss , a.com , 11451 , group = g , no-error-alert = t , encrypt-method = aes-256-cfb , password = abc , udp-relay = true , kk
+            aa = ss , a.com , 11451 , group = g , no-error-alert = t , encrypt-method = aes-256-cfb , password = abc , udp-relay = true , tfo = false , kk
         ";
         let sub = decode_surge_proxy_list(data).unwrap();
         assert_eq!(
@@ -232,7 +241,7 @@ mod tests {
     fn test_decode_surge_proxy_list_tls() {
         let cases = [
             (
-                "aa = ss, a.com, 114, encrypt-method=aes-256-cfb, password=abc, tls=true, sni=b.com, skip-cert-verify=false",
+                "aa = ss, a.com, 114, encrypt-method=aes-256-cfb, password=abc, tls=true, sni=b.com, skip-cert-verify=false, tls13=true",
                 ProxyTlsLayer {
                     alpn: vec![],
                     sni: Some("b.com".into()),
