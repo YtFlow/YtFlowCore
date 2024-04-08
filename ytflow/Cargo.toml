@@ -70,7 +70,7 @@ pin-project-lite = { version = "0.2", optional = true }
 chrono = { version = "*", features = ["serde"] }
 memchr = { version = "2", optional = true }
 rand = { version = "0.8", optional = true }
-itertools = "0.11"
+itertools = "0.12"
 tokio-util = { version = "0.7", optional = true }
 foreign-types-shared = { version = "0.1", optional = true }
 regex = { version = "1.9", default-features = false, features = [
@@ -82,7 +82,7 @@ aho-corasick = { version = "1.0", optional = true }
 # Container
 flume = { version = "0.11", default-features = false, features = ["async"] }
 smallvec = { version = "1", features = ["union", "serde"] }
-lru = { version = "0.11", optional = true }
+lru = { version = "0.12", optional = true }
 arc-swap = { version = "1", optional = true }
 cidr = { version = "0.2", features = ["serde"] }
 
@@ -93,7 +93,7 @@ socket2 = { version = "0.4", features = ["all"], optional = true }
 # Protocol
 http = "0.2"
 httparse = { version = "1", optional = true }
-base64 = { version = "0.21", optional = true }
+base64 = { version = "0.22", optional = true }
 getrandom = { version = "0.2", default-features = false, features = [
     "std",
 ], optional = true }
@@ -136,7 +136,7 @@ serde_bytes = "0.11"
 refinery = { version = "0.8", features = ["rusqlite"] }
 refinery-core = "0.8"
 cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
-maxminddb = { version = "0.23", optional = true }
+maxminddb = { version = "0.24", optional = true }
 
 tokio = { version = "1", features = [
     "rt",
@@ -184,7 +184,7 @@ nix = { version = "0.26", default-features = false, features = [
 block2 = { version = "=0.2.0-alpha.7", optional = true }
 
 [dependencies.smoltcp]
-version = "0.10"
+version = "0.11"
 optional = true
 default-features = false
 features = [
