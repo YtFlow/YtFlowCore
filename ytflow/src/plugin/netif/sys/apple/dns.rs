@@ -213,8 +213,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_lookup() {
-        let selector =
-            NetifSelector::new(SelectionMode::Manual("en0".into()), FamilyPreference::Both);
+        let selector = NetifSelector::new(
+            SelectionMode::Manual("en0".into()),
+            FamilyPreference::Both,
+            |_| None,
+        );
         selector.cached_netif.store(Arc::new(Netif {
             name: "en0".into(),
             bsd_name: CString::from_vec_with_nul(b"en0\0"[..].into()).unwrap(),

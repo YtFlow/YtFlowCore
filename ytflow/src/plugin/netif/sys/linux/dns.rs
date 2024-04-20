@@ -209,6 +209,7 @@ mod tests {
         let selector = NetifSelector::new(
             SelectionMode::Manual("wlp3s0".into()),
             FamilyPreference::Both,
+            |_| None,
         );
         selector.cached_netif.store(Arc::new(Netif {
             name: "wlp3s0".into(),
