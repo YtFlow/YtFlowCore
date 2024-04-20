@@ -5,19 +5,27 @@ use crate::config::*;
 use crate::plugin::netif;
 
 #[derive(Serialize, Deserialize)]
-pub struct NetifFactory {
+pub struct NetifFactory<'a> {
     pub family_preference: netif::FamilyPreference,
     #[serde(flatten)]
     pub selection: netif::SelectionMode,
+    pub outbound_resolver: Option<&'a str>,
 }
 
-impl NetifFactory {
-    pub(in super::super) fn parse(plugin: &Plugin) -> ConfigResult<ParsedPlugin<'static, Self>> {
+impl<'de> NetifFactory<'de> {
+    pub(in super::super) fn parse(plugin: &'de Plugin) -> ConfigResult<ParsedPlugin<'de, Self>> {
         let Plugin { name, param, .. } = plugin;
         let config: Self = parse_param(name, param)?;
         Ok(ParsedPlugin {
+            requires: config
+                .outbound_resolver
+                .iter()
+                .map(|r| Descriptor {
+                    descriptor: *r,
+                    r#type: AccessPointType::RESOLVER,
+                })
+                .collect(),
             factory: config,
-            requires: vec![],
             provides: vec![
                 Descriptor {
                     descriptor: name.to_string() + ".tcp",
@@ -37,10 +45,32 @@ impl NetifFactory {
     }
 }
 
-impl Factory for NetifFactory {
+impl<'a> Factory for NetifFactory<'a> {
     #[cfg(feature = "plugins")]
     fn load(&mut self, plugin_name: String, set: &mut PartialPluginSet) -> LoadResult<()> {
-        let netif = netif::NetifSelector::new(self.selection.clone(), self.family_preference);
+        use crate::plugin::null::Null;
+
+        let mut err = None;
+        let netif =
+            netif::NetifSelector::new(self.selection.clone(), self.family_preference, |weak| {
+                set.stream_outbounds
+                    .insert(plugin_name.clone() + ".tcp", weak.clone());
+                set.datagram_outbounds
+                    .insert(plugin_name.clone() + ".udp", weak.clone());
+                set.resolver
+                    .insert(plugin_name.clone() + ".resolver", weak.clone());
+
+                self.outbound_resolver.map(|outbound_resolver| {
+                    set.get_or_create_resolver(plugin_name.clone(), outbound_resolver)
+                        .unwrap_or_else(|e| {
+                            err = Some(e);
+                            Arc::downgrade(&(Arc::new(Null) as _))
+                        })
+                })
+            });
+        if let Some(err) = err {
+            set.errors.push(err);
+        }
         set.control_hub.create_plugin_control(
             plugin_name.clone(),
             "netif",

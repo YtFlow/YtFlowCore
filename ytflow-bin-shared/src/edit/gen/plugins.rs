@@ -342,7 +342,8 @@ impl PluginType {
                 }),
                 PluginType::Netif => cbor!(NetifFactory {
                     family_preference: FamilyPreference::Ipv4Only,
-                    selection: SelectionMode::Manual("eth0".into())
+                    selection: SelectionMode::Manual("eth0".into()),
+                    outbound_resolver: None,
                 }),
             }
             .unwrap(),

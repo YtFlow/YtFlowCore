@@ -11,16 +11,22 @@ pub struct NetifSelector {
     pub(super) cached_netif: ArcSwap<sys::Netif>,
     provider: sys::NetifProvider,
     resolver: sys::Resolver,
+    outbound_resolver: Option<Weak<dyn Resolver>>,
     me: Weak<Self>,
 }
 
 impl NetifSelector {
-    pub fn new(selection: SelectionMode, prefer: FamilyPreference) -> Arc<Self> {
+    pub fn new(
+        selection: SelectionMode,
+        prefer: FamilyPreference,
+        create_outbound_resolver: impl FnOnce(&Weak<Self>) -> Option<Weak<dyn Resolver>>,
+    ) -> Arc<Self> {
         let dummy_netif = sys::Netif {
             name: String::from("dummy_netif_awaiting_change"),
             ..sys::Netif::default()
         };
         Arc::<Self>::new_cyclic(|this| {
+            let outbound_resolver = create_outbound_resolver(this);
             let this = this.clone();
             let provider = sys::NetifProvider::new({
                 let this = this.clone();
@@ -35,6 +41,7 @@ impl NetifSelector {
                 cached_netif: ArcSwap::new(Arc::new(dummy_netif)),
                 provider,
                 resolver: sys::Resolver::new(this.clone()),
+                outbound_resolver,
                 me: this,
             }
         })
@@ -72,9 +79,15 @@ impl StreamOutboundFactory for NetifSelector {
     ) -> FlowResult<(Box<dyn Stream>, Buffer)> {
         let preference = self.selection.load().1;
         let netif = self.cached_netif.load();
+        let resolver = self
+            .outbound_resolver
+            .as_ref()
+            .map(|r| r.upgrade().ok_or(FlowError::NoOutbound))
+            .transpose()?
+            .unwrap_or_else(|| self.me.upgrade().unwrap());
         crate::plugin::socket::dial_stream(
             context,
-            self.me.upgrade().unwrap(),
+            resolver,
             // A workaround for E0308 "one type is more general than the other"
             // https://github.com/rust-lang/rust/issues/70263
             Some(|s: &mut _| sys::bind_socket_v4(&netif, s)).filter(|_| {
@@ -100,9 +113,15 @@ impl DatagramSessionFactory for NetifSelector {
     async fn bind(&self, context: Box<FlowContext>) -> FlowResult<Box<dyn DatagramSession>> {
         let preference = self.selection.load().1;
         let netif = self.cached_netif.load_full();
+        let resolver = self
+            .outbound_resolver
+            .as_ref()
+            .map(|r| r.upgrade().ok_or(FlowError::NoOutbound))
+            .transpose()?
+            .unwrap_or_else(|| self.me.upgrade().unwrap());
         crate::plugin::socket::dial_datagram_session(
             &context,
-            self.me.upgrade().unwrap(),
+            resolver,
             // A workaround for E0308 "one type is more general than the other"
             // https://github.com/rust-lang/rust/issues/70263
             Some({
