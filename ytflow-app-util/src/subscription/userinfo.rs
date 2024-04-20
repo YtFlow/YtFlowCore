@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,7 +34,8 @@ impl SubscriptionUserInfo {
                     ret.expires_at = value
                         .parse()
                         .ok()
-                        .and_then(|s| NaiveDateTime::from_timestamp_opt(s, 0));
+                        .and_then(|s| DateTime::from_timestamp(s, 0))
+                        .map(|dt| dt.naive_utc());
                 }
                 _ => {
                     continue;
@@ -60,7 +61,7 @@ mod tests {
                 upload_bytes_used: Some(455727941),
                 download_bytes_used: Some(6174315083),
                 bytes_total: Some(1073741824000),
-                expires_at: NaiveDateTime::from_timestamp_opt(1671815872, 0),
+                expires_at: DateTime::from_timestamp(1671815872, 0).map(|t| t.naive_local()),
             }
         );
     }

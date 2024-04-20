@@ -27,6 +27,7 @@ impl TrojanProxy {
         let host = parse_host_transparent(url)?;
         let port = url.port().unwrap_or(443);
         let skip_cert_check = queries.remove("allowInsecure").map(|s| s == "1");
+        queries.remove("peer"); // ShadowRocket's non standard field
         let sni = queries.remove("sni").map(|s| s.into_owned());
         let alpn = queries
             .remove("alpn")
@@ -102,7 +103,7 @@ mod tests {
     #[test]
     fn test_decode_share_link() {
         let url = Url::parse(&format!(
-            "trojan://a%2fb@a.co:10443?alpn=ipv9,http/1.1&sni=b.com&allowInsecure=1#c/d",
+            "trojan://a%2fb@a.co:10443?alpn=ipv9,http/1.1&sni=b.com&peer=wtf&allowInsecure=1#c/d",
         ))
         .unwrap();
         let mut queries = url.query_pairs().collect::<QueryMap>();
