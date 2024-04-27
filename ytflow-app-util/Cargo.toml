@@ -23,4 +23,7 @@ serde_bytes = "0.11"
 ciborium = "0.2"
 chrono = { version = "*", features = ["serde"] }
 uuid = { version = "1", features = ["serde"] }
+rusqlite = { version = "0.28", default-features = false }
+toml_edit = { version = "0.22", default-features = false, features = ["parse"] }
+hex = "0.4"
 ytflow = { path = "../ytflow" }

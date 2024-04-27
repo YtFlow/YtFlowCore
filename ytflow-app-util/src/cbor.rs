@@ -21,3 +21,12 @@ pub type CborUtilResult<T> = Result<T, CborUtilError>;
 
 pub use json::{cbor_to_json, json_to_cbor};
 pub use raw_bytes::{escape_cbor_buf, unescape_cbor_buf};
+
+pub(crate) fn to_cbor(
+    value: Result<ciborium::Value, ciborium::value::Error>,
+) -> serde_bytes::ByteBuf {
+    let mut buf = Vec::with_capacity(128);
+    ciborium::ser::into_writer(&value.expect("cannot encode cbor"), &mut buf)
+        .expect("Cannot serialize proxy");
+    serde_bytes::ByteBuf::from(buf)
+}

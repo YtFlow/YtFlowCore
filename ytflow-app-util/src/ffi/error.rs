@@ -8,7 +8,7 @@ use std::ptr::null_mut;
 use ytflow::config::ConfigError;
 use ytflow::data::DataError;
 
-use crate::{cbor, proxy, share_link, subscription};
+use crate::{cbor, profile, proxy, share_link, subscription};
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -234,6 +234,19 @@ impl ToFfiError for cbor::CborUtilError {
             InvalidByteRepr(r) => ErrorDesc::e1(BASE_CODE + 3, r.into()),
             MissingData => ErrorDesc::e0(BASE_CODE + 4),
             UnknownByteRepr(r) => ErrorDesc::e1(BASE_CODE + 5, r),
+        }
+    }
+}
+
+impl ToFfiError for profile::ParseTomlProfileError {
+    fn from(self) -> ErrorDesc {
+        use profile::ParseTomlProfileError::*;
+        const BASE_CODE: u32 = 0x8001_1700;
+        match self {
+            TomlError(e) => ErrorDesc::e1(BASE_CODE + 1, e.to_string()),
+            MissingInfo(i) => ErrorDesc::e1(0x8001_1300 + 3, i),
+            InvalidValue(v) => ErrorDesc::e1(BASE_CODE + 3, v),
+            InvalidEntryPoint => ErrorDesc::e0(BASE_CODE + 4),
         }
     }
 }

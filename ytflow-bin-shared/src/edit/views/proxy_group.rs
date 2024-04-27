@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use cbor4ii::core::Value as CborValue;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use serde::{Deserialize, Serialize};
+use serde_bytes::ByteBuf;
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::Style,
@@ -145,7 +146,7 @@ pub fn run_proxy_group_view(ctx: &mut edit::AppContext, id: ProxyGroupId) -> Res
                             &ctx.conn,
                         )
                         .context("Failed to update Proxy")?;
-                        proxies[idx].proxy = new_proxy_param;
+                        proxies[idx].proxy = ByteBuf::from(new_proxy_param);
                     }
                     continue 'main_loop;
                 }
@@ -165,7 +166,7 @@ pub fn run_proxy_group_view(ctx: &mut edit::AppContext, id: ProxyGroupId) -> Res
                             Proxy::update(
                                 proxy.id.0,
                                 name,
-                                proxy.proxy.clone(),
+                                proxy.proxy.to_vec(),
                                 proxy.proxy_version,
                                 &ctx.conn,
                             )
@@ -231,8 +232,6 @@ struct EditProxy {
 }
 
 fn edit_proxy(ctx: &mut edit::AppContext, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
-    use serde_bytes::ByteBuf;
-
     use super::utils::open_editor_for_cbor;
     use ytflow::plugin::dyn_outbound::config::v1::{Plugin, Proxy};
 

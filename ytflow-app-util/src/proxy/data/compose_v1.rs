@@ -1,5 +1,4 @@
 use ciborium::cbor;
-use serde_bytes::ByteBuf;
 use thiserror::Error;
 
 use ytflow::flow::DestinationAddr;
@@ -7,6 +6,7 @@ use ytflow::plugin::dyn_outbound::config::v1::{
     Plugin as DynOutboundV1Plugin, Proxy as DynOutboundV1Proxy,
 };
 
+use crate::cbor::to_cbor;
 use crate::proxy::obfs::ProxyObfsType;
 use crate::proxy::protocol::ProxyProtocolType;
 use crate::proxy::tls::ProxyTlsLayer;
@@ -19,13 +19,6 @@ pub enum ComposeError {
 }
 
 pub type ComposeResult<T> = Result<T, ComposeError>;
-
-pub(crate) fn to_cbor(value: Result<ciborium::Value, ciborium::value::Error>) -> ByteBuf {
-    let mut buf = Vec::with_capacity(128);
-    ciborium::ser::into_writer(&value.expect("cannot encode cbor"), &mut buf)
-        .expect("Cannot serialize proxy");
-    ByteBuf::from(buf)
-}
 
 fn encode_tls(
     tls: &ProxyTlsLayer,

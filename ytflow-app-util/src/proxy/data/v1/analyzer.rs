@@ -415,11 +415,13 @@ pub fn analyze(name: String, proxy: &[u8]) -> AnalyzeResult<Proxy> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proxy::data::compose_v1::to_cbor;
-    use crate::proxy::Proxy;
+
     use ciborium::cbor;
     use ytflow::flow::HostName;
     use ytflow::plugin::shadowsocks::SupportedCipher;
+
+    use crate::cbor::to_cbor;
+    use crate::proxy::Proxy;
 
     #[test]
     fn test_analyze_invalid_proxy_cbor() {

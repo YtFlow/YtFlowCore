@@ -10,8 +10,10 @@ use ytflow::data::{
     ResourceGitHubRelease, ResourceUrl,
 };
 
+use crate::profile::{export_profile_toml, parse_profile_toml};
+
 use super::error::ytflow_result;
-use super::interop::serialize_buffer;
+use super::interop::{serialize_buffer, serialize_string_buffer};
 
 #[no_mangle]
 #[cfg(windows)]
@@ -138,6 +140,29 @@ pub unsafe extern "C" fn ytflow_profile_delete(
     ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
         let conn = unsafe { &*conn };
         Profile::delete(profile_id, conn).map(|()| (null_mut(), 0))
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ytflow_profile_export_toml(
+    profile_id: u32,
+    conn: *const ytflow_connection,
+) -> ytflow_result {
+    ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
+        let conn = unsafe { &*conn };
+        export_profile_toml(profile_id.into(), conn)
+            .map(|p| p.map(serialize_string_buffer).unwrap_or((null_mut(), 0)))
+    }))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ytflow_profile_parse_toml(
+    toml: *const u8,
+    toml_len: usize,
+) -> ytflow_result {
+    ytflow_result::catch_result_unwind(AssertUnwindSafe(move || {
+        let toml = unsafe { std::slice::from_raw_parts(toml, toml_len) };
+        parse_profile_toml(toml).map(|p| serialize_buffer(&p))
     }))
 }
 

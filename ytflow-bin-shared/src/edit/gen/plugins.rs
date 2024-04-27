@@ -353,7 +353,7 @@ impl PluginType {
             name,
             plugin,
             plugin_version: 0,
-            param,
+            param: param.into_vec(),
         }
     }
 }

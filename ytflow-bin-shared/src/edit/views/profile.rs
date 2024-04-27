@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use crossterm::event::{Event, KeyCode, KeyEvent};
+use serde_bytes::ByteBuf;
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::Style,
@@ -161,7 +162,7 @@ pub fn run_profile_view(ctx: &mut edit::AppContext, id: ProfileId) -> Result<Nav
                             &ctx.conn,
                         )
                         .context("Failed to update Plugin param")?;
-                        plugins[idx].param = new_param;
+                        plugins[idx].param = ByteBuf::from(new_param);
                     }
                     continue 'main_loop;
                 }
@@ -204,7 +205,7 @@ pub fn run_profile_view(ctx: &mut edit::AppContext, id: ProfileId) -> Result<Nav
                                 plugin.desc.clone(),
                                 plugin.plugin.clone(),
                                 plugin.plugin_version,
-                                plugin.param.clone(),
+                                plugin.param.to_vec(),
                                 &ctx.conn,
                             )
                             .context("Failed to rename Plugin")?;
@@ -228,7 +229,7 @@ pub fn run_profile_view(ctx: &mut edit::AppContext, id: ProfileId) -> Result<Nav
                                 desc,
                                 plugin.plugin.clone(),
                                 plugin.plugin_version,
-                                plugin.param.clone(),
+                                plugin.param.to_vec(),
                                 &ctx.conn,
                             )
                             .context("Failed to change Plugin desc")?;

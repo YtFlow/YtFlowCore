@@ -7,13 +7,26 @@ mod proxy;
 pub mod proxy_group;
 mod resource;
 
+use std::fmt::{self, Debug, Display, Formatter};
 use std::marker::PhantomData;
 
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 #[serde(transparent)]
 pub struct Id<T>(pub u32, PhantomData<T>);
+
+impl<T> Debug for Id<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Id({})", self.0)
+    }
+}
+
+impl<T> Display for Id<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl<T> Clone for Id<T> {
     fn clone(&self) -> Id<T> {

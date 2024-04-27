@@ -12,7 +12,7 @@ pub struct Proxy {
     pub id: ProxyId,
     pub name: String,
     pub order_num: i32,
-    pub proxy: Vec<u8>,
+    pub proxy: serde_bytes::ByteBuf,
     pub proxy_version: u16,
     pub updated_at: NaiveDateTime,
 }
@@ -29,7 +29,7 @@ fn map_from_row(row: &Row) -> Result<Proxy, SqError> {
         id: super::Id(row.get(0)?, Default::default()),
         name: row.get(1)?,
         order_num: row.get(2)?,
-        proxy: row.get(3)?,
+        proxy: serde_bytes::ByteBuf::from(row.get::<_, Vec<u8>>(3)?),
         proxy_version: row.get(4)?,
         updated_at: row.get(5)?,
     })

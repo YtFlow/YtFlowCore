@@ -13,7 +13,7 @@ pub struct Plugin {
     pub desc: String,
     pub plugin: String,
     pub plugin_version: u16,
-    pub param: Vec<u8>,
+    pub param: serde_bytes::ByteBuf,
     pub updated_at: NaiveDateTime,
 }
 
@@ -24,7 +24,7 @@ fn map_from_row(row: &Row) -> Result<Plugin, SqError> {
         desc: row.get(2)?,
         plugin: row.get(3)?,
         plugin_version: row.get(4)?,
-        param: row.get(5)?,
+        param: serde_bytes::ByteBuf::from(row.get::<_, Vec<u8>>(5)?),
         updated_at: row.get(6)?,
     })
 }
@@ -127,7 +127,7 @@ impl From<Plugin> for crate::config::Plugin {
             name: value.name,
             plugin: value.plugin,
             plugin_version: value.plugin_version,
-            param: value.param,
+            param: value.param.into_vec(),
         }
     }
 }

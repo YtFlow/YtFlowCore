@@ -226,7 +226,7 @@ pub fn save_plugins(
             plugin.desc,
             plugin.plugin,
             plugin.plugin_version,
-            plugin.param,
+            plugin.param.into_vec(),
             conn,
         )?;
         if is_entry {

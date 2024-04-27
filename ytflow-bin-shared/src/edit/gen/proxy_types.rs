@@ -46,7 +46,7 @@ fn gen_redirect(tcp_next: CborValue, udp_next: CborValue) -> Plugin {
         name: PLUGIN_NAME_REDIR.into(),
         plugin: "redirect".into(),
         plugin_version: 0,
-        param: ByteBuf::from(serialize_cbor(
+        param: serialize_cbor(
             cbor!({
                 "dest" => DestinationAddr {
                     host: HostName::DomainName("my.proxy.server.com.".into()),
@@ -56,7 +56,7 @@ fn gen_redirect(tcp_next: CborValue, udp_next: CborValue) -> Plugin {
                 "udp_next" => udp_next,
             })
             .unwrap(),
-        )),
+        ),
     }
 }
 
@@ -69,7 +69,7 @@ impl ProxyType {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "shadowsocks-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "method" => "aes-256-gcm",
                         "password" => Bytes::new(b"password"),
@@ -77,25 +77,25 @@ impl ProxyType {
                         "udp_next" => udp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             },
             ProxyType::TrojanTls => Plugin {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "trojan-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "password" => Bytes::new(b"password"),
                         "tls_next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             },
             ProxyType::VMess | ProxyType::VMessTls | ProxyType::VMessWsTls => Plugin {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "vmess-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "user_id" => "b831381d-6324-4d53-ad4f-8cda48b30811",
                         "alter_id" => 0,
@@ -103,30 +103,30 @@ impl ProxyType {
                         "tcp_next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             },
             ProxyType::HttpConnect => Plugin {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "http-proxy-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "tcp_next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             },
             ProxyType::Socks5 => Plugin {
                 name: PLUGIN_NAME_MAIN_PROTOCOL.into(),
                 plugin: "socks5-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "tcp_next" => tcp_next,
                         "udp_next" => udp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             },
         }
     }
@@ -136,39 +136,39 @@ impl ProxyType {
                 name: PLUGIN_NAME_OBFS.into(),
                 plugin: "http-obfs-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "host" => "windowsupdate.microsoft.com",
                         "path" => "/",
                         "next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             }),
             ProxyType::ShadowsocksTlsObfs => Some(Plugin {
                 name: PLUGIN_NAME_OBFS.into(),
                 plugin: "tls-obfs-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "host" => "windowsupdate.microsoft.com",
                         "next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             }),
             ProxyType::VMessWsTls => Some(Plugin {
                 name: PLUGIN_NAME_OBFS.into(),
                 plugin: "ws-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "host" => "windowsupdate.microsoft.com",
                         "path" => "/",
                         "next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             }),
             _ => None,
         }
@@ -179,25 +179,25 @@ impl ProxyType {
                 name: PLUGIN_NAME_TLS.into(),
                 plugin: "tls-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "alpn" => ["h2", "http/1.1"],
                         "next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             }),
             ProxyType::VMessWsTls => Some(Plugin {
                 name: PLUGIN_NAME_TLS.into(),
                 plugin: "tls-client".into(),
                 plugin_version: 0,
-                param: ByteBuf::from(serialize_cbor(
+                param: serialize_cbor(
                     cbor!({
                         "alpn" => ["http/1.1"],
                         "next" => tcp_next,
                     })
                     .unwrap(),
-                )),
+                ),
             }),
             _ => None,
         }
