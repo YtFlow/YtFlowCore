@@ -86,6 +86,10 @@ struct ytflow_result ytflow_profile_update(uint32_t profile_id,
 
 struct ytflow_result ytflow_profile_delete(uint32_t profile_id, const ytflow_connection *conn);
 
+struct ytflow_result ytflow_profile_export_toml(uint32_t profile_id, const ytflow_connection *conn);
+
+struct ytflow_result ytflow_profile_parse_toml(const uint8_t *toml, uintptr_t toml_len);
+
 struct ytflow_result ytflow_plugin_create(uint32_t profile_id,
                                           const char *name,
                                           const char *desc,

@@ -167,14 +167,11 @@ pub fn parse_profile_toml(toml: &[u8]) -> ParseTomlProfileResult<ParsedTomlProfi
                 .prefix()
                 .and_then(|p| Some(unsafe { toml.get_unchecked(p.span()?) }))
                 .unwrap_or_default()
-                .trim()
                 .lines()
-                .map(|l| {
-                    l.trim_start_matches(|c: char| c.is_whitespace() || c == '#')
-                        .trim_end()
-                })
+                .filter_map(|l| l.trim_start().strip_prefix('#'))
+                .map(|l| l.trim())
                 .collect::<Vec<_>>()
-                .join(" ");
+                .join("\n");
             let plugin = plugin_table
                 .get("plugin")
                 .ok_or_else(|| {
@@ -271,6 +268,8 @@ param.rules = [{ is_udp = true, src = { ip_ranges = ["0.0.0.0/0"], port_ranges =
 updated_at = 2024-04-27T09:43:17.191
 
 # Dispatch connections
+#
+
 # based on custom rules
 [plugins.custom-rule-dispatcher]
 plugin = "rule-dispatcher"
@@ -412,6 +411,10 @@ updated_at = 2024-04-27T09:43:17.191
             .iter()
             .find(|p| p.plugin.name == "custom-rule-dispatcher")
             .unwrap();
+        assert_eq!(
+            custom_rule_dispatcher.plugin.desc,
+            "Dispatch connections\n\nbased on custom rules"
+        );
         assert_eq!(custom_rule_dispatcher.plugin.plugin, "rule-dispatcher");
         assert_eq!(custom_rule_dispatcher.plugin.plugin_version, 0);
         assert_eq!(

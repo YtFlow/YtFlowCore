@@ -133,7 +133,13 @@ pub fn export_profile_toml(
             .desc
             .trim()
             .lines()
-            .map(|l| format!("\n# {}", l.trim()))
+            .map(|l| {
+                if l.is_empty() {
+                    "\n#".into()
+                } else {
+                    format!("\n# {}", l.trim())
+                }
+            })
             .collect::<Vec<_>>()
             .join("");
         decor.push_str("\n");
@@ -217,7 +223,7 @@ mod tests {
         Plugin::create(
             profile_id,
             "custom-rule-dispatcher".into(),
-            "Dispatch connections \n based on custom rules".into(),
+            "Dispatch connections \n\n based on custom rules".into(),
             "rule-dispatcher".into(),
             0,
             to_cbor(cbor!({
@@ -312,6 +318,7 @@ param.rules = [{ is_udp = true, src = { ip_ranges = ["0.0.0.0/0"], port_ranges =
 updated_at = 2024-04-27T09:43:17.191
 
 # Dispatch connections
+#
 # based on custom rules
 [plugins.custom-rule-dispatcher]
 plugin = "rule-dispatcher"
