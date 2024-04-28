@@ -99,6 +99,7 @@ pub fn export_profile_toml(
     let plugins = ytflow::data::Plugin::query_all_by_profile(profile_id, conn)?;
 
     let mut doc = DocumentMut::new();
+    doc.insert("version", TomlItem::Value(1i64.into()));
 
     let metadata_table: Table = [
         ("name", TomlValue::from(profile.name)),
@@ -291,7 +292,9 @@ mod tests {
         let toml = export_profile_toml(profile_id, &db).unwrap().unwrap();
         assert_eq!(
             toml,
-            r#"[profile]
+            r#"version = 1
+
+[profile]
 name = "test"
 permanent_id = "fadd694dacc3d1c0ea7cce8077927dc5"
 locale = "en-US"

@@ -109,6 +109,12 @@ fn parse_plugin_param(value: &TomlItem) -> Option<ByteBuf> {
 pub fn parse_profile_toml(toml: &[u8]) -> ParseTomlProfileResult<ParsedTomlProfile> {
     let toml = String::from_utf8_lossy(toml);
     let doc = toml_edit::ImDocument::parse(&*toml)?;
+    doc.get("version")
+        .ok_or_else(|| ParseTomlProfileError::MissingInfo("version".into()))?
+        .as_integer()
+        .filter(|v| *v == 1)
+        .ok_or_else(|| ParseTomlProfileError::InvalidValue("version".into()))?;
+
     let profile_table = doc
         .as_table()
         .get("profile")
@@ -240,7 +246,8 @@ mod tests {
 
     #[test]
     fn test_parse_profile_toml() {
-        let toml = br#"[profile]
+        let toml = br#"version = 1
+[profile]
 name = "test"
 permanent_id = "fadd694dacc3d1c0ea7cce8077927dc5"
 locale = "en-US"
@@ -509,7 +516,8 @@ updated_at = 2024-04-27T09:43:17.191
 
     #[test]
     fn test_parse_profile_toml_minimal_profile() {
-        let toml = br#"[profile]
+        let toml = br#"version = 1
+[profile]
 entry_plugins = []
         "#;
         let parsed = parse_profile_toml(toml).unwrap();
@@ -522,41 +530,50 @@ entry_plugins = []
 
     #[test]
     fn test_parse_profile_toml_invalid_toml() {
-        let toml = br#"[profile"#;
+        let toml = br#"version = 1
+[profile"#;
         let err = parse_profile_toml(toml).unwrap_err();
         assert!(matches!(err, ParseTomlProfileError::TomlError(_)));
     }
 
     #[test]
     fn test_parse_profile_toml_missing_info() {
-        let cases: [(&[u8], &str); 5] = [
-            (b"", "profile"),
-            (br#"[profile]"#, "entry_plugins"),
+        let cases: [(&[u8], &str); 6] = [
+            (b"", "version"),
+            (b"version = 1", "profile"),
+            (
+                br#"version = 1
+                [profile]"#,
+                "entry_plugins",
+            ),
             (
                 br#"
-        [profile]
-        entry_plugins = []
-        [plugins.null]
-        "#,
+                version = 1
+                [profile]
+                entry_plugins = []
+                [plugins.null]
+                "#,
                 "plugins.null.plugin",
             ),
             (
                 br#"
-        [profile]
-        entry_plugins = []
-        [plugins.null]
-        plugin = "null"
-        "#,
+                version = 1
+                [profile]
+                entry_plugins = []
+                [plugins.null]
+                plugin = "null"
+                "#,
                 "plugins.null.plugin_version",
             ),
             (
                 br#"
-        [profile]
-        entry_plugins = []
-        [plugins.null]
-        plugin = "null"
-        plugin_version = 0
-        "#,
+                version = 1
+                [profile]
+                entry_plugins = []
+                [plugins.null]
+                plugin = "null"
+                plugin_version = 0
+                "#,
                 "plugins.null.param",
             ),
         ];
@@ -572,6 +589,7 @@ entry_plugins = []
     #[test]
     fn test_parse_profile_toml_invalid_entry_point() {
         let toml = br#"
+        version = 1
         [profile]
         name = "test"
         permanent_id = "fadd694dacc3d1c0ea7cce8077927dc5"
@@ -590,41 +608,52 @@ entry_plugins = []
 
     #[test]
     fn test_parse_profile_toml_invalid_value() {
-        let cases: [(&[u8], &str); 10] = [
-            (b"profile = 1", "profile"),
+        let cases: [(&[u8], &str); 11] = [
+            (br#"version = "aa""#, "version"),
             (
-                br#"[profile]
+                b"version = 1
+                profile = 1",
+                "profile",
+            ),
+            (
+                br#"version = 1
+                [profile]
                 permanent_id = 1
                 "#,
                 "permanent_id",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 permanent_id = "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
                 "#,
                 "permanent_id",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 entry_plugins = 1
                 "#,
                 "entry_plugins",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 entry_plugins = [1]
                 "#,
                 "entry_plugins",
             ),
             (
-                br#"plugins = 1
+                br#"version = 1
+                plugins = 1
                 [profile]
                 entry_plugins = []
                 "#,
                 "plugins",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 entry_plugins = []
                 [plugins.null]
                 plugin = 1
@@ -632,7 +661,8 @@ entry_plugins = []
                 "plugins.null.plugin",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 entry_plugins = []
                 [plugins.null]
                 plugin = "null"
@@ -641,7 +671,8 @@ entry_plugins = []
                 "plugins.null.plugin_version",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 entry_plugins = []
                 [plugins.null]
                 plugin = "null"
@@ -651,7 +682,8 @@ entry_plugins = []
                 "plugins.null.param",
             ),
             (
-                br#"[profile]
+                br#"version = 1
+                [profile]
                 entry_plugins = []
                 [plugins.null]
                 plugin = "null"
