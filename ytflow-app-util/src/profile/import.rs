@@ -17,7 +17,7 @@ pub enum ParseTomlProfileError {
     TomlError(#[from] toml_edit::TomlError),
     #[error(r#""{0}" is required, but is missing"#)]
     MissingInfo(String),
-    #[error(r#"invalid value for field "{0}"#)]
+    #[error(r#"invalid value for field "{0}""#)]
     InvalidValue(String),
     #[error("Invalid entry points")]
     InvalidEntryPoint,

@@ -135,6 +135,7 @@ serde = { version = "1", features = ["derive"] }
 serde_bytes = "0.11"
 refinery = { version = "0.8", features = ["rusqlite"] }
 refinery-core = "0.8"
+rusqlite = { version = "=0.31", features = ["chrono", "winsqlite3"] }
 cbor4ii = { version = "0.3", features = ["use_std", "serde1"] }
 maxminddb = { version = "0.24", optional = true }
 
@@ -150,7 +151,6 @@ tokio = { version = "1", features = [
 ] }
 
 [target.'cfg(windows)'.dependencies]
-rusqlite = { version = "0.28", features = ["chrono", "winsqlite3"] }
 windows = { version = "0.52", features = [
     "Foundation",
     "Networking_Connectivity",
@@ -162,9 +162,6 @@ windows = { version = "0.52", features = [
 ] }
 # Keep winapi as dependency
 ipconfig = { version = "=0.3.1", default-features = false, optional = true }
-
-[target.'cfg(not(windows))'.dependencies]
-rusqlite = { version = "0.28", features = ["chrono"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 rtnetlink = { version = "0.13", optional = true }
