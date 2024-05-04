@@ -74,7 +74,7 @@ fn encode_cbor_buf(buf: &[u8]) -> TomlValue {
                     CborValue::Text(s) => s == "__byte_repr" || s == "__toml_repr",
                     _ => false,
                 });
-                table.set_dotted(!(is_repr || indent > 2));
+                table.set_dotted(!(is_repr || indent > 2 || table.is_empty()));
                 TomlValue::InlineTable(table)
             }
             _ => return None,
@@ -257,6 +257,20 @@ mod tests {
         .unwrap();
         Plugin::create(
             profile_id,
+            "ws-client".into(),
+            "WebSocket client.".into(),
+            "ws-client".into(),
+            0,
+            to_cbor(cbor!({
+                "headers" => {},
+                "next" => "client-tls.tcp"
+            }))
+            .to_vec(),
+            &db,
+        )
+        .unwrap();
+        Plugin::create(
+            profile_id,
             "null".into(),
             "null".into(),
             "null".into(),
@@ -334,6 +348,14 @@ param.rules.cn = "direct"
 param.fallback.tcp = "proxy-forward.tcp"
 param.fallback.udp = "proxy-forward.udp"
 param.fallback.resolver = "fake-ip.resolver"
+updated_at = 2024-04-27T09:43:17.191
+
+# WebSocket client.
+[plugins.ws-client]
+plugin = "ws-client"
+plugin_version = 0
+param.headers = {}
+param.next = "client-tls.tcp"
 updated_at = 2024-04-27T09:43:17.191
 
 # null
