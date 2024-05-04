@@ -3328,7 +3328,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "aes-gcm",
  "aho-corasick",
@@ -3399,7 +3399,7 @@ dependencies = [
 
 [[package]]
 name = "ytflow-app-util"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "base64",
  "cbindgen",
@@ -3421,14 +3421,14 @@ dependencies = [
 
 [[package]]
 name = "ytflow-bin"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "ytflow-bin-shared",
 ]
 
 [[package]]
 name = "ytflow-bin-shared"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "anyhow",
  "base64",
