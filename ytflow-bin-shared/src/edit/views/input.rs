@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
@@ -58,14 +58,18 @@ pub fn run_input_view(ctx: &mut edit::AppContext, req: &mut InputRequest) -> Res
         let ev = crossterm::event::read().unwrap();
         match &ev {
             Event::Key(KeyEvent {
-                code: KeyCode::Esc, ..
+                code: KeyCode::Esc,
+                kind: KeyEventKind::Press,
+                ..
             }) => return Ok(NavChoice::Back),
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
+                kind: KeyEventKind::Press,
                 ..
             }) if !has_error => break,
             Event::Key(KeyEvent {
                 code: KeyCode::Enter,
+                kind: KeyEventKind::Press,
                 ..
             }) => {}
             _ => {

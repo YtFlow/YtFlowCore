@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::Style,
@@ -33,7 +33,12 @@ pub fn run_new_profile_view(ctx: &mut edit::AppContext) -> Result<NavChoice> {
         ctx.term.draw(|f| {
             f.render_stateful_widget(template_list, main_chunk, &mut template_state);
         })?;
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read().unwrap()
+        {
             match code {
                 KeyCode::Char('q') | KeyCode::Esc => return Ok(NavChoice::Back),
                 KeyCode::Down => {

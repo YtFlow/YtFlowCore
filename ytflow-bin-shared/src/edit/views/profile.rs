@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use serde_bytes::ByteBuf;
 use tui::{
     layout::{Constraint, Direction, Layout},
@@ -117,7 +117,12 @@ pub fn run_profile_view(ctx: &mut edit::AppContext, id: ProfileId) -> Result<Nav
                 }
             }
         }
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read().unwrap()
+        {
             match (code, plugin_state.selected()) {
                 (KeyCode::Char('q') | KeyCode::Esc, _) => break,
                 (KeyCode::Char('c'), _) => {

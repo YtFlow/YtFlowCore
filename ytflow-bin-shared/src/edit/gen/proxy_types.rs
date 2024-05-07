@@ -1,5 +1,5 @@
 use ciborium::{cbor, value::Value as CborValue};
-use serde_bytes::{ByteBuf, Bytes};
+use serde_bytes::Bytes;
 use strum_macros::{Display, EnumIter};
 
 use super::serialize_cbor;

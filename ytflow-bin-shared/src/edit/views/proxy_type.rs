@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use anyhow::{Context, Result};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::Style,
@@ -50,7 +50,12 @@ pub fn run_proxy_type_view(
             f.render_stateful_widget(type_list, main_chunk, &mut type_state);
         })?;
 
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read().unwrap()
+        {
             match (code, type_state.selected()) {
                 (KeyCode::Char('q') | KeyCode::Esc, _) => break,
                 (KeyCode::Enter, Some(idx)) => {

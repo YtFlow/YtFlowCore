@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Context, Result};
 use cbor4ii::core::Value as CborValue;
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use tui::{
@@ -106,7 +106,12 @@ pub fn run_proxy_group_view(ctx: &mut edit::AppContext, id: ProxyGroupId) -> Res
                 }
             }
         }
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read().unwrap()
+        {
             match (code, proxy_state.selected()) {
                 (KeyCode::Char('q') | KeyCode::Esc, _) => break,
                 (KeyCode::Char('c'), _) => return Ok(NavChoice::ProxyTypeView(proxy_group.id)),

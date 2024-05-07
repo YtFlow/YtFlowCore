@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use anyhow::{Context, Result};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::Style,
@@ -186,7 +186,12 @@ https://github.com/YtFlow/YtFlowCore",
                 continue 'main_loop;
             }
         }
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read().unwrap()
+        {
             match code {
                 KeyCode::Char('q') => break,
                 KeyCode::Char('c')

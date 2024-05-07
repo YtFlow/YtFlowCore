@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind};
 use tui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
@@ -120,7 +120,12 @@ pub fn run_plugin_type_view(
             }
         }
 
-        if let Event::Key(KeyEvent { code, .. }) = crossterm::event::read().unwrap() {
+        if let Event::Key(KeyEvent {
+            code,
+            kind: KeyEventKind::Press,
+            ..
+        }) = crossterm::event::read().unwrap()
+        {
             match code {
                 KeyCode::Char('q') | KeyCode::Esc => break,
                 KeyCode::Enter => select_confirm = true,
